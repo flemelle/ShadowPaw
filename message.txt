@@ -1,0 +1,281 @@
+# Shadowpaw — Game Design Document
+> Résumé du projet · MetroidvanIA · 2026
+
+---
+
+## Le jeu
+
+**Shadowpaw** est un platformer Metroidvania 2D dark fantasy dans lequel le joueur incarne **Kiba**, un chaton ninja apprenti du **Clan des Griffes Silencieuses**. Envoyé en mission dans les ruines du **Domaine de Velkhar**, il découvre que son clan pratique des rituels interdits pour transformer les chats en ombres parfaites — et qu'il en est le prochain sujet.
+
+Le jeu se déroule en **deux actes** : une quête pour atteindre la source de lumière éternelle, puis une lutte pour la restaurer après sa corruption.
+
+---
+
+## Lore — Les factions & lieux
+
+### Le Clan des Griffes Silencieuses
+L'ordre ninja auquel appartient Kiba. En apparence une confrérie honorable, en réalité infiltrée et corrompue de longue date par le **Sensei de l'Ombre**, **Malakar**. Leur dojo, **l'Antre de Velours Noir**, est creusé sous les ruines du temple.
+
+### Le Foyer des Ombres — *Velkhar*
+Le cœur du pouvoir obscur. Un sanctuaire souterrain où l'énergie sombre s'accumule depuis des siècles, alimentant les rituels du clan. C'est là que les sujets du rituel sont transformés en ombres parfaites. Kiba le traverse à la fin de l'Acte 1.
+
+### Le Temple de la Quiétude — *Seikūji*
+Un temple antique perché au sommet du monde connu, construit par une civilisation de chats disparue pour abriter la **Source de la Lumière Éternelle** — *Hikari no Ne*. L'objectif de l'Acte 1. Neutre, silencieux, presque vide. Il n'attend que celui qui viendra.
+
+### La Source de la Lumière Éternelle — *Hikari no Ne*
+Un cristal vivant au cœur de Seikūji, rayonnant d'une lumière dorée-blanche. Absorber son énergie donne à Kiba le **Pouvoir de la Lumière**. C'est le pivot narratif : au moment où Kiba l'atteint, Malakar arrive et corrompt la source, déclenchant l'Acte 2.
+
+---
+
+## Histoire
+
+### Acte 1 — L'Ombre sur le Clan
+
+Kiba est envoyé par l'**Ancien du Clan** (Malakar en personne, sous couverture) retrouver son maître disparu **Ryo**, dans les ruines du Domaine de Velkhar. En explorant, il découvre progressivement la vérité sur les rituels du clan et sur Velkhar.
+
+Le **Moine**, gardien solitaire des ruines, lui donne des indices cryptiques. L'**Esprit de Ryo**, visible uniquement avec Vision féline, lui révèle que son maître a choisi de disparaître pour le protéger.
+
+L'objectif final de l'Acte 1 : atteindre **Seikūji**, le Temple de la Quiétude, dont les anciens textes disent qu'il renferme le seul pouvoir capable de briser les rituels des ombres.
+
+**Pivot narratif :** Au moment où Kiba absorbe *Hikari no Ne*, Malakar surgit, révèle sa vraie identité, et plonge la Source dans les ténèbres. La lumière éternelle est corrompue. Le temple s'assombrit.
+
+---
+
+### Acte 2 — La Quiétude Corrompue
+
+Kiba possède maintenant les deux pouvoirs — Ombre et Lumière — mais *Hikari no Ne* est fragmentée en **cinq éclats** dispersés dans les zones corrompues par Malakar.
+
+L'Acte 2 est une quête de restauration : retrouver les 5 éclats, résoudre les puzzles laissés par la civilisation disparue de Seikūji, et affronter Malakar dans un combat final où les deux pouvoirs doivent être combinés.
+
+---
+
+### Les PNJ
+
+| Personnage | Rôle | Vérité cachée |
+|---|---|---|
+| **Le Moine — Tozen** | Guide cryptique dans les ruines | Dernier gardien de Seikūji, attend Kiba depuis des années |
+| **L'Ancien du Clan — Malakar** | Mentor apparent, donne les ordres | Sensei de l'Ombre, architecte de la corruption, boss final |
+| **L'Esprit de Ryo** | Visible uniquement avec Vision féline | A choisi de disparaître pour que Kiba atteigne Seikūji librement |
+| **L'Écho de Hikari** | Apparaît dans l'Acte 2 | Fragment de conscience de la Source, guide Kiba vers les éclats |
+
+---
+
+### Fins alternatives
+
+Le **flag de décision** est posé lors d'un dialogue avec Malakar juste avant le combat final.
+
+**Fin A — L'Équilibre Retrouvé** *(Kiba a collecté les 5 éclats et refusé de rejoindre Malakar)*
+> Kiba combine Lumière et Ombre pour purifier Malakar plutôt que de le détruire. Hikari no Ne est restaurée. L'esprit de Ryo est libéré. Fin mélancolique et porteuse d'espoir — Kiba quitte Seikūji seul, mais apaisé.
+
+**Fin B — L'Ombre Parfaite** *(Kiba n'a pas collecté tous les éclats ou a suivi Malakar)*
+> Sans la Lumière complète, Kiba ne peut pas purifier la Source. Il cède à l'ombre. Cinématique finale ambiguë — la silhouette de Kiba disparaît dans le noir. Seuls ses yeux blancs restent visibles.
+
+---
+
+## Zones
+
+### Acte 1
+
+| Zone | Nom | Lieu | Ambiance |
+|---|---|---|---|
+| 1 | **Les Portes de Velkhar** | Ruines extérieures du Domaine | Nuit, torches violettes, premiers gardes ninja |
+| 2 | **L'Antre de Velours Noir** | Dojo souterrain du Clan | Obscurité presque totale, chaînes, symboles du clan |
+| 3 | **Velkhar — Le Foyer des Ombres** | Cœur du sanctuaire obscur | Vide noir, énergie sombre pulsante, autels rituels |
+| 4 | **Seikūji — Le Temple de la Quiétude** | Sommet, au-dessus des nuages | Blanc et doré, silence absolu, lumière diffuse |
+
+### Acte 2
+
+| Zone | Nom | Lieu | Ambiance |
+|---|---|---|---|
+| 5 | **Seikūji Corrompu** | Temple de la Quiétude souillé | Mélange lumière brisée / ombre envahissante |
+| 6 | **Les Jardins Oubliés** | Extérieurs de Seikūji | Végétation corrompue, puzzles environnementaux |
+| 7 | **La Salle des Miroirs** | Intérieur profond de Seikūji | Réflexions de Kiba, puzzles lumière/ombre, illusions |
+| 8 | **Le Vide entre les Deux** | Espace entre lumière et ombre | Boss final Malakar, décor abstrait |
+
+---
+
+## Pouvoirs
+
+### Acte 1 — Pouvoirs de l'Ombre
+
+Acquis en absorbant les **fragments d'ombre** lâchés par les boss.
+
+| Pouvoir | Obtenu | Effet gameplay | Zone débloquée |
+|---|---|---|---|
+| 🐾 **Griffes renforcées** | Boss 1 | Casser les parois de pierre, attaque améliorée | Zone 2 |
+| 👁 **Vision féline** | Boss 2 | Voir dans le noir, révéler passages secrets, voir l'Esprit de Ryo | Zone 3 |
+| 💨 **Dash fantôme** | Boss 3 | Dash rapide avec invincibilité courte, traverser grilles | Zone 4 |
+| 🌑 **Forme ombre** | Velkhar | Intangibilité 5 sec, traverser ennemis et matière fine | Seikūji |
+
+### Acte 2 — Pouvoir de la Lumière
+
+Acquis en absorbant *Hikari no Ne* (partiellement corrompue) à la fin de l'Acte 1.
+
+| Pouvoir | Obtenu | Effet gameplay | Zone débloquée |
+|---|---|---|---|
+| ✨ **Éclat de Lumière** | Début Acte 2 | Attaque lumineuse de zone, détruit les obstacles d'ombre | Zone 5 |
+
+### Combos Lumière + Ombre
+
+La mécanique centrale de l'Acte 2 : combiner les deux pouvoirs pour résoudre des puzzles et décupler les effets au combat.
+
+| Combo | Déclenchement | Effet |
+|---|---|---|
+| **Nova d'Équilibre** | Forme ombre + Éclat de Lumière simultanés | Explosion de zone massive, détruit ombres et lumières corrompues |
+| **Voile de Vérité** | Vision féline + Éclat de Lumière | Révèle les éclats cachés de Hikari no Ne et les passages invisibles |
+| **Lame Duale** | Griffes + Éclat de Lumière | Attaque qui inflige des dégâts doubles aux boss de l'Acte 2 |
+| **Ancrage** | Dash fantôme + Éclat de Lumière | Kiba se fige en lumière solide — résout les puzzles de poids et de plateformes |
+
+---
+
+## Boss
+
+### Acte 1
+
+| Boss | Zone | Gimmick | Drop |
+|---|---|---|---|
+| **Le Gardien de Pierre** | Zone 1→2 | Golem lent, attaques de zone, faible aux griffes répétées | Griffes renforcées |
+| **Maître Aveugle** | Zone 2→3 | Ninja ultra-rapide, yeux bandés, se repère au son — il faut rester immobile | Vision féline |
+| **L'Ombre Jumelle** | Zone 3→4 | Clone sombre de Kiba, copie les mouvements avec 1 sec de délai | Dash fantôme |
+| **Velkhar l'Ancien** | Zone 4 | Gardien de Velkhar, deux phases, invoqueur d'ombres | Forme ombre |
+
+### Acte 2
+
+| Boss | Zone | Gimmick | Notes |
+|---|---|---|---|
+| **Le Jardinier Corrompu** | Zone 6 | Boss environnemental, puzzles végétation/lumière | Introducteur des combos |
+| **Le Double de Lumière** | Zone 7 | Miroir lumineux de Kiba, immunisé aux attaques d'ombre seules | Nécessite combo Lame Duale |
+| **Malakar — Sensei de l'Ombre** | Zone 8 | Boss final 3 phases : ninja / ombre géante / fusion lumière-ombre corrompue | Fin A ou B selon les choix |
+
+---
+
+## Puzzles (Acte 2)
+
+L'Acte 2 introduit des **puzzles environnementaux** absents de l'Acte 1 :
+
+- **Puzzles de miroirs** — orienter des faisceaux de lumière pour activer des mécanismes anciens
+- **Puzzles d'équilibre** — utiliser le combo Ancrage pour maintenir des plateformes en position
+- **Zones d'ombre inversée** — des salles où la lumière blesse et l'ombre protège (et vice-versa)
+- **Éclats de Hikari no Ne** — chaque éclat est caché derrière un puzzle combinant un pouvoir d'ombre et la lumière
+
+---
+
+## Stack technique
+
+### Moteur & langage
+
+| Couche | Choix | Raison |
+|---|---|---|
+| Moteur | **Phaser 3** | Platformer 2D natif, tilemap Tiled intégré, excellent support IA |
+| Langage | **TypeScript** | Typage, maintenabilité, déjà maîtrisé |
+| Bundler | **Vite** | HMR ultra-rapide, build optimisé, zéro config |
+| Éditeur niveaux | **Tiled** | Format JSON/TMX natif Phaser, gratuit |
+
+### Assets
+
+| Usage | Outil | Notes |
+|---|---|---|
+| Concept art / sprites | **Leonardo AI** | Génération des poses et illustrations |
+| Modélisation 3D | **Meshy AI** | Image → mesh 3D, export OBJ/GLB gratuit |
+| Animation & rendu | **Blender** (EEVEE) | Rigging, shaders dark painted, batch render PNG |
+| Post-traitement | **GIMP** | Détourage, assemblage sprite sheets |
+| Audio | **Suno AI** + **freemusicarchive.org** | Musiques d'ambiance CC0 |
+| SFX | **Kenney.nl** + **SFXR** | Packs CC0 |
+
+### Style visuel
+
+- **Dark painted 2D** — style peint sombre, textures brush strokes, pas de pixel art
+- Rendu Blender en caméra orthographique, export PNG séquences → sprite sheets
+- **Acte 1** : palette violet / noir / gris
+- **Acte 2** : palette qui introduit progressivement le doré / blanc au fur et à mesure que les éclats sont récupérés
+- La dualité gauche/droite de Kiba reflète sa nature : moitié chat gris, moitié ombre violette
+
+### Pipeline assets
+
+```
+Leonardo AI (pose concept, fond blanc)
+        ↓
+Meshy AI (image → mesh 3D, export OBJ)
+        ↓
+Blender (import, rigging, shader EEVEE dark painted)
+        ↓
+Batch render PNG séquences (caméra ortho, fond transparent)
+        ↓
+Assemblage sprite sheet (GIMP)
+        ↓
+Phaser 3 TextureAtlas (PNG + JSON)
+```
+
+### Hébergement & CI/CD
+
+| Outil | Usage |
+|---|---|
+| **GitHub** | Versioning, repo public |
+| **GitHub Actions** | Build automatique Vite + deploy |
+| **GitHub Pages** | Hébergement statique gratuit |
+
+---
+
+## Plateforme cible
+
+**Web desktop uniquement** (Chrome / Firefox)
+Résolution minimale : **1280×720**
+
+---
+
+## Architecture du code
+
+```
+/src
+  /scenes
+    BootScene.ts          chargement assets
+    MenuScene.ts          écran titre
+    GameScene.ts          scène principale
+    DialogScene.ts        overlay dialogues PNJ
+    PuzzleScene.ts        overlay puzzles Acte 2
+    EndScene.ts           fins A et B
+  /entities
+    Player.ts             Kiba, pouvoirs, états, combos
+    Enemy.ts              IA ennemis
+    NPC.ts                PNJ et dialogues
+    Boss.ts               boss avec phases
+  /systems
+    PowerSystem.ts        unlock / activation / combos
+    DialogSystem.ts       arbre de dialogues + flags
+    PuzzleSystem.ts       logique puzzles miroirs/lumière
+    SaveSystem.ts         progression localStorage
+    CameraSystem.ts       scroll et zones
+  /data
+    levels.json           niveaux Tiled
+    dialogues.json        textes PNJ + conditions de fin
+    powers.json           définitions pouvoirs + combos
+    puzzles.json          définitions puzzles Acte 2
+  /utils
+    Constants.ts
+    EventBus.ts
+```
+
+---
+
+## Planning
+
+| Semaine | Objectif |
+|---|---|
+| S1 | Setup repo, Phaser + Vite + TS, tilemap Zone 1, player basique |
+| S2 | Zones 1-2, Boss 1-2, Griffes + Vision féline, PNJ Tozen |
+| S3 | Zones 3-4, Boss 3-4, Dash + Forme ombre, Esprit de Ryo, pivot Acte 1→2 · **Livrable 2** |
+| S4 | Zones 5-6, Éclat de Lumière, combos, premiers puzzles, Boss Jardinier |
+| S5 | Zones 7-8, Boss Double + Malakar, fins A/B, audio, polish · **Livrable final** |
+
+---
+
+## Risques principaux
+
+| Risque | Mitigation |
+|---|---|
+| Scope trop large (8 zones, 6 boss) | Zones 7-8 simplifiées si retard en S4, Boss Double fusionnable avec Malakar |
+| Système de combos complexe à implémenter | Prototype du combo système en S3 sur une seule combinaison |
+| Puzzles miroirs difficiles à debugger | Puzzle system isolé et testé indépendamment du reste |
+| Qualité sprites Blender insuffisante | Fallback Leonardo AI direct en PNG détouré |
+| Code IA incorrect | Relecture systématique + tests unitaires sur chaque module |
+| Assets sans licence claire | Tout documenter dans `ACKNOWLEDGEMENTS.md`, préférer CC0 |

@@ -1,0 +1,104 @@
+{
+  "puzzles": [
+    {
+      "id": "puzzle_mirror_zone6_a",
+      "type": "mirror",
+      "zone": "zone6_jardins_oublies",
+      "name": "Le Faisceau des Jardins",
+      "description": "Orienter les miroirs pour rediriger le faisceau de lumière vers le récepteur et rouvrir la porte du jardin.",
+      "grid": { "cols": 7, "rows": 5 },
+      "source": { "x": 0, "y": 2, "direction": "E" },
+      "receiver": { "x": 6, "y": 2 },
+      "mirrors": [
+        { "id": "m1", "x": 2, "y": 2, "rotation": 45, "rotatable": true },
+        { "id": "m2", "x": 2, "y": 4, "rotation": 135, "rotatable": true },
+        { "id": "m3", "x": 5, "y": 4, "rotation": 45, "rotatable": true }
+      ],
+      "solutionRotations": { "m1": 135, "m2": 45, "m3": 135 },
+      "reward": { "type": "unlock_gate", "gateId": "gate_zone6_garden_door" }
+    },
+    {
+      "id": "puzzle_anchor_zone6_b",
+      "type": "equilibrium",
+      "zone": "zone6_jardins_oublies",
+      "name": "La Plateforme Suspendue",
+      "description": "Utiliser le combo Ancrage (Dash fantôme + Éclat de Lumière) pour figer la plateforme en lumière solide le temps de traverser.",
+      "requiresCombo": "ancrage",
+      "platforms": [
+        { "id": "p1", "x": 8, "y": 6, "fallsAfterMs": 2000 },
+        { "id": "p2", "x": 10, "y": 6, "fallsAfterMs": 2000 }
+      ],
+      "reward": { "type": "unlock_path", "pathId": "path_zone6_upper" }
+    },
+    {
+      "id": "puzzle_mirror_zone7_a",
+      "type": "mirror",
+      "zone": "zone7_salle_miroirs",
+      "name": "Reflets de Kiba",
+      "description": "La Salle des Miroirs multiplie les faisceaux — chaque reflet de Kiba doit atteindre son propre récepteur.",
+      "grid": { "cols": 9, "rows": 6 },
+      "source": { "x": 0, "y": 3, "direction": "E" },
+      "receiver": { "x": 8, "y": 3 },
+      "mirrors": [
+        { "id": "m1", "x": 3, "y": 3, "rotation": 45, "rotatable": true },
+        { "id": "m2", "x": 3, "y": 1, "rotation": 135, "rotatable": true },
+        { "id": "m3", "x": 6, "y": 1, "rotation": 225, "rotatable": true },
+        { "id": "m4", "x": 6, "y": 3, "rotation": 315, "rotatable": true }
+      ],
+      "solutionRotations": { "m1": 45, "m2": 135, "m3": 225, "m4": 315 },
+      "reward": { "type": "reveal_boss_arena", "bossId": "boss_double_de_lumiere" }
+    },
+    {
+      "id": "puzzle_inverted_zone7_b",
+      "type": "inverted_zone",
+      "zone": "zone7_salle_miroirs",
+      "name": "Salle Inversée",
+      "description": "Dans cette salle, la lumière blesse et l'ombre protège. Utiliser Forme ombre pour traverser sans dommage.",
+      "invertedRules": { "lightDamages": true, "shadowProtects": true },
+      "reward": { "type": "reveal_shard", "shardId": "shard_3" }
+    },
+    {
+      "id": "puzzle_shard_zone5",
+      "type": "shard_puzzle",
+      "zone": "zone5_seikuji_corrompu",
+      "name": "Éclat caché — Voile de Vérité",
+      "description": "Combiner Vision féline + Éclat de Lumière (combo Voile de Vérité) pour révéler l'éclat dissimulé.",
+      "requiresCombo": "voile_verite",
+      "reward": { "type": "reveal_shard", "shardId": "shard_1" }
+    },
+    {
+      "id": "puzzle_shard_zone6",
+      "type": "shard_puzzle",
+      "zone": "zone6_jardins_oublies",
+      "name": "Éclat caché — Racines de Lumière",
+      "description": "Utiliser Griffes renforcées + Éclat de Lumière (combo Lame Duale) pour fendre la racine corrompue et libérer l'éclat.",
+      "requiresCombo": "lame_duale",
+      "reward": { "type": "reveal_shard", "shardId": "shard_2" }
+    },
+    {
+      "id": "puzzle_shard_zone7",
+      "type": "shard_puzzle",
+      "zone": "zone7_salle_miroirs",
+      "name": "Éclat caché — Nova Silencieuse",
+      "description": "Nova d'Équilibre (Forme ombre + Éclat de Lumière) fait exploser le mur d'illusions cachant l'éclat.",
+      "requiresCombo": "nova_equilibre",
+      "reward": { "type": "reveal_shard", "shardId": "shard_4" }
+    },
+    {
+      "id": "puzzle_shard_zone8",
+      "type": "shard_puzzle",
+      "zone": "zone8_vide_entre_deux",
+      "name": "Éclat caché — Le Dernier Fragment",
+      "description": "Le cinquième éclat, gardé au seuil du Vide, requiert d'avoir résolu tous les puzzles précédents.",
+      "requiresShardCount": 4,
+      "reward": { "type": "reveal_shard", "shardId": "shard_5" }
+    }
+  ],
+  "shards": [
+    { "id": "shard_1", "name": "Éclat de Compassion" },
+    { "id": "shard_2", "name": "Éclat de Mémoire" },
+    { "id": "shard_3", "name": "Éclat de Silence" },
+    { "id": "shard_4", "name": "Éclat de Courage" },
+    { "id": "shard_5", "name": "Éclat d'Équilibre" }
+  ]
+}

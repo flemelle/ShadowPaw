@@ -1,0 +1,23 @@
+{
+  "_comment": "Légende partagée par toutes les grilles de /src/data/maps. Chaque tuile fait TILE_SIZE px. Les entités (spawn, PNJ, boss, sortie...) sont listées séparément par grille, pas encodées dans les caractères.",
+  "tileCodes": {
+    ".": "vide / air",
+    "#": "sol solide",
+    "C": "paroi fissurée — nécessite griffes_renforcees pour être détruite",
+    "V": "passage caché — révélé par vision_feline (solide sinon)",
+    "D": "grille — traversable en dash via dash_fantome",
+    "S": "matière fine — traversable en intangibilité via forme_ombre",
+    "L": "obstacle d'ombre corrompue — détruit par eclat_lumiere",
+    "H": "hasard visuel (ambiance), non solide"
+  },
+  "entityTypes": [
+    "spawn",
+    "npc",
+    "boss_arena",
+    "zone_exit",
+    "shard_pickup",
+    "puzzle_trigger",
+    "power_altar",
+    "combo_gate"
+  ]
+}

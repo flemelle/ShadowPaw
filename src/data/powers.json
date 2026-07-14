@@ -1,0 +1,105 @@
+{
+  "powers": [
+    {
+      "id": "griffes_renforcees",
+      "name": "Griffes renforcées",
+      "icon": "🐾",
+      "act": 1,
+      "obtainedFrom": "boss_gardien_de_pierre",
+      "unlocksZone": "zone2_antre_velours_noir",
+      "effect": "Casser les parois de pierre fissurées, attaque améliorée",
+      "traversal": {
+        "type": "break_wall",
+        "tileCode": "C",
+        "description": "Permet de détruire les tuiles de type paroi fissurée (C) sur la carte."
+      }
+    },
+    {
+      "id": "vision_feline",
+      "name": "Vision féline",
+      "icon": "👁",
+      "act": 1,
+      "obtainedFrom": "boss_maitre_aveugle",
+      "unlocksZone": "zone3_velkhar_foyer_ombres",
+      "effect": "Voir dans le noir, révéler passages secrets, voir l'Esprit de Ryo",
+      "traversal": {
+        "type": "reveal_hidden",
+        "tileCode": "V",
+        "description": "Révèle les tuiles de type passage caché (V) et les PNJ spectraux."
+      }
+    },
+    {
+      "id": "dash_fantome",
+      "name": "Dash fantôme",
+      "icon": "💨",
+      "act": 1,
+      "obtainedFrom": "boss_ombre_jumelle",
+      "unlocksZone": "zone4_seikuji_quietude",
+      "effect": "Dash rapide avec invincibilité courte, traverser grilles",
+      "traversal": {
+        "type": "dash_through",
+        "tileCode": "D",
+        "description": "Permet de traverser les tuiles de type grille (D) via un dash."
+      }
+    },
+    {
+      "id": "forme_ombre",
+      "name": "Forme ombre",
+      "icon": "🌑",
+      "act": 1,
+      "obtainedFrom": "boss_velkhar_ancien",
+      "unlocksZone": "zone5_seikuji_corrompu",
+      "effect": "Intangibilité 5 sec, traverser ennemis et matière fine",
+      "traversal": {
+        "type": "intangible",
+        "tileCode": "S",
+        "durationMs": 5000,
+        "description": "Rend Kiba intangible pendant 5 secondes, traverse les tuiles de matière fine (S)."
+      }
+    },
+    {
+      "id": "eclat_lumiere",
+      "name": "Éclat de Lumière",
+      "icon": "✨",
+      "act": 2,
+      "obtainedFrom": "hikari_no_ne_absorption",
+      "unlocksZone": "zone5_seikuji_corrompu",
+      "effect": "Attaque lumineuse de zone, détruit les obstacles d'ombre",
+      "traversal": {
+        "type": "destroy_shadow_obstacle",
+        "tileCode": "L",
+        "description": "Détruit les tuiles d'obstacle d'ombre (L)."
+      }
+    }
+  ],
+  "combos": [
+    {
+      "id": "nova_equilibre",
+      "name": "Nova d'Équilibre",
+      "requires": ["forme_ombre", "eclat_lumiere"],
+      "trigger": "simultaneous",
+      "effect": "Explosion de zone massive, détruit ombres et lumières corrompues"
+    },
+    {
+      "id": "voile_verite",
+      "name": "Voile de Vérité",
+      "requires": ["vision_feline", "eclat_lumiere"],
+      "trigger": "simultaneous",
+      "effect": "Révèle les éclats cachés de Hikari no Ne et les passages invisibles"
+    },
+    {
+      "id": "lame_duale",
+      "name": "Lame Duale",
+      "requires": ["griffes_renforcees", "eclat_lumiere"],
+      "trigger": "simultaneous",
+      "effect": "Attaque qui inflige des dégâts doubles aux boss de l'Acte 2"
+    },
+    {
+      "id": "ancrage",
+      "name": "Ancrage",
+      "requires": ["dash_fantome", "eclat_lumiere"],
+      "trigger": "simultaneous",
+      "effect": "Kiba se fige en lumière solide — résout les puzzles de poids et de plateformes"
+    }
+  ]
+}

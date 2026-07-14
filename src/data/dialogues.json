@@ -1,0 +1,139 @@
+{
+  "trees": {
+    "tozen_zone1_intro": {
+      "npc": "tozen",
+      "displayName": "Tozen, le Moine",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Un autre chat envoyé dans ces ruines... Le Clan ne recule devant rien.",
+            "Tu cherches ton maître, n'est-ce pas ? Ryo est allé plus loin que tu ne l'imagines."
+          ],
+          "choices": [
+            { "text": "Qui es-tu ?", "next": "who_are_you" },
+            { "text": "Que sais-tu de Velkhar ?", "next": "about_velkhar" }
+          ]
+        },
+        "who_are_you": {
+          "lines": ["Un gardien. Rien de plus... pour l'instant. Continue ta route, petit chat."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "about_velkhar": {
+          "lines": [
+            "Velkhar n'est pas une ruine. C'est une blessure qui ne cicatrise pas.",
+            "Ce que ton Clan y pratique n'a pas de nom dans la langue des vivants."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "tozen_zone3_hint": {
+      "npc": "tozen",
+      "displayName": "Tozen, le Moine",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Tu as vu la vérité de ce lieu maintenant. Les ombres parfaites... ce que ton Clan fabrique ici.",
+            "Il n'existe qu'un seul pouvoir capable de briser ces rituels : Hikari no Ne, au sommet de Seikūji."
+          ],
+          "choices": [{ "text": "Comment l'atteindre ?", "next": "how_to_reach" }]
+        },
+        "how_to_reach": {
+          "lines": ["Suis la lumière la plus faible. Elle te mènera là où l'obscurité n'ose pas régner."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "ryo_spirit_zone3": {
+      "npc": "ryo_spirit",
+      "displayName": "L'Esprit de Ryo",
+      "requiresPower": "vision_feline",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Kiba... tu m'as trouvé.",
+            "Je n'ai pas disparu par lâcheté. Je devais te laisser venir ici seul, sans que Malakar ne se doute de rien.",
+            "Atteins Seikūji. Absorbe la Source. C'est notre seule chance."
+          ],
+          "choices": [
+            { "text": "Pourquoi ne pas me l'avoir dit ?", "next": "why_hidden" },
+            { "text": "Je le ferai.", "next": "end", "setFlag": "ryo_encouraged" }
+          ]
+        },
+        "why_hidden": {
+          "lines": ["Malakar lit dans l'ombre des cœurs. Le mensonge était la seule armure que je pouvais t'offrir."],
+          "choices": [{ "text": "(Partir)", "next": "end", "setFlag": "ryo_encouraged" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "echo_hikari_zone5_intro": {
+      "npc": "echo_hikari",
+      "displayName": "L'Écho de Hikari",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Je suis ce qu'il reste de moi-même... brisée en cinq éclats par la corruption de Malakar.",
+            "Retrouve-les, Kiba. Chaque éclat retrouvé affaiblira l'emprise de l'ombre sur ce lieu."
+          ],
+          "choices": [{ "text": "Je te ramènerai entière.", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "malakar_zone8_pre_boss": {
+      "npc": "malakar",
+      "displayName": "Malakar, Sensei de l'Ombre",
+      "startNode": "start",
+      "description": "Dialogue de décision — posé juste avant le combat final. Le choix ici positionne le flag d'ending.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Te voilà, petit chat. Tu portes en toi la Lumière et l'Ombre, comme moi jadis.",
+            "Rejoins-moi. Ensemble nous parfairons ce que Velkhar a commencé. Ou résiste, et détruis tout ce que tu es."
+          ],
+          "choices": [
+            {
+              "text": "Je refuse. Je vais te purifier, pas te détruire.",
+              "next": "refuse",
+              "setFlag": "sided_with_light"
+            },
+            {
+              "text": "... Peut-être as-tu raison.",
+              "next": "accept",
+              "setFlag": "sided_with_shadow"
+            }
+          ]
+        },
+        "refuse": {
+          "lines": ["Alors montre-moi cet équilibre dont tu es si fier. Voyons s'il suffit."],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "accept": {
+          "lines": ["Bien. L'ombre ne pardonne pas l'hésitation, mais elle récompense les siens... parfois."],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    }
+  },
+  "endingConditions": {
+    "ending_a_equilibre": {
+      "requiresFlag": "sided_with_light",
+      "requiresShardCount": 5,
+      "title": "Fin A — L'Équilibre Retrouvé",
+      "summary": "Kiba combine Lumière et Ombre pour purifier Malakar plutôt que de le détruire. Hikari no Ne est restaurée. L'esprit de Ryo est libéré."
+    },
+    "ending_b_ombre_parfaite": {
+      "fallback": true,
+      "title": "Fin B — L'Ombre Parfaite",
+      "summary": "Sans la Lumière complète, Kiba ne peut pas purifier la Source. Il cède à l'ombre."
+    }
+  }
+}

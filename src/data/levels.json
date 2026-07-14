@@ -1,0 +1,106 @@
+{
+  "acts": [
+    {
+      "id": 1,
+      "title": "L'Ombre sur le Clan",
+      "zoneIds": [
+        "zone1_portes_velkhar",
+        "zone2_antre_velours_noir",
+        "zone3_velkhar_foyer_ombres",
+        "zone4_seikuji_quietude"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "La Quiétude Corrompue",
+      "zoneIds": [
+        "zone5_seikuji_corrompu",
+        "zone6_jardins_oublies",
+        "zone7_salle_miroirs",
+        "zone8_vide_entre_deux"
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone1_portes_velkhar",
+      "index": 1,
+      "act": 1,
+      "name": "Les Portes de Velkhar",
+      "lieu": "Ruines extérieures du Domaine",
+      "ambiance": "Nuit, torches violettes, premiers gardes ninja",
+      "mapFile": "maps/zone1.json",
+      "chapterTitle": "Chapitre 1 — Le Retour au Domaine"
+    },
+    {
+      "id": "zone2_antre_velours_noir",
+      "index": 2,
+      "act": 1,
+      "name": "L'Antre de Velours Noir",
+      "lieu": "Dojo souterrain du Clan",
+      "ambiance": "Obscurité presque totale, chaînes, symboles du clan",
+      "mapFile": "maps/zone2.json",
+      "chapterTitle": "Chapitre 2 — Les Chaînes du Dojo"
+    },
+    {
+      "id": "zone3_velkhar_foyer_ombres",
+      "index": 3,
+      "act": 1,
+      "name": "Velkhar — Le Foyer des Ombres",
+      "lieu": "Cœur du sanctuaire obscur",
+      "ambiance": "Vide noir, énergie sombre pulsante, autels rituels",
+      "mapFile": "maps/zone3.json",
+      "chapterTitle": "Chapitre 3 — Le Foyer des Ombres"
+    },
+    {
+      "id": "zone4_seikuji_quietude",
+      "index": 4,
+      "act": 1,
+      "name": "Seikūji — Le Temple de la Quiétude",
+      "lieu": "Sommet, au-dessus des nuages",
+      "ambiance": "Blanc et doré, silence absolu, lumière diffuse",
+      "mapFile": "maps/zone4.json",
+      "chapterTitle": "Chapitre 4 — La Quiétude et la Chute"
+    },
+    {
+      "id": "zone5_seikuji_corrompu",
+      "index": 5,
+      "act": 2,
+      "name": "Seikūji Corrompu",
+      "lieu": "Temple de la Quiétude souillé",
+      "ambiance": "Mélange lumière brisée / ombre envahissante",
+      "mapFile": "maps/zone5.json",
+      "chapterTitle": "Chapitre 5 — Les Cinq Éclats"
+    },
+    {
+      "id": "zone6_jardins_oublies",
+      "index": 6,
+      "act": 2,
+      "name": "Les Jardins Oubliés",
+      "lieu": "Extérieurs de Seikūji",
+      "ambiance": "Végétation corrompue, puzzles environnementaux",
+      "mapFile": "maps/zone6.json",
+      "chapterTitle": "Chapitre 6 — Le Jardin Corrompu"
+    },
+    {
+      "id": "zone7_salle_miroirs",
+      "index": 7,
+      "act": 2,
+      "name": "La Salle des Miroirs",
+      "lieu": "Intérieur profond de Seikūji",
+      "ambiance": "Réflexions de Kiba, puzzles lumière/ombre, illusions",
+      "mapFile": "maps/zone7.json",
+      "chapterTitle": "Chapitre 7 — Le Reflet de Soi"
+    },
+    {
+      "id": "zone8_vide_entre_deux",
+      "index": 8,
+      "act": 2,
+      "name": "Le Vide entre les Deux",
+      "lieu": "Espace entre lumière et ombre",
+      "ambiance": "Décor abstrait — boss final Malakar",
+      "mapFile": "maps/zone8.json",
+      "chapterTitle": "Chapitre 8 — L'Équilibre ou l'Ombre"
+    }
+  ]
+}

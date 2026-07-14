@@ -1,0 +1,29 @@
+{
+  "id": "zone7_salle_miroirs",
+  "name": "La Salle des Miroirs",
+  "act": 2,
+  "ambiance": "Réflexions de Kiba, puzzles lumière/ombre, illusions",
+  "palette": "ACT_2",
+  "notes": "Layout de prototype. Contient la salle inversée et le boss Double de Lumière.",
+  "cols": 30,
+  "rows": 9,
+  "tiles": [
+    "..............................",
+    "..............................",
+    "......................#####...",
+    "..............................",
+    "....S.....................L...",
+    "..............................",
+    "..............................",
+    "####S##########S#########.....",
+    "##############################"
+  ],
+  "entities": [
+    { "type": "spawn", "x": 1, "y": 6 },
+    { "type": "puzzle_trigger", "x": 6, "y": 6, "puzzleId": "puzzle_mirror_zone7_a" },
+    { "type": "puzzle_trigger", "x": 14, "y": 6, "puzzleId": "puzzle_inverted_zone7_b" },
+    { "type": "puzzle_trigger", "x": 18, "y": 6, "puzzleId": "puzzle_shard_zone7" },
+    { "type": "boss_arena", "x": 25, "y": 6, "bossId": "boss_double_de_lumiere", "requiresCombo": "lame_duale" },
+    { "type": "zone_exit", "x": 29, "y": 6, "targetZone": "zone8_vide_entre_deux", "requiresBossDefeated": "boss_double_de_lumiere" }
+  ]
+}

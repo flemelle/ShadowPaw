@@ -1,0 +1,46 @@
+{
+  "id": "zone5_seikuji_corrompu",
+  "name": "Seikūji Corrompu",
+  "act": 2,
+  "ambiance": "Mélange lumière brisée / ombre envahissante",
+  "palette": "ACT_2",
+  "notes": "Layout de prototype. Début de l'Acte 2 — Kiba possède déjà Éclat de Lumière + tous les pouvoirs d'ombre.",
+  "cols": 26,
+  "rows": 9,
+  "tiles": [
+    "..........................",
+    "..........................",
+    "..................####....",
+    "..........................",
+    "....L.....................",
+    "..........................",
+    "..........................",
+    "####L############S#####...",
+    "##########################"
+  ],
+  "entities": [
+    {
+      "type": "spawn",
+      "x": 1,
+      "y": 6
+    },
+    {
+      "type": "npc",
+      "x": 4,
+      "y": 6,
+      "dialogTree": "echo_hikari_zone5_intro"
+    },
+    {
+      "type": "puzzle_trigger",
+      "x": 12,
+      "y": 6,
+      "puzzleId": "puzzle_shard_zone5"
+    },
+    {
+      "type": "zone_exit",
+      "x": 25,
+      "y": 6,
+      "targetZone": "zone6_jardins_oublies"
+    }
+  ]
+}

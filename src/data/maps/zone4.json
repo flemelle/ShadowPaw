@@ -1,0 +1,52 @@
+{
+  "id": "zone4_seikuji_quietude",
+  "name": "Seikūji — Le Temple de la Quiétude",
+  "act": 1,
+  "ambiance": "Sommet, au-dessus des nuages. Blanc et doré, silence absolu, lumière diffuse",
+  "palette": "ACT_1",
+  "notes": "Layout de prototype. Contient le pivot narratif Acte 1 → Acte 2.",
+  "cols": 28,
+  "rows": 9,
+  "tiles": [
+    "............................",
+    "............................",
+    "......................#####.",
+    "............................",
+    "............................",
+    "............................",
+    "............................",
+    "####D#########D#########....",
+    "############################"
+  ],
+  "entities": [
+    {
+      "type": "spawn",
+      "x": 1,
+      "y": 6,
+      "requiresPower": "dash_fantome"
+    },
+    {
+      "type": "boss_arena",
+      "x": 15,
+      "y": 6,
+      "bossId": "boss_velkhar_ancien",
+      "grantsPower": "forme_ombre"
+    },
+    {
+      "type": "power_altar",
+      "x": 24,
+      "y": 2,
+      "altarId": "hikari_no_ne",
+      "requiresPower": "forme_ombre",
+      "pivotEvent": true,
+      "grantsPower": "eclat_lumiere"
+    },
+    {
+      "type": "zone_exit",
+      "x": 27,
+      "y": 6,
+      "targetZone": "zone5_seikuji_corrompu",
+      "requiresAltar": "hikari_no_ne"
+    }
+  ]
+}

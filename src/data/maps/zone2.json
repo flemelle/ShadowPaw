@@ -1,0 +1,50 @@
+{
+  "id": "zone2_antre_velours_noir",
+  "name": "L'Antre de Velours Noir",
+  "act": 1,
+  "ambiance": "Obscurité presque totale, chaînes, symboles du clan",
+  "palette": "ACT_1",
+  "notes": "Layout de prototype.",
+  "cols": 26,
+  "rows": 9,
+  "tiles": [
+    "..........................",
+    "..........................",
+    "....................####..",
+    "..........................",
+    "......####................",
+    "..........................",
+    "..........................",
+    "#####C##########C######...",
+    "##########################"
+  ],
+  "entities": [
+    {
+      "type": "spawn",
+      "x": 1,
+      "y": 6,
+      "requiresPower": "griffes_renforcees"
+    },
+    {
+      "type": "npc",
+      "x": 9,
+      "y": 6,
+      "dialogTree": "tozen_zone1_intro",
+      "optional": true
+    },
+    {
+      "type": "boss_arena",
+      "x": 22,
+      "y": 6,
+      "bossId": "boss_maitre_aveugle",
+      "grantsPower": "vision_feline"
+    },
+    {
+      "type": "zone_exit",
+      "x": 25,
+      "y": 6,
+      "targetZone": "zone3_velkhar_foyer_ombres",
+      "requiresBossDefeated": "boss_maitre_aveugle"
+    }
+  ]
+}

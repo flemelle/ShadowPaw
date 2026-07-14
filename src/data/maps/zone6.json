@@ -1,0 +1,29 @@
+{
+  "id": "zone6_jardins_oublies",
+  "name": "Les Jardins Oubliés",
+  "act": 2,
+  "ambiance": "Végétation corrompue, puzzles environnementaux",
+  "palette": "ACT_2",
+  "notes": "Layout de prototype. Introduit les puzzles de miroirs et d'équilibre.",
+  "cols": 30,
+  "rows": 9,
+  "tiles": [
+    "..............................",
+    "..............................",
+    "......................#####...",
+    "..............................",
+    "....L.................L.......",
+    "..............................",
+    "..............................",
+    "####L##########L#########.....",
+    "##############################"
+  ],
+  "entities": [
+    { "type": "spawn", "x": 1, "y": 6 },
+    { "type": "puzzle_trigger", "x": 6, "y": 6, "puzzleId": "puzzle_mirror_zone6_a" },
+    { "type": "puzzle_trigger", "x": 14, "y": 5, "puzzleId": "puzzle_anchor_zone6_b" },
+    { "type": "puzzle_trigger", "x": 18, "y": 6, "puzzleId": "puzzle_shard_zone6" },
+    { "type": "boss_arena", "x": 24, "y": 6, "bossId": "boss_jardinier_corrompu" },
+    { "type": "zone_exit", "x": 29, "y": 6, "targetZone": "zone7_salle_miroirs", "requiresBossDefeated": "boss_jardinier_corrompu" }
+  ]
+}

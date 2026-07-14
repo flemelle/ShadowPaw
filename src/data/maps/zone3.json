@@ -1,0 +1,56 @@
+{
+  "id": "zone3_velkhar_foyer_ombres",
+  "name": "Velkhar — Le Foyer des Ombres",
+  "act": 1,
+  "ambiance": "Vide noir, énergie sombre pulsante, autels rituels",
+  "palette": "ACT_1",
+  "notes": "Layout de prototype.",
+  "cols": 26,
+  "rows": 9,
+  "tiles": [
+    "..........................",
+    "..........................",
+    "..................####....",
+    "..........................",
+    "....V.....................",
+    "..........................",
+    "..........................",
+    "####V############V#####...",
+    "##########################"
+  ],
+  "entities": [
+    {
+      "type": "spawn",
+      "x": 1,
+      "y": 6,
+      "requiresPower": "vision_feline"
+    },
+    {
+      "type": "npc",
+      "x": 6,
+      "y": 3,
+      "dialogTree": "ryo_spirit_zone3",
+      "requiresPower": "vision_feline"
+    },
+    {
+      "type": "npc",
+      "x": 12,
+      "y": 6,
+      "dialogTree": "tozen_zone3_hint"
+    },
+    {
+      "type": "boss_arena",
+      "x": 22,
+      "y": 6,
+      "bossId": "boss_ombre_jumelle",
+      "grantsPower": "dash_fantome"
+    },
+    {
+      "type": "zone_exit",
+      "x": 25,
+      "y": 6,
+      "targetZone": "zone4_seikuji_quietude",
+      "requiresBossDefeated": "boss_ombre_jumelle"
+    }
+  ]
+}

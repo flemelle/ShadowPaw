@@ -1,0 +1,28 @@
+{
+  "id": "zone8_vide_entre_deux",
+  "name": "Le Vide entre les Deux",
+  "act": 2,
+  "ambiance": "Espace entre lumière et ombre, décor abstrait — boss final Malakar",
+  "palette": "ACT_2",
+  "notes": "Layout de prototype. Zone finale — dialogue de décision puis combat de boss (3 phases) puis fin A/B.",
+  "cols": 22,
+  "rows": 9,
+  "tiles": [
+    "......................",
+    "......................",
+    "......................",
+    "......................",
+    "......................",
+    "......................",
+    "......................",
+    "######################",
+    "######################"
+  ],
+  "entities": [
+    { "type": "spawn", "x": 1, "y": 6 },
+    { "type": "puzzle_trigger", "x": 6, "y": 6, "puzzleId": "puzzle_shard_zone8" },
+    { "type": "npc", "x": 16, "y": 6, "dialogTree": "malakar_zone8_pre_boss" },
+    { "type": "boss_arena", "x": 20, "y": 6, "bossId": "boss_malakar_final", "isFinalBoss": true },
+    { "type": "ending_trigger", "x": 21, "y": 6, "requiresBossDefeated": "boss_malakar_final" }
+  ]
+}
