@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS } from '@/utils/Constants';
 import { puzzleSystem, powerSystem } from '@/systems/GameState';
+import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import type { PuzzleDef } from '@/systems/PuzzleSystem';
 
@@ -14,7 +15,7 @@ const CELL = 56;
  * Overlay des puzzles de l'Acte 2 (miroirs, équilibre, zones inversées, éclats).
  * Les combos (Lame Duale, Ancrage...) se déclenchent normalement en jeu en maintenant
  * deux pouvoirs actifs ; ici, un bouton "Simuler le combo" permet de tester la résolution
- * sans dépendre du timing exact des touches — pratique aussi en Mode Test.
+ * sans dépendre du timing exact des touches — pratique aussi en Mode Admin.
  */
 export class PuzzleScene extends Phaser.Scene {
   private def!: PuzzleDef;
@@ -81,6 +82,13 @@ export class PuzzleScene extends Phaser.Scene {
     this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
   }
 
+  /** Centralise le feedback (texte + SFX) de toute tentative de résolution. */
+  private announce(ok: boolean, successMsg: string, failMsg: string): void {
+    this.statusText.setText(ok ? successMsg : failMsg);
+    audioManager.play(this, ok ? SFX_KEYS.PUZZLE_SOLVED : SFX_KEYS.PUZZLE_FAIL);
+    if (ok) this.time.delayedCall(900, () => this.exit());
+  }
+
   update(): void {
     if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) this.exit();
   }
@@ -115,6 +123,7 @@ export class PuzzleScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
       label.on('pointerdown', () => {
+        audioManager.play(this, SFX_KEYS.UI_SELECT, { volume: 0.35 });
         this.rotations[m.id] = ((this.rotations[m.id] + 90) % 360) as number;
         label.setText(this.mirrorGlyph(this.rotations[m.id]));
         this.redrawBeam();
@@ -145,6 +154,7 @@ export class PuzzleScene extends Phaser.Scene {
 
     if (solved) {
       this.statusText.setText('Faisceau aligné — puzzle résolu !');
+      audioManager.play(this, SFX_KEYS.PUZZLE_SOLVED);
       this.time.delayedCall(900, () => this.exit());
     }
   }
@@ -163,8 +173,7 @@ export class PuzzleScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.addSimulateComboButton('ancrage', () => {
       const ok = puzzleSystem.solveEquilibrium(this.def.id, 'ancrage');
-      this.statusText.setText(ok ? 'Plateforme figée — puzzle résolu !' : 'Combo requis non actif.');
-      if (ok) this.time.delayedCall(900, () => this.exit());
+      this.announce(ok, 'Plateforme figée — puzzle résolu !', 'Combo requis non actif.');
     });
   }
 
@@ -192,8 +201,7 @@ export class PuzzleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     btn.on('pointerdown', () => {
       const ok = puzzleSystem.solveInvertedZone(this.def.id, powerSystem.has('forme_ombre'));
-      this.statusText.setText(ok ? 'Traversée réussie — éclat révélé !' : 'Il te faut Forme ombre pour cela.');
-      if (ok) this.time.delayedCall(900, () => this.exit());
+      this.announce(ok, 'Traversée réussie — éclat révélé !', 'Il te faut Forme ombre pour cela.');
     });
   }
 
@@ -214,8 +222,7 @@ export class PuzzleScene extends Phaser.Scene {
     if (requiredCombo) {
       this.addSimulateComboButton(requiredCombo, () => {
         const ok = puzzleSystem.solveShardPuzzle(this.def.id, { comboActive: requiredCombo });
-        this.statusText.setText(ok ? 'Éclat révélé !' : 'Combo requis non actif.');
-        if (ok) this.time.delayedCall(900, () => this.exit());
+        this.announce(ok, 'Éclat révélé !', 'Combo requis non actif.');
       });
     } else {
       const btn = this.add
@@ -230,8 +237,7 @@ export class PuzzleScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       btn.on('pointerdown', () => {
         const ok = puzzleSystem.solveShardPuzzle(this.def.id, { shardCount: puzzleSystem.getCollectedShards().length });
-        this.statusText.setText(ok ? 'Éclat révélé !' : 'Condition non remplie.');
-        if (ok) this.time.delayedCall(900, () => this.exit());
+        this.announce(ok, 'Éclat révélé !', 'Condition non remplie.');
       });
     }
   }
@@ -255,7 +261,10 @@ export class PuzzleScene extends Phaser.Scene {
       .text(GAME_WIDTH - 40, 40, '✕', { fontFamily: 'monospace', fontSize: '22px', color: '#c56b6b' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    btn.on('pointerdown', () => this.exit());
+    btn.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_CANCEL);
+      this.exit();
+    });
   }
 
   private exit(): void {

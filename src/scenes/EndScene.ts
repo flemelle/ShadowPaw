@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS, ZONE_MUSIC } from '@/utils/Constants';
 import type { EndingCondition } from '@/systems/DialogSystem';
+import { ParallaxBackground } from '@/systems/ParallaxBackground';
+import { audioManager } from '@/systems/AudioManager';
 
 interface EndSceneData {
   ending: EndingCondition & { id: string };
@@ -15,6 +17,14 @@ export class EndScene extends Phaser.Scene {
   create(data: EndSceneData): void {
     const isEndingA = data.ending.id === 'ending_a_equilibre';
     this.cameras.main.setBackgroundColor(isEndingA ? 0x120e1a : 0x05040a);
+
+    new ParallaxBackground(this, isEndingA ? 'STRINGSTAR' : 'FOREST', GAME_WIDTH, false);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, isEndingA ? 0.35 : 0.55).setDepth(-1);
+
+    audioManager.playMusic(this, isEndingA ? MUSIC_KEYS.ENDING_A : ZONE_MUSIC.zone5_seikuji_corrompu);
+    this.time.delayedCall(400, () => {
+      audioManager.play(this, isEndingA ? SFX_KEYS.ENDING_POSITIVE : SFX_KEYS.ENDING_NEGATIVE, { volume: 0.5 });
+    });
 
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100, data.ending.title, {
@@ -46,6 +56,10 @@ export class EndScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    btn.on('pointerdown', () => this.scene.start(SCENE_KEYS.MENU));
+    btn.on('pointerover', () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 }));
+    btn.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_CONFIRM);
+      this.scene.start(SCENE_KEYS.MENU);
+    });
   }
 }

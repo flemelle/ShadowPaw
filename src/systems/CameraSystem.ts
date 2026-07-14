@@ -1,15 +1,19 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '@/utils/Constants';
 
+/** Niveau de zoom par défaut en jeu — rapproche la caméra pour une lecture plus immersive. */
+export const GAMEPLAY_ZOOM = 2;
+
 /** Configure la caméra principale pour suivre le joueur dans les limites d'une zone. */
 export class CameraSystem {
   constructor(private readonly scene: Phaser.Scene) {}
 
-  setupForZone(cols: number, rows: number, target: Phaser.GameObjects.GameObject): void {
+  setupForZone(cols: number, rows: number, target: Phaser.GameObjects.GameObject, zoom = GAMEPLAY_ZOOM): void {
     const cam = this.scene.cameras.main;
+    cam.setZoom(zoom);
     cam.setBounds(0, 0, cols * TILE_SIZE, rows * TILE_SIZE);
-    cam.startFollow(target as Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject, true, 0.12, 0.12);
-    cam.setDeadzone(120, 80);
+    cam.startFollow(target as Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject, true, 0.14, 0.14);
+    cam.setDeadzone(80, 60);
   }
 
   fadeOutIn(durationMs = 300, onMid?: () => void): void {

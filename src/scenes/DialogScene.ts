@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS } from '@/utils/Constants';
 import { dialogSystem } from '@/systems/GameState';
+import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import type { DialogNode } from '@/systems/DialogSystem';
 
@@ -70,6 +71,7 @@ export class DialogScene extends Phaser.Scene {
       return;
     }
 
+    audioManager.play(this, SFX_KEYS.DIALOG_ADVANCE, { volume: 0.4 });
     this.boxText.setText(node.lines.join('\n\n'));
 
     if (node.choices && node.choices.length > 0) {
@@ -82,9 +84,13 @@ export class DialogScene extends Phaser.Scene {
             color: '#e8e2f0',
           })
           .setInteractive({ useHandCursor: true });
-        t.on('pointerover', () => t.setColor('#d8b34a'));
+        t.on('pointerover', () => {
+          t.setColor('#d8b34a');
+          audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+        });
         t.on('pointerout', () => t.setColor('#e8e2f0'));
         t.on('pointerdown', () => {
+          audioManager.play(this, SFX_KEYS.UI_SELECT);
           const next = dialogSystem.choose(i);
           this.renderNode(next);
         });

@@ -24,7 +24,7 @@ export interface ComboDef {
 
 /**
  * Gère l'état des pouvoirs débloqués + la détection des combos.
- * En Mode Test, `testMode = true` débloque tous les pouvoirs en mémoire
+ * En Mode Admin, `testMode = true` débloque tous les pouvoirs en mémoire
  * sans jamais toucher à la sauvegarde de progression normale.
  */
 export class PowerSystem {

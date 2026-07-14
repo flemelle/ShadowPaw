@@ -39,10 +39,10 @@ export interface BuiltZone {
 /**
  * Construit une zone à partir de sa grille de tuiles + liste d'entités.
  * Les tuiles de gate (C/V/D/S/L) sont matérialisées uniquement si le joueur
- * ne possède pas encore le pouvoir correspondant (ou si le Mode Test est actif,
+ * ne possède pas encore le pouvoir correspondant (ou si le Mode Admin est actif,
  * auquel cas rien ne bloque — cf. GameScene / PowerSystem.has()).
  */
-export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSystem): BuiltZone {
+export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSystem, wallTint?: number): BuiltZone {
   const wallTex = zoneMap.palette === 'ACT_1' ? TEX.WALL_ACT1 : TEX.WALL_ACT2;
   const palette = PALETTES[zoneMap.palette];
 
@@ -60,9 +60,11 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       const px = rx * TILE_SIZE + TILE_SIZE / 2;
       const py = ry * TILE_SIZE + TILE_SIZE / 2;
       switch (code) {
-        case '#':
-          solidGroup.create(px, py, wallTex);
+        case '#': {
+          const tile = solidGroup.create(px, py, wallTex) as Phaser.GameObjects.Sprite;
+          if (wallTint !== undefined) tile.setTint(wallTint);
           break;
+        }
         case 'C':
           if (!powers.has('griffes_renforcees')) breakableGroup.create(px, py, TEX.BREAKABLE);
           break;

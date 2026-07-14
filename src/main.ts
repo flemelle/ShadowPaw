@@ -28,4 +28,8 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, MenuScene, GameScene, DialogScene, PuzzleScene, EndScene],
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+if (import.meta.env.DEV) {
+  (window as unknown as { __GAME__: Phaser.Game }).__GAME__ = game;
+}

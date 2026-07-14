@@ -1,12 +1,17 @@
 import Phaser from 'phaser';
-import { KEYS, TEX } from '@/utils/Constants';
+import { TEX, SFX_KEYS, FOOTSTEP_VARIANTS } from '@/utils/Constants';
 import type { PowerSystem } from '@/systems/PowerSystem';
+import { audioManager } from '@/systems/AudioManager';
 
 const MOVE_SPEED = 200;
-const JUMP_SPEED = 420;
+const JUMP_SPEED = 480;
 const DASH_SPEED = 620;
 const DASH_DURATION_MS = 180;
 const SHADOW_FORM_DURATION_MS = 5000;
+const FOOTSTEP_INTERVAL_MS = 320;
+/** Coyote time + jump buffer : tolère quelques frames de retard/anticipation sur l'appui saut. */
+const COYOTE_MS = 110;
+const JUMP_BUFFER_MS = 110;
 
 /**
  * Kiba — mouvement de plateforme et traversée liée aux pouvoirs uniquement.
@@ -20,6 +25,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private isShadowForm = false;
   private shadowFormUntil = 0;
   private noclip = false;
+  private footstepVariants: readonly string[] = FOOTSTEP_VARIANTS.ACT_1;
+  private nextFootstepAt = 0;
+  private lastGroundedAt = -Infinity;
+  private jumpPressedAt = -Infinity;
 
   constructor(scene: Phaser.Scene, x: number, y: number, private readonly powers: PowerSystem) {
     super(scene, x, y, TEX.PLAYER);
@@ -45,6 +54,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     };
   }
 
+  setFootstepSurface(variants: readonly string[]): void {
+    this.footstepVariants = variants;
+  }
+
   setNoclip(enabled: boolean): void {
     this.noclip = enabled;
     (this.body as Phaser.Physics.Arcade.Body).setAllowGravity(!enabled);
@@ -62,13 +75,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const left = this.keys.left.isDown || this.keys.a.isDown;
     const right = this.keys.right.isDown || this.keys.d.isDown;
-    const jump = this.keys.up.isDown || this.keys.w.isDown;
+    const jumpKeyDown = this.keys.up.isDown || this.keys.w.isDown;
+    const jumpJustPressed = Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.w);
+
+    if (body.blocked.down || body.touching.down) this.lastGroundedAt = time;
+    if (jumpJustPressed) this.jumpPressedAt = time;
 
     if (this.noclip) {
       const down = this.keys.down.isDown;
       body.setVelocity(
         (left ? -1 : 0) * MOVE_SPEED + (right ? 1 : 0) * MOVE_SPEED,
-        (jump ? -1 : 0) * MOVE_SPEED + (down ? 1 : 0) * MOVE_SPEED,
+        (jumpKeyDown ? -1 : 0) * MOVE_SPEED + (down ? 1 : 0) * MOVE_SPEED,
       );
     } else {
       if (!this.isDashing) {
@@ -76,7 +93,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         else if (right) body.setVelocityX(MOVE_SPEED);
         else body.setVelocityX(0);
 
-        if (jump && body.blocked.down) body.setVelocityY(-JUMP_SPEED);
+        // Coyote time (grâce après avoir quitté une plateforme) + jump buffer (anticipation avant l'atterrissage).
+        const canCoyoteJump = time - this.lastGroundedAt <= COYOTE_MS;
+        const hasBufferedJump = time - this.jumpPressedAt <= JUMP_BUFFER_MS;
+        if (hasBufferedJump && canCoyoteJump) {
+          body.setVelocityY(-JUMP_SPEED);
+          this.jumpPressedAt = -Infinity;
+          this.lastGroundedAt = -Infinity;
+        }
       }
 
       if (
@@ -104,6 +128,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.setFlipX(left && !right);
     this.setAlpha(this.isShadowForm ? 0.45 : 1);
+
+    const grounded = (this.body as Phaser.Physics.Arcade.Body).blocked.down;
+    const moving = (left || right) && !this.noclip;
+    if (grounded && moving && time > this.nextFootstepAt) {
+      this.nextFootstepAt = time + FOOTSTEP_INTERVAL_MS;
+      const key = Phaser.Utils.Array.GetRandom(this.footstepVariants as string[]);
+      audioManager.play(this.scene, key, { volume: 0.22 });
+    }
   }
 
   private startDash(time: number): void {
@@ -112,6 +144,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const dir = this.flipX ? -1 : 1;
     body.setVelocityX(dir * DASH_SPEED);
+    audioManager.play(this.scene, SFX_KEYS.DASH);
     this.powers.setActive('dash_fantome', true);
     this.scene.time.delayedCall(DASH_DURATION_MS, () => this.powers.setActive('dash_fantome', false));
   }
@@ -119,6 +152,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private startShadowForm(time: number): void {
     this.isShadowForm = true;
     this.shadowFormUntil = time + SHADOW_FORM_DURATION_MS;
+    audioManager.play(this.scene, SFX_KEYS.SHADOW_FORM, { volume: 0.4 });
     this.powers.setActive('forme_ombre', true);
     this.scene.time.delayedCall(SHADOW_FORM_DURATION_MS, () => this.powers.setActive('forme_ombre', false));
   }

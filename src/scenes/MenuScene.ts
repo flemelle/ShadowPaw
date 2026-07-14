@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS } from '@/utils/Constants';
 import { SaveSystem } from '@/systems/SaveSystem';
+import { ParallaxBackground } from '@/systems/ParallaxBackground';
+import { audioManager } from '@/systems/AudioManager';
 import levelsData from '@/data/levels.json';
 import {
   startNewGame,
@@ -13,9 +15,10 @@ const PANEL_BG = 0x0d0a16;
 const ACCENT = '#d8b34a';
 const TEXT_COLOR = '#e8e2f0';
 
-/** Écran titre : Jouer / Continuer / Mode Test (exploration libre des niveaux) / Crédits. */
+/** Écran titre : Jouer / Continuer / Mode Admin (exploration libre des niveaux) / Crédits. */
 export class MenuScene extends Phaser.Scene {
   private zoneListContainer?: Phaser.GameObjects.Container;
+  private background?: ParallaxBackground;
 
   constructor() {
     super(SCENE_KEYS.MENU);
@@ -29,6 +32,12 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start(SCENE_KEYS.GAME);
       return;
     }
+
+    this.background = new ParallaxBackground(this, 'FOREST', GAME_WIDTH, false);
+    audioManager.playMusic(this, MUSIC_KEYS.MENU);
+
+    const titleBg = this.add.rectangle(GAME_WIDTH / 2, 0, GAME_WIDTH, 300, 0x05040a, 0.35).setOrigin(0.5, 0).setDepth(-1);
+    titleBg.setBlendMode(Phaser.BlendModes.NORMAL);
 
     this.add
       .text(GAME_WIDTH / 2, 140, 'SHADOWPAW', {
@@ -48,8 +57,9 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     const hasSave = SaveSystem.hasSave();
-    let y = 300;
+    let y = 320;
     this.makeButton(y, 'Nouvelle partie', () => {
+      audioManager.play(this, SFX_KEYS.UI_CONFIRM);
       startNewGame();
       this.scene.start(SCENE_KEYS.GAME);
     });
@@ -57,24 +67,51 @@ export class MenuScene extends Phaser.Scene {
 
     if (hasSave) {
       this.makeButton(y, 'Continuer', () => {
+        audioManager.play(this, SFX_KEYS.UI_CONFIRM);
         continueGame();
         this.scene.start(SCENE_KEYS.GAME);
       });
       y += 64;
     }
 
-    this.makeButton(y, 'Mode Test — explorer librement', () => this.openZoneSelect());
+    this.makeButton(y, 'Mode Admin — explorer librement', () => {
+      audioManager.play(this, SFX_KEYS.UI_SELECT);
+      this.openZoneSelect();
+    });
     y += 64;
 
-    this.makeButton(y, 'Crédits', () => this.showCredits());
+    this.makeButton(y, 'Crédits', () => {
+      audioManager.play(this, SFX_KEYS.UI_SELECT);
+      this.showCredits();
+    });
+
+    this.buildMuteToggle();
 
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Astuce : ajoutez ?test=1 à l’URL pour lancer le Mode Test directement.', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Astuce : ajoutez ?admin=1 à l’URL pour lancer le Mode Admin directement.', {
         fontFamily: 'monospace',
         fontSize: '13px',
         color: '#8a7fa0',
       })
       .setOrigin(0.5);
+  }
+
+  private buildMuteToggle(): void {
+    const label = () => (audioManager.isMuted() ? '🔇 Son coupé' : '🔊 Son actif');
+    const btn = this.add
+      .text(GAME_WIDTH - 24, 24, label(), {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#8a7fa0',
+        backgroundColor: '#00000080',
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => {
+      audioManager.toggleMuted();
+      btn.setText(label());
+    });
   }
 
   private makeButton(y: number, label: string, onClick: () => void): void {
@@ -89,12 +126,15 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    btn.on('pointerover', () => btn.setColor(ACCENT));
+    btn.on('pointerover', () => {
+      btn.setColor(ACCENT);
+      audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+    });
     btn.on('pointerout', () => btn.setColor(TEXT_COLOR));
     btn.on('pointerdown', onClick);
   }
 
-  /** Mode Test : sélection du chapitre/zone à explorer, tous pouvoirs débloqués, sans sauvegarde. */
+  /** Mode Admin : sélection du chapitre/zone à explorer, tous pouvoirs débloqués, sans sauvegarde. */
   private openZoneSelect(): void {
     if (this.zoneListContainer) {
       this.zoneListContainer.destroy();
@@ -109,7 +149,7 @@ export class MenuScene extends Phaser.Scene {
     container.add(overlay);
 
     const title = this.add
-      .text(GAME_WIDTH / 2, 90, 'Mode Test — Choisir un chapitre', {
+      .text(GAME_WIDTH / 2, 90, 'Mode Admin — Choisir un chapitre', {
         fontFamily: 'monospace',
         fontSize: '28px',
         color: ACCENT,
@@ -137,9 +177,13 @@ export class MenuScene extends Phaser.Scene {
         })
         .setInteractive({ useHandCursor: true });
 
-      label.on('pointerover', () => label.setColor(ACCENT));
+      label.on('pointerover', () => {
+        label.setColor(ACCENT);
+        audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+      });
       label.on('pointerout', () => label.setColor(TEXT_COLOR));
       label.on('pointerdown', () => {
+        audioManager.play(this, SFX_KEYS.UI_CONFIRM);
         startTestMode(zone.id);
         this.scene.start(SCENE_KEYS.GAME);
       });
@@ -155,6 +199,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_CANCEL);
       container.destroy();
       this.zoneListContainer = undefined;
     });
@@ -168,12 +213,18 @@ export class MenuScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2,
-        'Shadowpaw\n\nUn projet Metroidvania 2D dark fantasy\nPhaser 3 · TypeScript · Vite\n\n(clic pour fermer)',
-        { fontFamily: 'monospace', fontSize: '20px', color: TEXT_COLOR, align: 'center' },
+        'Shadowpaw\n\nUn projet Metroidvania 2D dark fantasy\nPhaser 3 · TypeScript · Vite\n\n' +
+          'Musique : AlkaKrab — 10 Medieval Tracks\nSFX : 400 Sounds Pack\n' +
+          'Décors : Free Pixel Art Forest (Eder Muniz) · Stringstar Fields\n' +
+          '(voir ACKNOWLEDGEMENTS.md)\n\n(clic pour fermer)',
+        { fontFamily: 'monospace', fontSize: '18px', color: TEXT_COLOR, align: 'center' },
       )
       .setOrigin(0.5);
     box.add([overlay, text]);
     overlay.setInteractive();
-    overlay.on('pointerdown', () => box.destroy());
+    overlay.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_CANCEL);
+      box.destroy();
+    });
   }
 }

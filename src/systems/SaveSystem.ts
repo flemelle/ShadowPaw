@@ -18,7 +18,7 @@ function defaultSave(): SaveData {
 }
 
 /**
- * Progression sauvegardée en localStorage. Le Mode Test ne touche jamais
+ * Progression sauvegardée en localStorage. Le Mode Admin ne touche jamais
  * cette sauvegarde : il tourne sur un état en mémoire séparé (voir PowerSystem/GameScene).
  */
 export class SaveSystem {

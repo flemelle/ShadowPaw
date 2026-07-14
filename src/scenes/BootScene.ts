@@ -1,20 +1,92 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, TEX, TILE_SIZE, PALETTES } from '@/utils/Constants';
+import {
+  SCENE_KEYS,
+  TEX,
+  TILE_SIZE,
+  PALETTES,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  ASSET_BASE,
+  MUSIC_KEYS,
+  SFX_KEYS,
+  FOOTSTEP_VARIANTS,
+} from '@/utils/Constants';
+import { audioManager } from '@/systems/AudioManager';
+
+const FOREST_LAYER_INDICES = Array.from({ length: 12 }, (_, i) => i);
 
 /**
- * Génère toutes les textures du jeu procéduralement (aucun asset externe requis
- * à ce stade — le pipeline Leonardo/Meshy/Blender remplacera ces placeholders).
+ * Charge les assets réels (musique, SFX, décors parallax — cf. ACKNOWLEDGEMENTS.md)
+ * et génère les textures de gameplay procéduralement (silhouettes de tuiles/marqueurs,
+ * volontairement simples : l'art de personnage/combat reste hors scope).
  */
 export class BootScene extends Phaser.Scene {
+  private progressBox!: Phaser.GameObjects.Graphics;
+  private progressBar!: Phaser.GameObjects.Graphics;
+  private progressLabel!: Phaser.GameObjects.Text;
+
   constructor() {
     super(SCENE_KEYS.BOOT);
   }
 
   preload(): void {
-    this.load.on('progress', () => {});
+    this.buildLoadingBar();
+
+    // --- Musique (une piste par zone + menu, cf. Constants.ZONE_MUSIC) ---
+    this.load.audio(MUSIC_KEYS.MENU, `${ASSET_BASE}/audio/music/menu.ogg`);
+    for (let i = 1; i <= 8; i++) {
+      this.load.audio(`music_zone${i}`, `${ASSET_BASE}/audio/music/zone${i}.ogg`);
+    }
+    this.load.audio(MUSIC_KEYS.ENDING_A, `${ASSET_BASE}/audio/music/ending_a.ogg`);
+
+    // --- SFX ---
+    const sfxFile: Record<string, string> = {
+      [SFX_KEYS.UI_HOVER]: 'ui_hover',
+      [SFX_KEYS.UI_CONFIRM]: 'ui_confirm',
+      [SFX_KEYS.UI_SELECT]: 'ui_select',
+      [SFX_KEYS.UI_CANCEL]: 'ui_cancel',
+      [SFX_KEYS.DIALOG_ADVANCE]: 'dialog_advance',
+      [SFX_KEYS.PAUSE_OPEN]: 'pause_open',
+      [SFX_KEYS.PAUSE_CLOSE]: 'pause_close',
+      [SFX_KEYS.POWER_UNLOCK]: 'power_unlock',
+      [SFX_KEYS.COMBO_TRIGGER]: 'combo_trigger',
+      [SFX_KEYS.PUZZLE_SOLVED]: 'puzzle_solved',
+      [SFX_KEYS.PUZZLE_FAIL]: 'puzzle_fail',
+      [SFX_KEYS.BOSS_DEFEATED]: 'boss_defeated',
+      [SFX_KEYS.PIVOT_STING]: 'pivot_sting',
+      [SFX_KEYS.PIVOT_ABSORB]: 'pivot_absorb',
+      [SFX_KEYS.ENDING_POSITIVE]: 'ending_positive',
+      [SFX_KEYS.ENDING_NEGATIVE]: 'ending_negative',
+      [SFX_KEYS.SHARD_COLLECT]: 'shard_collect',
+      [SFX_KEYS.DASH]: 'dash',
+      [SFX_KEYS.ZONE_TRANSITION]: 'zone_transition',
+      [SFX_KEYS.SHADOW_FORM]: 'shadow_form',
+    };
+    Object.entries(sfxFile).forEach(([key, file]) => {
+      this.load.audio(key, `${ASSET_BASE}/audio/sfx/${file}.wav`);
+    });
+    [...FOOTSTEP_VARIANTS.ACT_1, ...FOOTSTEP_VARIANTS.ACT_2].forEach((key) => {
+      const file = key.replace('sfx_', '');
+      this.load.audio(key, `${ASSET_BASE}/audio/sfx/${file}.wav`);
+    });
+
+    // --- Décors parallax ---
+    FOREST_LAYER_INDICES.forEach((i) => {
+      const n = String(i).padStart(2, '0');
+      this.load.image(`bg_forest_${n}`, `${ASSET_BASE}/images/backgrounds/forest/layer_${n}.png`);
+    });
+    ['00', '01', '02'].forEach((n) => {
+      this.load.image(`bg_stringstar_${n}`, `${ASSET_BASE}/images/backgrounds/stringstar/layer_${n}.png`);
+    });
   }
 
   create(): void {
+    this.progressBox.destroy();
+    this.progressBar.destroy();
+    this.progressLabel.destroy();
+
+    audioManager.attach(this);
+
     this.generateTileTexture(TEX.WALL_ACT1, PALETTES.ACT_1.wall);
     this.generateTileTexture(TEX.WALL_ACT2, PALETTES.ACT_2.wall);
     this.generateTileTexture(TEX.BREAKABLE, 0x8a5a2e, true);
@@ -38,6 +110,34 @@ export class BootScene extends Phaser.Scene {
     particle.destroy();
 
     this.scene.start(SCENE_KEYS.MENU);
+  }
+
+  private buildLoadingBar(): void {
+    this.cameras.main.setBackgroundColor(0x05040a);
+    const barW = 480;
+    const barH = 20;
+    const x = GAME_WIDTH / 2 - barW / 2;
+    const y = GAME_HEIGHT / 2;
+
+    this.add
+      .text(GAME_WIDTH / 2, y - 50, 'SHADOWPAW', { fontFamily: 'Georgia, serif', fontSize: '40px', color: '#d8b34a' })
+      .setOrigin(0.5);
+
+    this.progressBox = this.add.graphics();
+    this.progressBox.lineStyle(2, 0xd8b34a, 0.8);
+    this.progressBox.strokeRect(x, y, barW, barH);
+
+    this.progressBar = this.add.graphics();
+    this.progressLabel = this.add
+      .text(GAME_WIDTH / 2, y + 34, 'Chargement...', { fontFamily: 'monospace', fontSize: '14px', color: '#8a7fa0' })
+      .setOrigin(0.5);
+
+    this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => {
+      this.progressBar.clear();
+      this.progressBar.fillStyle(0xd8b34a, 1);
+      this.progressBar.fillRect(x + 3, y + 3, (barW - 6) * value, barH - 6);
+      this.progressLabel.setText(`Chargement... ${Math.round(value * 100)}%`);
+    });
   }
 
   private generateTileTexture(key: string, color: number, hatch = false, alpha = 1): void {

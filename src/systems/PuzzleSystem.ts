@@ -111,7 +111,7 @@ export class PuzzleSystem {
     return { path, solved: false };
   }
 
-  /** Résout un puzzle de miroirs directement via sa solution de référence (utilisé par le Mode Test / debug). */
+  /** Résout un puzzle de miroirs directement via sa solution de référence (utilisé par le Mode Admin / debug). */
   autoSolveMirror(puzzleId: string): boolean {
     const def = this.getDef(puzzleId);
     if (!def || !def.solutionRotations) return false;

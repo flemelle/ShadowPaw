@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, ZONE_MUSIC, ZONE_BACKGROUND, ZONE_AMBIANCE, CORRUPTED_ZONES, SFX_KEYS, FOOTSTEP_VARIANTS } from '@/utils/Constants';
+import type { ZoneId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
 import { CameraSystem } from '@/systems/CameraSystem';
+import { ParallaxBackground } from '@/systems/ParallaxBackground';
+import { audioManager } from '@/systems/AudioManager';
 import { Player } from '@/entities/Player';
 import { NPC } from '@/entities/NPC';
 import levelsData from '@/data/levels.json';
 import type { ZoneEntity } from '@/utils/Types';
+import type { ComboDef } from '@/systems/PowerSystem';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import {
   powerSystem,
@@ -22,6 +26,8 @@ const INTERACT_RANGE = 52;
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private cameraSystem!: CameraSystem;
+  private uiCamera?: Phaser.Cameras.Scene2D.Camera;
+  private background?: ParallaxBackground;
   private built!: BuiltZone;
   private npcs: NPC[] = [];
   private hud!: Phaser.GameObjects.Container;
@@ -57,14 +63,19 @@ export class GameScene extends Phaser.Scene {
     this.keyF1 = kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
 
     this.buildHUD();
+    this.setupUICamera();
 
     EventBus.on(GameEvents.DIALOG_END, this.onDialogEnd, this);
     EventBus.on(GameEvents.PUZZLE_EXIT, this.onPuzzleExit, this);
     EventBus.on(GameEvents.PUZZLE_SOLVED, this.onPuzzleSolved, this);
+    EventBus.on(GameEvents.COMBO_TRIGGERED, this.onComboTriggered, this);
+    EventBus.on(GameEvents.SHARD_COLLECTED, this.onShardCollected, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       EventBus.off(GameEvents.DIALOG_END, this.onDialogEnd, this);
       EventBus.off(GameEvents.PUZZLE_EXIT, this.onPuzzleExit, this);
       EventBus.off(GameEvents.PUZZLE_SOLVED, this.onPuzzleSolved, this);
+      EventBus.off(GameEvents.COMBO_TRIGGERED, this.onComboTriggered, this);
+      EventBus.off(GameEvents.SHARD_COLLECTED, this.onShardCollected, this);
     });
   }
 
@@ -72,13 +83,39 @@ export class GameScene extends Phaser.Scene {
     this.npcs.forEach((n) => n.destroy());
     this.npcs = [];
 
+    if (this.built) {
+      [
+        this.built.solidGroup,
+        this.built.breakableGroup,
+        this.built.hiddenGroup,
+        this.built.dashGateGroup,
+        this.built.shadowWallGroup,
+        this.built.lightObstacleGroup,
+      ].forEach((group) => group.destroy(true));
+      this.built.entityMarkers.forEach(({ sprite }) => sprite.destroy());
+    }
+
     const zoneMap = getZoneMap(zoneId);
     gameState.currentZone = zoneId;
-    this.built = buildZone(this, zoneMap, powerSystem);
+
+    this.background?.destroy();
+    const bgSet = ZONE_BACKGROUND[zoneId as keyof typeof ZONE_BACKGROUND];
+    const ambiance = ZONE_AMBIANCE[zoneId as ZoneId];
+    const isCorrupted = CORRUPTED_ZONES.includes(zoneId as ZoneId);
+    this.background = new ParallaxBackground(this, bgSet, zoneMap.cols * 32, isCorrupted, ambiance);
+    if (isCorrupted) {
+      this.background.setPurificationLevel(puzzleSystem.getCollectedShards().length / 5);
+    }
+
+    this.built = buildZone(this, zoneMap, powerSystem, ambiance.wallTint);
+
+    const musicKey = ZONE_MUSIC[zoneId as keyof typeof ZONE_MUSIC];
+    if (musicKey) audioManager.playMusic(this, musicKey);
 
     if (this.player) this.player.destroy();
     this.player = new Player(this, this.built.spawn.x, this.built.spawn.y, powerSystem);
     this.player.setNoclip(powerSystem.isTestMode() && this.player.isNoclip());
+    this.player.setFootstepSurface(zoneMap.act === 1 ? FOOTSTEP_VARIANTS.ACT_1 : FOOTSTEP_VARIANTS.ACT_2);
 
     this.cameraSystem = new CameraSystem(this);
     this.cameraSystem.setupForZone(zoneMap.cols, zoneMap.rows, this.player);
@@ -104,6 +141,37 @@ export class GameScene extends Phaser.Scene {
 
     if (this.zoneLabel) this.updateZoneLabel();
     if (this.testBanner) this.testBanner.setVisible(powerSystem.isTestMode());
+
+    this.syncCameraIgnoreLists();
+  }
+
+  /**
+   * Deux caméras : la principale (zoomée, suit le joueur) pour le monde, une seconde
+   * fixe (zoom 1) pour le HUD — sans quoi le zoom gameplay déformerait aussi l'UI.
+   */
+  private setupUICamera(): void {
+    this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.uiCamera.setScroll(0, 0);
+    this.cameras.main.ignore(this.hud);
+    this.syncCameraIgnoreLists();
+  }
+
+  private syncCameraIgnoreLists(): void {
+    if (!this.uiCamera || !this.built) return;
+    const worldObjects: Phaser.GameObjects.GameObject[] = [
+      ...this.built.solidGroup.getChildren(),
+      ...this.built.breakableGroup.getChildren(),
+      ...this.built.hiddenGroup.getChildren(),
+      ...this.built.dashGateGroup.getChildren(),
+      ...this.built.shadowWallGroup.getChildren(),
+      ...this.built.lightObstacleGroup.getChildren(),
+      ...this.built.entityMarkers.map((m) => m.sprite),
+      this.player,
+      this.promptText,
+    ];
+    this.npcs.forEach((npc) => worldObjects.push(npc.marker, npc.prompt));
+    if (this.background) worldObjects.push(...this.background.getGameObjects());
+    this.uiCamera.ignore(worldObjects);
   }
 
   update(time: number): void {
@@ -200,7 +268,9 @@ export class GameScene extends Phaser.Scene {
     gameState.defeatedBosses.add(entity.bossId);
     this.defeatedThisZone.add(entity.bossId);
     sprite.setTint(0x555555);
+    audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
     if (entity.grantsPower) {
+      this.time.delayedCall(500, () => audioManager.play(this, SFX_KEYS.POWER_UNLOCK));
       powerSystem.unlock(entity.grantsPower);
       this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(entity.grantsPower)?.name}`);
     } else {
@@ -216,8 +286,11 @@ export class GameScene extends Phaser.Scene {
     }
     if (entity.grantsPower) powerSystem.unlock(entity.grantsPower);
     if (entity.pivotEvent) {
+      audioManager.play(this, SFX_KEYS.PIVOT_ABSORB);
+      this.time.delayedCall(700, () => audioManager.play(this, SFX_KEYS.PIVOT_STING));
       this.toast('Hikari no Ne absorbée... Malakar surgit et corrompt la Source. L\'Acte 2 commence.');
     } else {
+      audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
       this.toast('Énergie absorbée.');
     }
     sprite.setTint(0xffe27a);
@@ -253,6 +326,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private transitionToZone(targetZone: string): void {
+    audioManager.play(this, SFX_KEYS.ZONE_TRANSITION);
     persistProgress(this.player.x, this.player.y);
     this.cameraSystem.fadeOutIn(300, () => this.loadZone(targetZone));
   }
@@ -285,6 +359,18 @@ export class GameScene extends Phaser.Scene {
   private onPuzzleExit(): void {
     this.puzzleActive = false;
     this.scene.stop(SCENE_KEYS.PUZZLE);
+  }
+
+  private onComboTriggered(combo: ComboDef): void {
+    audioManager.play(this, SFX_KEYS.COMBO_TRIGGER);
+    this.toast(`Combo : ${combo.name} !`);
+  }
+
+  private onShardCollected(): void {
+    audioManager.play(this, SFX_KEYS.SHARD_COLLECT);
+    if (this.background && CORRUPTED_ZONES.includes(gameState.currentZone as ZoneId)) {
+      this.background.setPurificationLevel(puzzleSystem.getCollectedShards().length / 5);
+    }
   }
 
   // ---------- HUD ----------
@@ -331,7 +417,7 @@ export class GameScene extends Phaser.Scene {
       this.testBanner = this.add.text(
         16,
         44,
-        'MODE TEST — F1: chapitres · N: noclip · ESC: menu',
+        'MODE ADMIN — F1: chapitres · N: noclip · ESC: menu',
         { fontFamily: 'monospace', fontSize: '13px', color: '#4ae08a', backgroundColor: '#00000080', padding: { x: 8, y: 4 } },
       );
       this.hud.add(this.testBanner);
@@ -367,10 +453,12 @@ export class GameScene extends Phaser.Scene {
 
   private togglePauseMenu(): void {
     if (this.pauseMenu) {
+      audioManager.play(this, SFX_KEYS.PAUSE_CLOSE);
       this.pauseMenu.destroy();
       this.pauseMenu = undefined;
       return;
     }
+    audioManager.play(this, SFX_KEYS.PAUSE_OPEN);
     const container = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
     const overlay = this.add.rectangle(GAME_WIDTH / 2, 360, GAME_WIDTH, 720, 0x0d0a16, 0.85);
     const title = this.add.text(GAME_WIDTH / 2, 260, 'Pause', {
@@ -392,20 +480,23 @@ export class GameScene extends Phaser.Scene {
         this.scene.start(SCENE_KEYS.MENU);
       });
     container.add([overlay, title, resume, quit]);
+    this.cameras.main.ignore(container);
     this.pauseMenu = container;
   }
 
   private toggleDebugZoneMenu(): void {
     if (this.debugZoneMenu) {
+      audioManager.play(this, SFX_KEYS.UI_CANCEL);
       this.debugZoneMenu.destroy();
       this.debugZoneMenu = undefined;
       return;
     }
+    audioManager.play(this, SFX_KEYS.UI_SELECT);
     const container = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
     const overlay = this.add.rectangle(GAME_WIDTH / 2, 360, GAME_WIDTH, 720, 0x0d0a16, 0.9);
     container.add(overlay);
     const title = this.add
-      .text(GAME_WIDTH / 2, 100, 'Mode Test — Sauter à un chapitre', { fontFamily: 'monospace', fontSize: '24px', color: '#d8b34a' })
+      .text(GAME_WIDTH / 2, 100, 'Mode Admin — Sauter à un chapitre', { fontFamily: 'monospace', fontSize: '24px', color: '#d8b34a' })
       .setOrigin(0.5);
     container.add(title);
 
@@ -421,9 +512,13 @@ export class GameScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
-      label.on('pointerover', () => label.setColor('#d8b34a'));
+      label.on('pointerover', () => {
+        label.setColor('#d8b34a');
+        audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+      });
       label.on('pointerout', () => label.setColor('#e8e2f0'));
       label.on('pointerdown', () => {
+        audioManager.play(this, SFX_KEYS.UI_CONFIRM);
         startTestMode(zoneId);
         container.destroy();
         this.debugZoneMenu = undefined;
@@ -431,6 +526,7 @@ export class GameScene extends Phaser.Scene {
       });
       container.add(label);
     });
+    this.cameras.main.ignore(container);
     this.debugZoneMenu = container;
   }
 }

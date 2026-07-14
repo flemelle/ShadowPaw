@@ -46,7 +46,7 @@ export function continueGame(): void {
   gameState.defeatedBosses = new Set(save.defeatedBosses);
 }
 
-/** Mode Test : tous les pouvoirs, aucune contrainte de progression, sauvegarde inchangée. */
+/** Mode Admin : tous les pouvoirs, aucune contrainte de progression, sauvegarde inchangée. */
 export function startTestMode(zoneId?: string): void {
   powerSystem.setTestMode(true);
   dialogSystem.loadFlags({});
@@ -56,7 +56,7 @@ export function startTestMode(zoneId?: string): void {
   gameState.defeatedBosses = new Set();
 }
 
-/** En Mode Test, tous les gates de progression (boss, autels, combos) sont ignorés. */
+/** En Mode Admin, tous les gates de progression (boss, autels, combos) sont ignorés. */
 export function isGateOpen(): boolean {
   return gameState.testMode;
 }
