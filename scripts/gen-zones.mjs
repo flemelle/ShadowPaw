@@ -46,15 +46,33 @@ function generateZone(profile) {
   }
 
   // --- Plateformes flottantes ---
+  // Une partie sont posées en "escaliers" de 2 à 4 marches : chaque marche reste à
+  // portée d'un saut simple de la précédente (heightAbove), mais la chaîne peut
+  // grimper bien plus haut que le sol d'origine — plus de verticalité sans jamais
+  // exiger un saut impossible.
   const safeCols = [];
-  for (let i = 0; i < plat.count; i++) {
-    const px = 6 + Math.floor(rand() * (cols - 16));
-    const width = plat.width[0] + Math.floor(rand() * (plat.width[1] - plat.width[0] + 1));
-    const nearestFloor = floorTopByCol[Math.min(cols - 1, px)] ?? rows - 2;
-    const py = Math.max(3, nearestFloor - (plat.heightAbove[0] + Math.floor(rand() * (plat.heightAbove[1] - plat.heightAbove[0] + 1))));
-    for (let dx = 0; dx < width && px + dx < cols; dx++) {
+  const placePlatform = (px, py, width) => {
+    for (let dx = 0; dx < width && px + dx < cols && px + dx >= 0; dx++) {
+      if (py < 1 || py >= rows) continue;
       grid[py][px + dx] = '#';
       safeCols.push({ x: px + dx, y: py - 1 });
+    }
+  };
+
+  for (let i = 0; i < plat.count; i++) {
+    const chainLen = rand() < 0.5 ? 2 + Math.floor(rand() * 3) : 1; // 50% de chances d'un escalier de 2 à 4 marches
+    let px = 6 + Math.floor(rand() * (cols - 16));
+    let refY = floorTopByCol[Math.min(cols - 1, Math.max(0, px))] ?? rows - 2;
+    const dir = rand() < 0.5 ? -1 : 1;
+
+    for (let step = 0; step < chainLen; step++) {
+      const width = plat.width[0] + Math.floor(rand() * (plat.width[1] - plat.width[0] + 1));
+      const hop = plat.heightAbove[0] + Math.floor(rand() * (plat.heightAbove[1] - plat.heightAbove[0] + 1));
+      const py = Math.max(3, refY - hop);
+      placePlatform(px, py, width);
+      refY = py;
+      px += dir * (width + 2 + Math.floor(rand() * 4));
+      if (px < 4 || px > cols - 6) break;
     }
   }
 
@@ -97,7 +115,7 @@ const ZONE_PROFILES = {
   zone1_portes_velkhar: {
     cols: 90, rows: 14, ceilingGap: 3, seed: 101,
     pitChance: 0.05, pitWidth: [2, 3],
-    plat: { count: 10, width: [3, 5], heightAbove: [1, 3] },
+    plat: { count: 16, width: [3, 5], heightAbove: [1, 3] },
     gateChar: 'C', gateSpots: [0.35, 0.68],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
@@ -105,7 +123,7 @@ const ZONE_PROFILES = {
   zone2_antre_velours_noir: {
     cols: 100, rows: 14, ceilingGap: 3, seed: 202,
     pitChance: 0.06, pitWidth: [2, 2],
-    plat: { count: 16, width: [2, 4], heightAbove: [1, 3] },
+    plat: { count: 24, width: [2, 4], heightAbove: [1, 3] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
@@ -113,7 +131,7 @@ const ZONE_PROFILES = {
   zone3_velkhar_foyer_ombres: {
     cols: 100, rows: 16, ceilingGap: 3, seed: 303,
     pitChance: 0.05, pitWidth: [2, 4],
-    plat: { count: 14, width: [3, 6], heightAbove: [1, 3] },
+    plat: { count: 22, width: [3, 6], heightAbove: [1, 3] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, boss_arena0: 0.87, zone_exit0: 0.97 },
@@ -121,7 +139,7 @@ const ZONE_PROFILES = {
   zone4_seikuji_quietude: {
     cols: 110, rows: 16, ceilingGap: 3, seed: 404,
     pitChance: 0.04, pitWidth: [2, 3],
-    plat: { count: 22, width: [2, 4], heightAbove: [1, 3] },
+    plat: { count: 30, width: [2, 4], heightAbove: [1, 3] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
     entityFracs: { spawn: 0.03, boss_arena0: 0.45, power_altar0: 0.9, zone_exit0: 0.98 },
@@ -129,7 +147,7 @@ const ZONE_PROFILES = {
   zone5_seikuji_corrompu: {
     cols: 110, rows: 15, ceilingGap: 3, seed: 505,
     pitChance: 0.05, pitWidth: [2, 3],
-    plat: { count: 14, width: [3, 5], heightAbove: [1, 3] },
+    plat: { count: 22, width: [3, 5], heightAbove: [1, 3] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, zone_exit0: 0.97 },
@@ -137,7 +155,7 @@ const ZONE_PROFILES = {
   zone6_jardins_oublies: {
     cols: 130, rows: 16, ceilingGap: 3, seed: 606,
     pitChance: 0.05, pitWidth: [2, 3],
-    plat: { count: 20, width: [3, 6], heightAbove: [1, 3] },
+    plat: { count: 28, width: [3, 6], heightAbove: [1, 3] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
     entityFracs: { spawn: 0.02, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, boss_arena0: 0.85, zone_exit0: 0.97 },
@@ -145,7 +163,7 @@ const ZONE_PROFILES = {
   zone7_salle_miroirs: {
     cols: 130, rows: 16, ceilingGap: 3, seed: 707,
     pitChance: 0.05, pitWidth: [2, 3],
-    plat: { count: 18, width: [3, 5], heightAbove: [1, 3] },
+    plat: { count: 26, width: [3, 5], heightAbove: [1, 3] },
     gateChar: 'S', gateSpots: [0.2, 0.5, 0.75],
     undulate: false,
     entityFracs: { spawn: 0.02, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, boss_arena0: 0.85, zone_exit0: 0.97 },
@@ -153,7 +171,7 @@ const ZONE_PROFILES = {
   zone8_vide_entre_deux: {
     cols: 90, rows: 14, ceilingGap: 3, seed: 808,
     pitChance: 0.1, pitWidth: [3, 5],
-    plat: { count: 16, width: [3, 5], heightAbove: [1, 3] },
+    plat: { count: 24, width: [3, 5], heightAbove: [1, 3] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
     entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, boss_arena0: 0.85, ending_trigger0: 0.97 },

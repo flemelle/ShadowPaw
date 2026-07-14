@@ -3,13 +3,14 @@ import {
   SCENE_KEYS,
   TEX,
   TILE_SIZE,
-  PALETTES,
   GAME_WIDTH,
   GAME_HEIGHT,
   ASSET_BASE,
   MUSIC_KEYS,
   SFX_KEYS,
   FOOTSTEP_VARIANTS,
+  ZONE_FLOOR_TEX,
+  DECOR_PATHS,
 } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
 
@@ -76,6 +77,17 @@ export class BootScene extends Phaser.Scene {
     ['00', '01', '02'].forEach((n) => {
       this.load.image(`bg_stringstar_${n}`, `${ASSET_BASE}/images/backgrounds/stringstar/layer_${n}.png`);
     });
+
+    // --- Textures de sol par zone (pré-teintées, cf. Constants.ZONE_FLOOR_TEX) ---
+    Object.entries(ZONE_FLOOR_TEX).forEach(([zoneId, texKey]) => {
+      const n = zoneId.match(/^zone(\d)/)?.[1];
+      this.load.image(texKey, `${ASSET_BASE}/images/tiles/floor_zone${n}.png`);
+    });
+
+    // --- Décors dispersés dans les niveaux ---
+    Object.entries(DECOR_PATHS).forEach(([key, path]) => {
+      this.load.image(key, path);
+    });
   }
 
   create(): void {
@@ -85,8 +97,6 @@ export class BootScene extends Phaser.Scene {
 
     audioManager.attach(this);
 
-    this.generateTileTexture(TEX.WALL_ACT1, PALETTES.ACT_1.wall);
-    this.generateTileTexture(TEX.WALL_ACT2, PALETTES.ACT_2.wall);
     this.generateTileTexture(TEX.BREAKABLE, 0x8a5a2e, true);
     this.generateTileTexture(TEX.HIDDEN, 0x2a2a3a, false, 0.35);
     this.generateTileTexture(TEX.DASH_GATE, 0x3fb5b0, true);
@@ -94,6 +104,7 @@ export class BootScene extends Phaser.Scene {
     this.generateTileTexture(TEX.LIGHT_OBSTACLE, 0xd8b34a, true);
 
     this.generatePlayerTexture();
+    this.generateGlowTexture();
     this.generateMarkerTexture(TEX.NPC, 0x4ac9e0, 'circle');
     this.generateMarkerTexture(TEX.BOSS_ARENA, 0xd63b3b, 'diamond');
     this.generateMarkerTexture(TEX.ZONE_EXIT, 0x4ae08a, 'arrow');
@@ -166,6 +177,23 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xdedede, 1);
     g.fillCircle(w / 2, 6, 3);
     g.generateTexture(TEX.PLAYER, w, h);
+    g.destroy();
+  }
+
+  /** Halo doux (dégradé radial approximé par cercles superposés) — aura de lumière de Kiba dans les zones sombres. */
+  private generateGlowTexture(): void {
+    const size = 160;
+    const cx = size / 2;
+    const cy = size / 2;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const steps = 24;
+    for (let i = steps; i >= 1; i--) {
+      const r = (i / steps) * (size / 2);
+      const alpha = (1 - i / steps) * 0.4;
+      g.fillStyle(0xffe9b0, alpha);
+      g.fillCircle(cx, cy, r);
+    }
+    g.generateTexture(TEX.PLAYER_GLOW, size, size);
     g.destroy();
   }
 

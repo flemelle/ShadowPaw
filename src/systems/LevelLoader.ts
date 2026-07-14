@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS } from '@/utils/Constants';
+import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
 
@@ -32,6 +33,7 @@ export interface BuiltZone {
   lightObstacleGroup: Phaser.Physics.Arcade.StaticGroup;
   spawn: { x: number; y: number };
   entityMarkers: { entity: ZoneEntity; sprite: Phaser.GameObjects.Sprite }[];
+  decorSprites: Phaser.GameObjects.Image[];
   widthPx: number;
   heightPx: number;
 }
@@ -42,8 +44,8 @@ export interface BuiltZone {
  * ne possède pas encore le pouvoir correspondant (ou si le Mode Admin est actif,
  * auquel cas rien ne bloque — cf. GameScene / PowerSystem.has()).
  */
-export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSystem, wallTint?: number): BuiltZone {
-  const wallTex = zoneMap.palette === 'ACT_1' ? TEX.WALL_ACT1 : TEX.WALL_ACT2;
+export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSystem): BuiltZone {
+  const wallTex = ZONE_FLOOR_TEX[zoneMap.id as ZoneId];
   const palette = PALETTES[zoneMap.palette];
 
   scene.cameras.main.setBackgroundColor(palette.bg);
@@ -60,11 +62,9 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       const px = rx * TILE_SIZE + TILE_SIZE / 2;
       const py = ry * TILE_SIZE + TILE_SIZE / 2;
       switch (code) {
-        case '#': {
-          const tile = solidGroup.create(px, py, wallTex) as Phaser.GameObjects.Sprite;
-          if (wallTint !== undefined) tile.setTint(wallTint);
+        case '#':
+          solidGroup.create(px, py, wallTex);
           break;
-        }
         case 'C':
           if (!powers.has('griffes_renforcees')) breakableGroup.create(px, py, TEX.BREAKABLE);
           break;
@@ -121,6 +121,8 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       return { entity, sprite };
     });
 
+  const decorSprites = scatterDecor(scene, zoneMap);
+
   return {
     solidGroup,
     breakableGroup,
@@ -130,7 +132,43 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
     lightObstacleGroup,
     spawn,
     entityMarkers,
+    decorSprites,
     widthPx: zoneMap.cols * TILE_SIZE,
     heightPx: zoneMap.rows * TILE_SIZE,
   };
+}
+
+/**
+ * Disperse quelques décors (arbres/buissons/rochers, Stringstar Fields — cf.
+ * ACKNOWLEDGEMENTS.md) au sol, sans collision, derrière le gameplay. Le thème
+ * suit celui du décor peint de la zone (cf. ZONE_BACKGROUND) ; les zones sans
+ * décor peint (intérieurs sombres) n'en reçoivent pas.
+ */
+function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects.Image[] {
+  const theme = ZONE_BACKGROUND[zoneMap.id as ZoneId];
+  if (!theme) return [];
+  const pool = DECOR_SETS[theme];
+  const sprites: Phaser.GameObjects.Image[] = [];
+
+  let x = 5;
+  let guard = 0;
+  while (x < zoneMap.cols - 5 && guard < 200) {
+    guard += 1;
+    let floorRow = -1;
+    for (let y = 0; y < zoneMap.rows; y++) {
+      if (zoneMap.tiles[y][x] === '#') {
+        floorRow = y;
+        break;
+      }
+    }
+    if (floorRow > 0) {
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      const px = x * TILE_SIZE + TILE_SIZE / 2;
+      const py = floorRow * TILE_SIZE;
+      const img = scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(pick.scale).setDepth(-5);
+      sprites.push(img);
+    }
+    x += 10 + Math.floor(Math.random() * 8);
+  }
+  return sprites;
 }

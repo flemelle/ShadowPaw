@@ -11,6 +11,8 @@ import {
   FOOTSTEP_VARIANTS,
   LIVES_START,
   FALL_DEATH_MARGIN,
+  DARK_ZONES,
+  TEX,
 } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -42,6 +44,7 @@ export class GameScene extends Phaser.Scene {
   private cameraSystem!: CameraSystem;
   private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private background?: ParallaxBackground;
+  private playerGlow?: Phaser.GameObjects.Image;
   private built!: BuiltZone;
   private npcs: NPC[] = [];
   private hud!: Phaser.GameObjects.Container;
@@ -119,6 +122,7 @@ export class GameScene extends Phaser.Scene {
         this.built.lightObstacleGroup,
       ].forEach((group) => group.destroy(true));
       this.built.entityMarkers.forEach(({ sprite }) => sprite.destroy());
+      this.built.decorSprites.forEach((img) => img.destroy());
     }
 
     const zoneMap = getZoneMap(zoneId);
@@ -133,7 +137,7 @@ export class GameScene extends Phaser.Scene {
       this.background.setPurificationLevel(puzzleSystem.getCollectedShards().length / 5);
     }
 
-    this.built = buildZone(this, zoneMap, powerSystem, ambiance.wallTint);
+    this.built = buildZone(this, zoneMap, powerSystem);
 
     const musicKey = ZONE_MUSIC[zoneId as keyof typeof ZONE_MUSIC];
     if (musicKey) audioManager.playMusic(this, musicKey);
@@ -142,6 +146,25 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, this.built.spawn.x, this.built.spawn.y, powerSystem);
     this.player.setNoclip(powerSystem.isTestMode() && this.player.isNoclip());
     this.player.setFootstepSurface(zoneMap.act === 1 ? FOOTSTEP_VARIANTS.ACT_1 : FOOTSTEP_VARIANTS.ACT_2);
+
+    this.playerGlow?.destroy();
+    this.playerGlow = undefined;
+    if (DARK_ZONES.includes(zoneId as ZoneId)) {
+      this.playerGlow = this.add
+        .image(this.player.x, this.player.y, TEX.PLAYER_GLOW)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(-1)
+        .setAlpha(0.75);
+      this.tweens.add({
+        targets: this.playerGlow,
+        scale: { from: 0.85, to: 1.1 },
+        alpha: { from: 0.6, to: 0.85 },
+        duration: 1400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'sine.inOut',
+      });
+    }
 
     this.cameraSystem = new CameraSystem(this);
     this.cameraSystem.setupForZone(zoneMap.cols, zoneMap.rows, this.player);
@@ -192,9 +215,11 @@ export class GameScene extends Phaser.Scene {
       ...this.built.shadowWallGroup.getChildren(),
       ...this.built.lightObstacleGroup.getChildren(),
       ...this.built.entityMarkers.map((m) => m.sprite),
+      ...this.built.decorSprites,
       this.player,
       this.promptText,
     ];
+    if (this.playerGlow) worldObjects.push(this.playerGlow);
     this.npcs.forEach((npc) => worldObjects.push(npc.marker, npc.prompt));
     if (this.background) worldObjects.push(...this.background.getGameObjects());
     this.uiCamera.ignore(worldObjects);
@@ -209,6 +234,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.player.update(time);
+    this.playerGlow?.setPosition(this.player.x, this.player.y);
 
     if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyN)) {
       this.player.setNoclip(!this.player.isNoclip());

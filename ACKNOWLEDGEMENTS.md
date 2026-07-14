@@ -51,8 +51,15 @@ d'une CC BY 4.0 sans droit de revente.
 ## Décors parallax + tileset — *Stringstar Fields*
 
 3 calques (`public/assets/images/backgrounds/stringstar/`) utilisés en zones 4,
-5, 7, 8 (Seikūji et ses abords). Le `tileset.png` (props décoratifs) est
-également inclus mais pas encore découpé/utilisé en jeu.
+5, 7, 8 (Seikūji et ses abords). Le `tileset.png` (props décoratifs) a aussi
+été découpé (`scripts/gen-zones.mjs` / analyse manuelle) en 5 sprites de décor
+(`public/assets/images/decor/`, sans collision, dispersés dans les zones ayant
+un décor peint — cf. `LevelLoader.scatterDecor`) : `tree_big`, `tree_small`,
+`bush_round`, `rock`, `platform_plank`. Une bande de sol (`tiles/ground_stringstar.png`)
+en a aussi été extraite comme base des textures de sol/plateformes par zone
+(`tiles/floor_zone1..8.png`, générées hors-ligne et teintées par
+`scripts/gen-floor-textures.py`), remplaçant les aplats de couleur générés
+précédemment.
 
 Aucune licence explicite fournie avec le pack (readme informel de
 remerciement aux acheteurs/Patreons) — **à vérifier par l'utilisateur** avant
@@ -60,9 +67,11 @@ toute distribution publique/commerciale.
 
 ## Notes
 
-- Les sprites de gameplay (joueur, marqueurs de zone, tuiles de collision)
-  restent générés procéduralement (`BootScene.ts`) : aucun asset de personnage
-  ou de combat n'a été intégré, conformément au périmètre du projet.
+- Les sprites de **personnage** (joueur) et tout ce qui relève du **combat**
+  restent générés procéduralement (`BootScene.ts`) : aucun asset de ce type
+  n'a été intégré, conformément au périmètre du projet. Les marqueurs de zone
+  et les tuiles de gate (breakable/hidden/dash/shadow/light) restent aussi
+  procéduraux, pour rester visuellement distincts des textures de sol.
 - Tous les fichiers sources (zips) sont ignorés par git (`.gitignore`) pour ne
   pas redistribuer les packs bruts ; seuls les fichiers effectivement utilisés
   par le jeu sont commités, dans `public/assets/`.

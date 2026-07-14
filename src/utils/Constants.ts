@@ -84,14 +84,13 @@ export const TEST_MODE_QUERY_FLAG = 'admin';
 
 /** Clés des textures générées procéduralement au Boot (aucun asset externe requis). */
 export const TEX = {
-  WALL_ACT1: 'tex_wall_act1',
-  WALL_ACT2: 'tex_wall_act2',
   BREAKABLE: 'tex_breakable',
   HIDDEN: 'tex_hidden',
   DASH_GATE: 'tex_dash_gate',
   SHADOW_WALL: 'tex_shadow_wall',
   LIGHT_OBSTACLE: 'tex_light_obstacle',
   PLAYER: 'tex_player',
+  PLAYER_GLOW: 'tex_player_glow',
   NPC: 'tex_npc',
   BOSS_ARENA: 'tex_boss_arena',
   ZONE_EXIT: 'tex_zone_exit',
@@ -230,4 +229,59 @@ export const ZONE_AMBIANCE: Record<ZoneId, ZoneAmbiance> = {
   zone7_salle_miroirs: { wallTint: 0x4a7fae, washColor: 0x3a5f8a, washAlpha: 0.2 },
   // Décor abstrait, vide
   zone8_vide_entre_deux: { wallTint: 0x2a2038, washColor: 0x0a0612, washAlpha: 0.4 },
+};
+
+/**
+ * Textures de sol/plateformes par zone — tuile réelle (Stringstar Fields, cf.
+ * ACKNOWLEDGEMENTS.md) pré-teintée hors-ligne avec la couleur `wallTint`
+ * ci-dessus (scripts/gen-floor-textures.py), plutôt qu'un aplat généré au Boot.
+ */
+export const ZONE_FLOOR_TEX: Record<ZoneId, string> = {
+  zone1_portes_velkhar: 'tex_floor_zone1',
+  zone2_antre_velours_noir: 'tex_floor_zone2',
+  zone3_velkhar_foyer_ombres: 'tex_floor_zone3',
+  zone4_seikuji_quietude: 'tex_floor_zone4',
+  zone5_seikuji_corrompu: 'tex_floor_zone5',
+  zone6_jardins_oublies: 'tex_floor_zone6',
+  zone7_salle_miroirs: 'tex_floor_zone7',
+  zone8_vide_entre_deux: 'tex_floor_zone8',
+};
+
+/** Zones assez sombres ("Ombre") pour que Kiba émette une aura de lumière autour de lui. */
+export const DARK_ZONES: ZoneId[] = [
+  'zone2_antre_velours_noir',
+  'zone3_velkhar_foyer_ombres',
+  'zone8_vide_entre_deux',
+];
+
+/** Décors (Stringstar Fields, cf. ACKNOWLEDGEMENTS.md) dispersés dans les zones ayant un décor peint. */
+export const DECOR_KEYS = {
+  TREE_BIG: 'decor_tree_big',
+  TREE_SMALL: 'decor_tree_small',
+  BUSH_ROUND: 'decor_bush_round',
+  ROCK: 'decor_rock',
+  PLATFORM_PLANK: 'decor_platform_plank',
+} as const;
+
+export const DECOR_PATHS: Record<string, string> = {
+  [DECOR_KEYS.TREE_BIG]: `${ASSET_BASE}/images/decor/tree_big.png`,
+  [DECOR_KEYS.TREE_SMALL]: `${ASSET_BASE}/images/decor/tree_small.png`,
+  [DECOR_KEYS.BUSH_ROUND]: `${ASSET_BASE}/images/decor/bush_round.png`,
+  [DECOR_KEYS.ROCK]: `${ASSET_BASE}/images/decor/rock.png`,
+  [DECOR_KEYS.PLATFORM_PLANK]: `${ASSET_BASE}/images/decor/platform_plank.png`,
+};
+
+/** Pool de décors par thème de fond (cf. BG_KEYS / ZONE_BACKGROUND) — placés au sol, sans collision. */
+export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR', { key: string; scale: number }[]> = {
+  FOREST: [
+    { key: DECOR_KEYS.TREE_SMALL, scale: 1 },
+    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1 },
+    { key: DECOR_KEYS.ROCK, scale: 1 },
+  ],
+  STRINGSTAR: [
+    { key: DECOR_KEYS.TREE_BIG, scale: 0.85 },
+    { key: DECOR_KEYS.TREE_SMALL, scale: 0.9 },
+    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1 },
+    { key: DECOR_KEYS.ROCK, scale: 0.9 },
+  ],
 };
