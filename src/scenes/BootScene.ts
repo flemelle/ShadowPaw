@@ -32,12 +32,10 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     this.buildLoadingBar();
 
-    // --- Musique (une piste par zone + menu, cf. Constants.ZONE_MUSIC) ---
+    // --- Musique du menu seulement ici (~5 Mo) : les pistes de zone (~45 Mo) sont
+    // chargées à la demande par AudioManager.playMusic(), pour que le menu soit
+    // interactif au plus vite (cf. Constants.MUSIC_PATHS).
     this.load.audio(MUSIC_KEYS.MENU, `${ASSET_BASE}/audio/music/menu.ogg`);
-    for (let i = 1; i <= 8; i++) {
-      this.load.audio(`music_zone${i}`, `${ASSET_BASE}/audio/music/zone${i}.ogg`);
-    }
-    this.load.audio(MUSIC_KEYS.ENDING_A, `${ASSET_BASE}/audio/music/ending_a.ogg`);
 
     // --- SFX ---
     const sfxFile: Record<string, string> = {

@@ -17,6 +17,10 @@ export const ACTS = {
   ACT_2: 2,
 } as const;
 
+/** Vies de départ + marge sous le bas de la carte au-delà de laquelle une chute est mortelle. */
+export const LIVES_START = 3;
+export const FALL_DEATH_MARGIN = 120;
+
 /** Identifiants des 8 zones, dans l'ordre de progression normale. */
 export const ZONE_IDS = [
   'zone1_portes_velkhar',
@@ -115,6 +119,26 @@ export const MUSIC_KEYS = {
   ZONE8: 'music_zone8',
   ENDING_A: 'music_ending_a',
 } as const;
+
+/**
+ * Chemins des pistes de musique, utilisés pour un chargement paresseux : seul
+ * `menu.ogg` est précargé au Boot (~5 Mo). Les pistes de zone (~45 Mo au total)
+ * ne sont chargées qu'à l'entrée en jeu, zone par zone, pour que le menu
+ * s'affiche vite — sans quoi un clic pendant le (long) chargement initial ne
+ * fait rien, ce qui se lit comme "le bouton ne marche pas".
+ */
+export const MUSIC_PATHS: Record<string, string> = {
+  [MUSIC_KEYS.MENU]: `${ASSET_BASE}/audio/music/menu.ogg`,
+  [MUSIC_KEYS.ZONE1]: `${ASSET_BASE}/audio/music/zone1.ogg`,
+  [MUSIC_KEYS.ZONE2]: `${ASSET_BASE}/audio/music/zone2.ogg`,
+  [MUSIC_KEYS.ZONE3]: `${ASSET_BASE}/audio/music/zone3.ogg`,
+  [MUSIC_KEYS.ZONE4]: `${ASSET_BASE}/audio/music/zone4.ogg`,
+  [MUSIC_KEYS.ZONE5]: `${ASSET_BASE}/audio/music/zone5.ogg`,
+  [MUSIC_KEYS.ZONE6]: `${ASSET_BASE}/audio/music/zone6.ogg`,
+  [MUSIC_KEYS.ZONE7]: `${ASSET_BASE}/audio/music/zone7.ogg`,
+  [MUSIC_KEYS.ZONE8]: `${ASSET_BASE}/audio/music/zone8.ogg`,
+  [MUSIC_KEYS.ENDING_A]: `${ASSET_BASE}/audio/music/ending_a.ogg`,
+};
 
 /** Une piste par zone ("Fin B" réutilise le thème de la Zone 5 comme leitmotiv de la corruption). */
 export const ZONE_MUSIC: Record<ZoneId, string> = {

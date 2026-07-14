@@ -1,5 +1,17 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, ZONE_MUSIC, ZONE_BACKGROUND, ZONE_AMBIANCE, CORRUPTED_ZONES, SFX_KEYS, FOOTSTEP_VARIANTS } from '@/utils/Constants';
+import {
+  SCENE_KEYS,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  ZONE_MUSIC,
+  ZONE_BACKGROUND,
+  ZONE_AMBIANCE,
+  CORRUPTED_ZONES,
+  SFX_KEYS,
+  FOOTSTEP_VARIANTS,
+  LIVES_START,
+  FALL_DEATH_MARGIN,
+} from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
 import { CameraSystem } from '@/systems/CameraSystem';
@@ -11,6 +23,8 @@ import levelsData from '@/data/levels.json';
 import type { ZoneEntity } from '@/utils/Types';
 import type { ComboDef } from '@/systems/PowerSystem';
 import { EventBus, GameEvents } from '@/utils/EventBus';
+import { toggleFullscreen, isFullscreen } from '@/utils/Fullscreen';
+import { ScrollableList } from '@/utils/ScrollableList';
 import {
   powerSystem,
   dialogSystem,
@@ -35,16 +49,23 @@ export class GameScene extends Phaser.Scene {
   private zoneLabel!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
+  private livesText!: Phaser.GameObjects.Text;
   private testBanner?: Phaser.GameObjects.Text;
   private debugZoneMenu?: Phaser.GameObjects.Container;
   private keyE!: Phaser.Input.Keyboard.Key;
   private keyEsc!: Phaser.Input.Keyboard.Key;
   private keyN!: Phaser.Input.Keyboard.Key;
   private keyF1!: Phaser.Input.Keyboard.Key;
+  private keyUp!: Phaser.Input.Keyboard.Key;
+  private keyDown!: Phaser.Input.Keyboard.Key;
   private pauseMenu?: Phaser.GameObjects.Container;
+  private zoneList?: ScrollableList;
   private dialogActive = false;
   private puzzleActive = false;
   private defeatedThisZone = new Set<string>();
+  private lives = LIVES_START;
+  private isDead = false;
+  private isTransitioning = false;
 
   constructor() {
     super(SCENE_KEYS.GAME);
@@ -54,6 +75,9 @@ export class GameScene extends Phaser.Scene {
     this.dialogActive = false;
     this.puzzleActive = false;
     this.defeatedThisZone = new Set();
+    this.lives = LIVES_START;
+    this.isDead = false;
+    this.isTransitioning = false;
     this.loadZone(gameState.currentZone);
 
     const kb = this.input.keyboard!;
@@ -61,6 +85,8 @@ export class GameScene extends Phaser.Scene {
     this.keyEsc = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyN = kb.addKey(Phaser.Input.Keyboard.KeyCodes.N);
     this.keyF1 = kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
+    this.keyUp = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+    this.keyDown = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
 
     this.buildHUD();
     this.setupUICamera();
@@ -175,7 +201,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
-    if (this.dialogActive || this.puzzleActive) return;
+    if (this.dialogActive || this.puzzleActive || this.isDead || this.isTransitioning) return;
+
+    if (this.player.y > this.built.heightPx + FALL_DEATH_MARGIN) {
+      this.handleFallDeath();
+      return;
+    }
 
     this.player.update(time);
 
@@ -187,7 +218,12 @@ export class GameScene extends Phaser.Scene {
       this.toggleDebugZoneMenu();
     }
     if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
-      this.togglePauseMenu();
+      if (this.debugZoneMenu) this.toggleDebugZoneMenu();
+      else this.togglePauseMenu();
+    }
+    if (this.debugZoneMenu && this.zoneList) {
+      if (this.keyUp.isDown) this.zoneList.scrollBy(-12);
+      if (this.keyDown.isDown) this.zoneList.scrollBy(12);
     }
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
@@ -298,6 +334,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleAutoTrigger(entity: ZoneEntity): void {
+    if (this.isTransitioning) return;
+
     if (entity.type === 'zone_exit') {
       const bossOk =
         !entity.requiresBossDefeated ||
@@ -320,15 +358,67 @@ export class GameScene extends Phaser.Scene {
         this.toast('Malakar attend encore d\'être affronté.');
         return;
       }
+      this.isTransitioning = true;
       const ending = dialogSystem.resolveEnding(puzzleSystem.getCollectedShards().length);
       this.scene.start(SCENE_KEYS.END, { ending });
     }
   }
 
+  /**
+   * Le joueur peut chevaucher le déclencheur de sortie pendant plusieurs frames (pas
+   * un simple contact ponctuel) : sans ce verrou, chaque frame relançait un nouveau
+   * fondu qui annulait le précédent, et la zone suivante ne se chargeait jamais.
+   */
   private transitionToZone(targetZone: string): void {
+    this.isTransitioning = true;
     audioManager.play(this, SFX_KEYS.ZONE_TRANSITION);
     persistProgress(this.player.x, this.player.y);
-    this.cameraSystem.fadeOutIn(300, () => this.loadZone(targetZone));
+    this.cameraSystem.fadeOutIn(300, () => {
+      this.loadZone(targetZone);
+      this.isTransitioning = false;
+    });
+  }
+
+  // ---------- Chute mortelle ----------
+
+  /** Une chute hors des limites de la carte coûte une vie (sans effet en Mode Admin) et respawn au point d'entrée. */
+  private handleFallDeath(): void {
+    this.isDead = true;
+    audioManager.play(this, SFX_KEYS.PUZZLE_FAIL);
+
+    const isAdmin = powerSystem.isTestMode();
+    if (!isAdmin) {
+      this.lives -= 1;
+      this.updateLivesDisplay();
+    }
+
+    if (!isAdmin && this.lives <= 0) {
+      this.showGameOver();
+      return;
+    }
+
+    this.toast('Chute mortelle... retour au point d\'entrée.');
+    this.player.setVelocity(0, 0);
+    this.player.setPosition(this.built.spawn.x, this.built.spawn.y);
+    this.cameras.main.flash(250, 0, 0, 0);
+    this.time.delayedCall(250, () => {
+      this.isDead = false;
+    });
+  }
+
+  private showGameOver(): void {
+    audioManager.play(this, SFX_KEYS.ENDING_NEGATIVE, { volume: 0.5 });
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05040a, 0.92);
+    const title = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, 'Game Over', { fontFamily: 'Georgia, serif', fontSize: '48px', color: '#c56b6b' })
+      .setOrigin(0.5);
+    const subtitle = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30, 'Retour au menu...', { fontFamily: 'monospace', fontSize: '18px', color: '#8a7fa0' })
+      .setOrigin(0.5);
+    container.add([overlay, title, subtitle]);
+    this.cameras.main.ignore(container);
+    this.time.delayedCall(2200, () => this.scene.start(SCENE_KEYS.MENU));
   }
 
   // ---------- Dialogue ----------
@@ -413,6 +503,26 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(1)
       .setVisible(false);
 
+    this.livesText = this.add
+      .text(GAME_WIDTH - 16, 12, '', {
+        fontFamily: 'monospace',
+        fontSize: '18px',
+        color: '#c56b6b',
+        backgroundColor: '#00000080',
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(1, 0);
+    this.hud.add(this.livesText);
+    this.updateLivesDisplay();
+
+    const controlHint = this.add.text(
+      16,
+      GAME_HEIGHT - 30,
+      '←→: Bouger · ↑/W/Espace: Sauter · E: Interagir · Échap: Pause',
+      { fontFamily: 'monospace', fontSize: '13px', color: '#8a7fa0', backgroundColor: '#00000080', padding: { x: 8, y: 4 } },
+    );
+    this.hud.add(controlHint);
+
     if (powerSystem.isTestMode()) {
       this.testBanner = this.add.text(
         16,
@@ -422,6 +532,10 @@ export class GameScene extends Phaser.Scene {
       );
       this.hud.add(this.testBanner);
     }
+  }
+
+  private updateLivesDisplay(): void {
+    this.livesText.setText('♥'.repeat(Math.max(0, this.lives)) + '♡'.repeat(Math.max(0, LIVES_START - this.lives)));
   }
 
   private updateZoneLabel(): void {
@@ -471,15 +585,27 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.togglePauseMenu());
+    const fullscreenBtn = this.add
+      .text(GAME_WIDTH / 2, 380, isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran', {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#e8e2f0',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        toggleFullscreen(this);
+        fullscreenBtn.setText(isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran');
+      });
     const quit = this.add
-      .text(GAME_WIDTH / 2, 380, 'Quitter vers le menu', { fontFamily: 'monospace', fontSize: '20px', color: '#c56b6b' })
+      .text(GAME_WIDTH / 2, 430, 'Quitter vers le menu', { fontFamily: 'monospace', fontSize: '20px', color: '#c56b6b' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (!powerSystem.isTestMode()) persistProgress(this.player.x, this.player.y);
         this.scene.start(SCENE_KEYS.MENU);
       });
-    container.add([overlay, title, resume, quit]);
+    container.add([overlay, title, resume, fullscreenBtn, quit]);
     this.cameras.main.ignore(container);
     this.pauseMenu = container;
   }
@@ -487,6 +613,8 @@ export class GameScene extends Phaser.Scene {
   private toggleDebugZoneMenu(): void {
     if (this.debugZoneMenu) {
       audioManager.play(this, SFX_KEYS.UI_CANCEL);
+      this.zoneList?.destroy();
+      this.zoneList = undefined;
       this.debugZoneMenu.destroy();
       this.debugZoneMenu = undefined;
       return;
@@ -496,36 +624,46 @@ export class GameScene extends Phaser.Scene {
     const overlay = this.add.rectangle(GAME_WIDTH / 2, 360, GAME_WIDTH, 720, 0x0d0a16, 0.9);
     container.add(overlay);
     const title = this.add
-      .text(GAME_WIDTH / 2, 100, 'Mode Admin — Sauter à un chapitre', { fontFamily: 'monospace', fontSize: '24px', color: '#d8b34a' })
+      .text(GAME_WIDTH / 2, 70, 'Mode Admin — Sauter à un chapitre', { fontFamily: 'monospace', fontSize: '22px', color: '#d8b34a' })
       .setOrigin(0.5);
     container.add(title);
 
-    listZoneIds().forEach((zoneId, i) => {
+    const listWidth = 620;
+    const listHeight = 500;
+    const itemHeight = 58;
+    const listX = GAME_WIDTH / 2 - listWidth / 2;
+    const listY = 110;
+
+    const items = listZoneIds().map((zoneId) => {
       const meta = levelsData.zones.find((z) => z.id === zoneId);
-      const label = this.add
-        .text(GAME_WIDTH / 2, 150 + i * 48, meta ? `${meta.chapterTitle} — ${meta.name}` : zoneId, {
-          fontFamily: 'monospace',
-          fontSize: '18px',
-          color: '#e8e2f0',
-          backgroundColor: '#1a1428',
-          padding: { x: 10, y: 6 },
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-      label.on('pointerover', () => {
-        label.setColor('#d8b34a');
-        audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
-      });
-      label.on('pointerout', () => label.setColor('#e8e2f0'));
-      label.on('pointerdown', () => {
-        audioManager.play(this, SFX_KEYS.UI_CONFIRM);
-        startTestMode(zoneId);
-        container.destroy();
-        this.debugZoneMenu = undefined;
-        this.loadZone(zoneId);
-      });
-      container.add(label);
+      return {
+        label: meta ? `${meta.chapterTitle}\n${meta.name}` : zoneId,
+        onHover: () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 }),
+        onClick: () => {
+          audioManager.play(this, SFX_KEYS.UI_CONFIRM);
+          startTestMode(zoneId);
+          this.toggleDebugZoneMenu();
+          this.loadZone(zoneId);
+        },
+      };
     });
+
+    this.zoneList = new ScrollableList(this, {
+      x: listX,
+      y: listY,
+      width: listWidth,
+      height: listHeight,
+      itemHeight,
+      items,
+    });
+    container.add(this.zoneList.root);
+
+    const hint = this.zoneList.isScrollable ? '↑↓ ou molette : défiler · Échap : fermer' : 'Échap : fermer';
+    const hintText = this.add
+      .text(GAME_WIDTH / 2, listY + listHeight + 20, hint, { fontFamily: 'monospace', fontSize: '13px', color: '#8a7fa0' })
+      .setOrigin(0.5);
+    container.add(hintText);
+
     this.cameras.main.ignore(container);
     this.debugZoneMenu = container;
   }

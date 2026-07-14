@@ -48,6 +48,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       a: kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
       d: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
       w: kb.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      space: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       dash: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
       shadow: kb.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
       light: kb.addKey(Phaser.Input.Keyboard.KeyCodes.F),
@@ -75,8 +76,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const left = this.keys.left.isDown || this.keys.a.isDown;
     const right = this.keys.right.isDown || this.keys.d.isDown;
-    const jumpKeyDown = this.keys.up.isDown || this.keys.w.isDown;
-    const jumpJustPressed = Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.w);
+    const jumpKeyDown = this.keys.up.isDown || this.keys.w.isDown || this.keys.space.isDown;
+    const jumpJustPressed =
+      Phaser.Input.Keyboard.JustDown(this.keys.up) ||
+      Phaser.Input.Keyboard.JustDown(this.keys.w) ||
+      Phaser.Input.Keyboard.JustDown(this.keys.space);
 
     if (body.blocked.down || body.touching.down) this.lastGroundedAt = time;
     if (jumpJustPressed) this.jumpPressedAt = time;
