@@ -44,6 +44,9 @@ import {
 } from '@/systems/GameState';
 
 const INTERACT_RANGE = 52;
+// Contour épais plutôt qu'un pavé gris translucide derrière le texte du HUD : le contraste
+// tient quel que soit le fond (ciel clair, mur sombre...) sans jamais cacher le décor derrière.
+const HUD_STROKE = { stroke: '#000000', strokeThickness: 4 } as const;
 
 /** Scène principale : charge une zone, gère la traversée liée aux pouvoirs, le HUD et les transitions. */
 export class GameScene extends Phaser.Scene {
@@ -607,8 +610,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#e8e2f0',
-      backgroundColor: '#00000080',
-      padding: { x: 8, y: 4 },
+      ...HUD_STROKE,
     });
     this.hud.add(this.zoneLabel);
     this.updateZoneLabel();
@@ -618,9 +620,8 @@ export class GameScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#ffe27a',
-        backgroundColor: '#000000aa',
-        padding: { x: 10, y: 6 },
         align: 'center',
+        ...HUD_STROKE,
       })
       .setOrigin(0.5, 0)
       .setAlpha(0);
@@ -631,8 +632,7 @@ export class GameScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '13px',
         color: '#ffffff',
-        backgroundColor: '#000000aa',
-        padding: { x: 4, y: 2 },
+        ...HUD_STROKE,
       })
       .setOrigin(0.5)
       .setScrollFactor(1)
@@ -664,8 +664,7 @@ export class GameScene extends Phaser.Scene {
         fontFamily: 'monospace',
         fontSize: '13px',
         color: '#ffffff',
-        backgroundColor: '#000000cc',
-        padding: { x: 6, y: 3 },
+        ...HUD_STROKE,
       })
       .setVisible(false)
       .setDepth(1001);
@@ -679,8 +678,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: '#8a7fa0',
-      backgroundColor: '#00000080',
-      padding: { x: 8, y: 4 },
+      ...HUD_STROKE,
     });
     this.hud.add(controlHint);
 
@@ -689,7 +687,7 @@ export class GameScene extends Phaser.Scene {
         16,
         44,
         'MODE ADMIN — F1: chapitres · N: noclip · ESC: menu',
-        { fontFamily: 'monospace', fontSize: '13px', color: '#4ae08a', backgroundColor: '#00000080', padding: { x: 8, y: 4 } },
+        { fontFamily: 'monospace', fontSize: '13px', color: '#4ae08a', ...HUD_STROKE },
       );
       this.hud.add(this.testBanner);
     }

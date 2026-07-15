@@ -22,8 +22,8 @@ export class NPC {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#ffffff',
-        backgroundColor: '#000000aa',
-        padding: { x: 4, y: 2 },
+        stroke: '#000000',
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setVisible(false);
