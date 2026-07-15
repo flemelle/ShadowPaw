@@ -21,6 +21,13 @@ function mulberry32(seed) {
  * Génère une grille (rows de chars) + la liste des colonnes "sûres" (sol présent,
  * plafond dégagé) utilisables pour poser des entités, en fonction d'un profil.
  */
+// Portée maximale d'un saut en course (cf. entities/Player.ts : MOVE_SPEED=200, JUMP_SPEED=480,
+// gravité=900) : temps de vol 2*480/900 ≈ 1.067s à 200px/s ≈ 213px ≈ 6.67 tuiles de 32px. Une
+// fosse plus large que ça est mathématiquement infranchissable au jugé, quel que soit le doigté
+// du joueur ; on plafonne donc à 4 tuiles pour garder une marge confortable (~40%) pour un élan
+// imparfait, un saut débuté un peu en retard, etc. — plutôt que de coller au maximum théorique.
+const MAX_SAFE_PIT_WIDTH = 4;
+
 function generateZone(profile) {
   const { cols, rows, seed, pitChance, pitWidth, plat, gateChar, gateSpots, undulate, ceilingGap } = profile;
   const rand = mulberry32(seed);
@@ -30,13 +37,27 @@ function generateZone(profile) {
   let floorTop = rows - ceilingGap; // rangée du dessus du sol
   const floorTopByCol = [];
   let x = 0;
+  let justHadPit = false;
+  // Colonnes de sol pleines à garantir après une fosse : sans ça, une nouvelle fosse pouvait
+  // être tirée une seule colonne plus loin, mettant bout à bout deux fosses "sûres" en un
+  // gouffre cumulé plus large que MAX_SAFE_PIT_WIDTH — et surtout sans la moindre place pour
+  // reprendre son élan avant le saut suivant.
+  const MIN_SOLID_AFTER_PIT = 3;
+  let solidRunSincePit = Infinity;
   while (x < cols) {
-    if (undulate && x > 8 && x < cols - 8 && rand() < 0.12) {
+    // Pas d'ondulation juste après une fosse : un atterrissage plus haut que le décollage
+    // réduirait encore la portée de saut déjà consommée par la traversée de la fosse elle-même.
+    if (undulate && !justHadPit && x > 8 && x < cols - 8 && rand() < 0.12) {
       const delta = rand() < 0.5 ? -1 : 1;
       floorTop = Math.min(rows - 2, Math.max(4, floorTop + delta));
     }
-    const inPit = x > 8 && x < cols - 10 && rand() < pitChance;
-    const width = inPit ? pitWidth[0] + Math.floor(rand() * (pitWidth[1] - pitWidth[0] + 1)) : 1;
+    const canRollPit = x > 8 && x < cols - 10 && solidRunSincePit >= MIN_SOLID_AFTER_PIT;
+    const inPit = canRollPit && rand() < pitChance;
+    const maxWidth = Math.min(pitWidth[1], MAX_SAFE_PIT_WIDTH);
+    const minWidth = Math.min(pitWidth[0], maxWidth);
+    const width = inPit ? minWidth + Math.floor(rand() * (maxWidth - minWidth + 1)) : 1;
+    justHadPit = inPit;
+    solidRunSincePit = inPit ? 0 : solidRunSincePit + width;
     for (let i = 0; i < width && x < cols; i++, x++) {
       floorTopByCol[x] = inPit ? null : floorTop;
       if (!inPit) {
@@ -109,7 +130,11 @@ function generateZone(profile) {
       if (!placed) break; // pas la peine de continuer la chaîne si cette marche ne rentre pas
 
       refY = py;
-      px += dir * (width + GAP_X + 2 + Math.floor(rand() * 5));
+      // L'écart entre deux marches d'un même escalier doit rester sautable EN MONTANT (ou en
+      // descendant) : un saut qui doit aussi gagner de la hauteur couvre moins de distance
+      // horizontale qu'un saut à plat (cf. MAX_SAFE_PIT_WIDTH plus haut, pensé pour un saut à
+      // plat). Un vide de 3 à 5 tuiles entre marches reste sûr même pour un dénivelé de 2-3.
+      px += dir * (width + GAP_X + Math.floor(rand() * 3));
       if (px < 4 || px > cols - 6) break;
     }
   }
@@ -131,14 +156,24 @@ function generateZone(profile) {
     if (rows - 2 >= floorY) grid[floorY][gx] === '#' && (grid[floorY][gx] = gateChar);
   });
 
-  // Colonnes de sol "sûres" (pour poser des entités), échantillonnées régulièrement.
+  // Colonnes de sol "sûres" (pour poser des entités), échantillonnées régulièrement. Séparées
+  // de `safeCols` (qui mélange sol ET sommets de plateformes) : un boss/autel/sortie de zone
+  // placé sur une plateforme plutôt qu'au sol n'est pas garanti accessible (une plateforme peut
+  // être en haut d'un escalier dont chaque marche est déjà à la limite du saut, cf. heightAbove
+  // — un jeu qui monte ET avance en même temps a une portée horizontale bien moindre qu'un saut
+  // à plat). Les entités de progression doivent donc toujours atterrir au sol, jamais en l'air.
+  const groundCols = [];
   for (let cx = 0; cx < cols; cx++) {
-    if (floorTopByCol[cx] != null) safeCols.push({ x: cx, y: floorTopByCol[cx] - 1 });
+    if (floorTopByCol[cx] != null) {
+      groundCols.push({ x: cx, y: floorTopByCol[cx] - 1 });
+      safeCols.push({ x: cx, y: floorTopByCol[cx] - 1 });
+    }
   }
   safeCols.sort((a, b) => a.x - b.x);
+  groundCols.sort((a, b) => a.x - b.x);
 
   const tiles = grid.map((row) => row.join(''));
-  return { tiles, safeCols, floorTopByCol };
+  return { tiles, safeCols, groundCols, floorTopByCol };
 }
 
 /** Choisit la colonne sûre la plus proche d'une fraction donnée de la largeur totale. */
@@ -161,7 +196,7 @@ function pickAt(safeCols, cols, frac, used) {
 const ZONE_PROFILES = {
   zone1_portes_velkhar: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
-    pitChance: 0.09, pitWidth: [3, 6],
+    pitChance: 0.09, pitWidth: [2, 4],
     plat: { count: 23, width: [3, 5], heightAbove: [2, 3] },
     // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
     // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
@@ -173,7 +208,7 @@ const ZONE_PROFILES = {
   },
   zone2_antre_velours_noir: {
     cols: 145, rows: 14, ceilingGap: 3, seed: 202,
-    pitChance: 0.1, pitWidth: [3, 5],
+    pitChance: 0.1, pitWidth: [2, 4],
     plat: { count: 35, width: [2, 4], heightAbove: [2, 3] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: false,
@@ -181,7 +216,7 @@ const ZONE_PROFILES = {
   },
   zone3_velkhar_foyer_ombres: {
     cols: 145, rows: 16, ceilingGap: 3, seed: 303,
-    pitChance: 0.09, pitWidth: [3, 6],
+    pitChance: 0.09, pitWidth: [2, 4],
     plat: { count: 32, width: [3, 6], heightAbove: [2, 3] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: false,
@@ -189,7 +224,7 @@ const ZONE_PROFILES = {
   },
   zone4_seikuji_quietude: {
     cols: 160, rows: 16, ceilingGap: 3, seed: 404,
-    pitChance: 0.08, pitWidth: [3, 6],
+    pitChance: 0.08, pitWidth: [2, 4],
     plat: { count: 44, width: [2, 4], heightAbove: [2, 3] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
@@ -197,7 +232,7 @@ const ZONE_PROFILES = {
   },
   zone5_seikuji_corrompu: {
     cols: 160, rows: 15, ceilingGap: 3, seed: 505,
-    pitChance: 0.09, pitWidth: [3, 6],
+    pitChance: 0.09, pitWidth: [2, 4],
     plat: { count: 32, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: false,
@@ -205,7 +240,7 @@ const ZONE_PROFILES = {
   },
   zone6_jardins_oublies: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 606,
-    pitChance: 0.09, pitWidth: [3, 6],
+    pitChance: 0.09, pitWidth: [2, 4],
     plat: { count: 41, width: [3, 6], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
@@ -213,7 +248,7 @@ const ZONE_PROFILES = {
   },
   zone7_salle_miroirs: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 707,
-    pitChance: 0.09, pitWidth: [3, 6],
+    pitChance: 0.09, pitWidth: [2, 4],
     plat: { count: 38, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'S', gateSpots: [0.2, 0.5, 0.75],
     undulate: false,
@@ -221,7 +256,7 @@ const ZONE_PROFILES = {
   },
   zone8_vide_entre_deux: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 808,
-    pitChance: 0.14, pitWidth: [4, 7],
+    pitChance: 0.14, pitWidth: [2, 4],
     plat: { count: 35, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
@@ -236,18 +271,19 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
   const profile = ZONE_PROFILES[data.id];
   if (!profile) continue;
 
-  const { tiles, safeCols } = generateZone(profile);
+  const { tiles, groundCols } = generateZone(profile);
   const used = new Set();
 
-  // Assigne x,y à chaque entité existante, dans l'ordre où elles apparaissent,
-  // en réutilisant la fraction prévue pour son "slot" (spawn, npc0, npc1, ...).
+  // Assigne x,y à chaque entité existante, dans l'ordre où elles apparaissent, en réutilisant
+  // la fraction prévue pour son "slot" (spawn, npc0, npc1, ...) — toujours au sol (groundCols),
+  // jamais sur une plateforme flottante potentiellement hors de portée de saut.
   const typeCounters = {};
   const newEntities = data.entities.map((entity) => {
     const idx = typeCounters[entity.type] ?? 0;
     typeCounters[entity.type] = idx + 1;
     const key = idx === 0 ? `${entity.type}0` : `${entity.type}${idx}`;
     const frac = profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5;
-    const pos = pickAt(safeCols, profile.cols, frac, used);
+    const pos = pickAt(groundCols, profile.cols, frac, used);
     return { ...entity, x: pos.x, y: pos.y };
   });
 
