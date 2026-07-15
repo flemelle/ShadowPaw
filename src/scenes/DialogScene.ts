@@ -4,7 +4,7 @@ import { dialogSystem } from '@/systems/GameState';
 import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import { keyBindings } from '@/systems/KeyBindings';
-import type { DialogNode } from '@/systems/DialogSystem';
+import type { DialogChoice, DialogNode } from '@/systems/DialogSystem';
 
 interface DialogSceneData {
   treeId: string;
@@ -43,6 +43,11 @@ export class DialogScene extends Phaser.Scene {
   private selectedChoice = 0;
   private textScroll = 0;
   private maxTextScroll = 0;
+  private currentChoices: DialogChoice[] = [];
+  private npcDisplayName = '???';
+  /** Non-null pendant le bref instant où la case affiche la réplique de Kiba qu'on vient de
+   *  choisir (cf. confirmChoice) : le prochain appui confirme et enchaîne sur ce callback. */
+  private afterOwnLine: (() => void) | null = null;
 
   constructor() {
     super(SCENE_KEYS.DIALOG);
@@ -51,9 +56,11 @@ export class DialogScene extends Phaser.Scene {
   create(data: DialogSceneData): void {
     this.treeId = data.treeId;
     const tree = dialogSystem.trees[this.treeId];
+    this.npcDisplayName = tree?.displayName ?? '???';
 
     // Silhouettes en grand de part et d'autre de la case — Kiba à gauche, le PNJ à
     // droite — ajoutées avant le fond de la case pour rester visuellement "derrière" elle.
+    // Une seule visible à la fois (cf. renderNode/showOwnLine) : celle qui parle réellement.
     this.playerPortrait = this.add.image(10, BOX_BOTTOM, TEX.PLAYER_PORTRAIT).setOrigin(0, 1).setAlpha(0.92);
     this.npcPortrait = this.add.image(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);
 
@@ -63,7 +70,7 @@ export class DialogScene extends Phaser.Scene {
     boxBg.lineStyle(2, 0xd8b34a, 1);
     boxBg.strokeRect(GAME_WIDTH / 2 - BOX_WIDTH / 2, BOX_TOP, BOX_WIDTH, BOX_HEIGHT);
 
-    this.nameText = this.add.text(TEXT_X, BOX_TOP + 18, tree?.displayName ?? '???', {
+    this.nameText = this.add.text(TEXT_X, BOX_TOP + 18, this.npcDisplayName, {
       fontFamily: 'monospace',
       fontSize: '18px',
       color: '#d8b34a',
@@ -115,6 +122,17 @@ export class DialogScene extends Phaser.Scene {
     const confirmPressed =
       Phaser.Input.Keyboard.JustDown(this.keySpace) || keyBindings.justDown('interact') || keyBindings.justDown('jump');
 
+    if (this.afterOwnLine) {
+      if (Phaser.Input.Keyboard.JustDown(this.keyDown)) this.scrollText(SCROLL_STEP);
+      else if (Phaser.Input.Keyboard.JustDown(this.keyUp)) this.scrollText(-SCROLL_STEP);
+      else if (confirmPressed) {
+        const advance = this.afterOwnLine;
+        this.afterOwnLine = null;
+        advance();
+      }
+      return;
+    }
+
     if (this.choiceTexts.length === 0) {
       // Pas de choix à naviguer : ↑↓ font défiler la réplique en cours à la place.
       if (Phaser.Input.Keyboard.JustDown(this.keyDown)) this.scrollText(SCROLL_STEP);
@@ -152,12 +170,36 @@ export class DialogScene extends Phaser.Scene {
 
   private confirmChoice(index: number): void {
     audioManager.play(this, SFX_KEYS.UI_SELECT);
-    const next = dialogSystem.choose(index);
-    this.renderNode(next);
+    const choice = this.currentChoices[index];
+    // Les choix entre parenthèses ("(Partir)", "(Combat)") sont des indications de mise en
+    // scène, pas une réplique de Kiba : on enchaîne directement sans le faire "parler" pour
+    // une simple action. Une vraie réplique passe d'abord par showOwnLine (cf. plus bas).
+    const isSpokenLine = choice != null && !choice.text.startsWith('(');
+    const advance = () => this.renderNode(dialogSystem.choose(index));
+    if (isSpokenLine) this.showOwnLine(choice.text, advance);
+    else advance();
+  }
+
+  /** Bascule brièvement la case sur la réplique de Kiba qu'on vient de choisir, lui seul visible. */
+  private showOwnLine(text: string, onDone: () => void): void {
+    this.clearChoices();
+    this.npcPortrait.setVisible(false);
+    this.playerPortrait.setVisible(true);
+    this.nameText.setText('Kiba');
+    this.boxText.setText(text);
+    this.textScroll = 0;
+    this.boxText.setY(TEXT_VIEWPORT_TOP);
+    this.maxTextScroll = Math.max(0, this.boxText.height - TEXT_VIEWPORT_HEIGHT);
+    this.scrollHint.setVisible(this.maxTextScroll > 0);
+    this.continueHint.setText('Espace/E ▸');
+    this.continueHint.setPosition(GAME_WIDTH - 100, BOX_BOTTOM - 24);
+    this.continueHint.setVisible(true);
+    this.afterOwnLine = onDone;
   }
 
   private renderNode(node: DialogNode | null): void {
     this.clearChoices();
+    this.nameText.setText(this.npcDisplayName);
     if (!node) {
       this.endDialog();
       return;
@@ -170,7 +212,14 @@ export class DialogScene extends Phaser.Scene {
     this.maxTextScroll = Math.max(0, this.boxText.height - TEXT_VIEWPORT_HEIGHT);
     this.scrollHint.setVisible(this.maxTextScroll > 0);
 
+    // Le PNJ est celui qui parle ici (ce sont ses lignes affichées), même quand des choix
+    // apparaissent en dessous : ce sont les répliques POSSIBLES de Kiba, pas encore prononcées
+    // — cf. showOwnLine, qui bascule sur son portrait seulement une fois qu'il en choisit une.
+    this.npcPortrait.setVisible(true);
+    this.playerPortrait.setVisible(false);
+
     const choiceCount = node.choices?.length ?? 0;
+    this.currentChoices = node.choices ?? [];
     if (choiceCount > 0) {
       this.selectedChoice = 0;
       node.choices!.forEach((choice, i) => {
