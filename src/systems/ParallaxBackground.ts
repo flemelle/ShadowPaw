@@ -59,15 +59,19 @@ export class ParallaxBackground {
       // Marge généreuse des deux côtés pour qu'aucun bord ne soit découvert, quel que soit
       // le scrollFactor de la couche ou la largeur de la zone (nos zones restent < GAME_WIDTH).
       const margin = GAME_WIDTH + zoneWidthPx / 2;
+      // Surcadrage vertical : un scrollFactorY figé à 0 laissait apparaître un vide en
+      // haut/bas dès que la caméra suit le joueur sur les niveaux avec beaucoup de
+      // verticalité (plateformes en hauteur) — la couche décrochait de la fenêtre visible.
+      const vMargin = GAME_HEIGHT * 0.6;
       specs.forEach((spec, i) => {
         const tex = scene.textures.get(spec.key);
         const srcH = tex.source[0]?.height ?? GAME_HEIGHT;
-        const scale = GAME_HEIGHT / srcH;
+        const scale = (GAME_HEIGHT + 2 * vMargin) / srcH;
         const tileW = (GAME_WIDTH + 2 * margin) / scale;
 
-        const layer = scene.add.tileSprite(-margin, 0, tileW, srcH, spec.key).setOrigin(0, 0);
+        const layer = scene.add.tileSprite(-margin, -vMargin, tileW, srcH, spec.key).setOrigin(0, 0);
         layer.setScale(scale);
-        layer.setScrollFactor(spec.scrollFactor, 0);
+        layer.setScrollFactor(spec.scrollFactor, spec.scrollFactor);
         layer.setDepth(-100 + i);
         if (spec.alpha !== undefined) layer.setAlpha(spec.alpha);
         if (spec.blend !== undefined) layer.setBlendMode(spec.blend);

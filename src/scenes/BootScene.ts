@@ -182,14 +182,18 @@ export class BootScene extends Phaser.Scene {
 
   /** Halo doux (dégradé radial approximé par cercles superposés) — aura de lumière de Kiba dans les zones sombres. */
   private generateGlowTexture(): void {
-    const size = 160;
+    // Grand et progressif plutôt qu'intense : dégradé quadratique (doux au centre,
+    // très doux vers les bords) sur beaucoup de pas pour éviter tout effet de bande.
+    const size = 280;
     const cx = size / 2;
     const cy = size / 2;
     const g = this.make.graphics({ x: 0, y: 0 });
-    const steps = 24;
+    const steps = 50;
+    const peakAlpha = 0.22;
     for (let i = steps; i >= 1; i--) {
-      const r = (i / steps) * (size / 2);
-      const alpha = (1 - i / steps) * 0.4;
+      const t = i / steps;
+      const r = t * (size / 2);
+      const alpha = peakAlpha * (1 - t) * (1 - t);
       g.fillStyle(0xffe9b0, alpha);
       g.fillCircle(cx, cy, r);
     }

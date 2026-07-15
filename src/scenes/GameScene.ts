@@ -53,6 +53,7 @@ export class GameScene extends Phaser.Scene {
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
+  private powerTooltip!: Phaser.GameObjects.Text;
   private testBanner?: Phaser.GameObjects.Text;
   private debugZoneMenu?: Phaser.GameObjects.Container;
   private keyE!: Phaser.Input.Keyboard.Key;
@@ -154,12 +155,12 @@ export class GameScene extends Phaser.Scene {
         .image(this.player.x, this.player.y, TEX.PLAYER_GLOW)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(-1)
-        .setAlpha(0.75);
+        .setAlpha(0.55);
       this.tweens.add({
         targets: this.playerGlow,
-        scale: { from: 0.85, to: 1.1 },
-        alpha: { from: 0.6, to: 0.85 },
-        duration: 1400,
+        scale: { from: 0.95, to: 1.15 },
+        alpha: { from: 0.42, to: 0.6 },
+        duration: 2200,
         yoyo: true,
         repeat: -1,
         ease: 'sine.inOut',
@@ -541,6 +542,25 @@ export class GameScene extends Phaser.Scene {
     this.hud.add(this.livesText);
     this.updateLivesDisplay();
 
+    const powersLabel = this.add.text(16, 74, 'Pouvoirs (survoler pour le nom) :', {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#8a7fa0',
+    });
+    this.hud.add(powersLabel);
+
+    this.powerTooltip = this.add
+      .text(0, 0, '', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#ffffff',
+        backgroundColor: '#000000cc',
+        padding: { x: 6, y: 3 },
+      })
+      .setVisible(false)
+      .setDepth(1001);
+    this.hud.add(this.powerTooltip);
+
     const controlHint = this.add.text(
       16,
       GAME_HEIGHT - 30,
@@ -576,8 +596,15 @@ export class GameScene extends Phaser.Scene {
     this.powerIconTexts = unlocked.map((id, i) => {
       const def = powerSystem.getDef(id);
       const t = this.add
-        .text(16 + i * 36, 76, def?.icon ?? '?', { fontFamily: 'monospace', fontSize: '24px' })
-        .setScrollFactor(0);
+        .text(16 + i * 36, 96, def?.icon ?? '?', { fontFamily: 'monospace', fontSize: '24px' })
+        .setScrollFactor(0)
+        .setInteractive({ useHandCursor: false });
+      t.on('pointerover', () => {
+        this.powerTooltip.setText(def?.name ?? '');
+        this.powerTooltip.setPosition(t.x, t.y + 30);
+        this.powerTooltip.setVisible(true);
+      });
+      t.on('pointerout', () => this.powerTooltip.setVisible(false));
       this.hud.add(t);
       return t;
     });

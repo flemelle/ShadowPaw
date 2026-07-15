@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, DECOR_KEYS } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -140,35 +140,91 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
 
 /**
  * Disperse quelques décors (arbres/buissons/rochers, Stringstar Fields — cf.
- * ACKNOWLEDGEMENTS.md) au sol, sans collision, derrière le gameplay. Le thème
- * suit celui du décor peint de la zone (cf. ZONE_BACKGROUND) ; les zones sans
- * décor peint (intérieurs sombres) n'en reçoivent pas.
+ * ACKNOWLEDGEMENTS.md) sans collision, derrière le gameplay : au sol (grands décors)
+ * et sur les plateformes flottantes (petits décors, mis à l'échelle pour ne jamais
+ * déborder de la plateforme). Le thème suit celui du décor peint de la zone (cf.
+ * ZONE_BACKGROUND) ; les zones sans décor peint (intérieurs sombres) n'en reçoivent pas.
  */
 function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects.Image[] {
   const theme = ZONE_BACKGROUND[zoneMap.id as ZoneId];
   if (!theme) return [];
-  const pool = DECOR_SETS[theme];
+  const groundPool = DECOR_SETS[theme];
+  const platformPool = groundPool.filter((p) => p.key === DECOR_KEYS.BUSH_ROUND || p.key === DECOR_KEYS.ROCK);
   const sprites: Phaser.GameObjects.Image[] = [];
+  const { cols, rows, tiles } = zoneMap;
 
-  let x = 5;
+  // groundTopRow[x] = rangée la plus haute du sol continu (connecté jusqu'en bas), ou
+  // null si la colonne est une fosse. Sert à distinguer "sol" de "plateforme flottante".
+  const groundTopRow: (number | null)[] = new Array(cols).fill(null);
+  for (let x = 0; x < cols; x++) {
+    if (tiles[rows - 1][x] !== '#') continue;
+    let y = rows - 1;
+    while (y > 0 && tiles[y - 1][x] === '#') y -= 1;
+    groundTopRow[x] = y;
+  }
+
+  // --- Décor au sol (grands décors, jamais sur une plateforme isolée) ---
+  let gx = 5;
   let guard = 0;
-  while (x < zoneMap.cols - 5 && guard < 200) {
+  while (gx < cols - 5 && guard < 200) {
     guard += 1;
-    let floorRow = -1;
-    for (let y = 0; y < zoneMap.rows; y++) {
-      if (zoneMap.tiles[y][x] === '#') {
-        floorRow = y;
-        break;
+    const floorRow = groundTopRow[gx];
+    if (floorRow != null) {
+      const pick = groundPool[Math.floor(Math.random() * groundPool.length)];
+      const px = gx * TILE_SIZE + TILE_SIZE / 2;
+      const py = floorRow * TILE_SIZE;
+      sprites.push(scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(pick.scale).setDepth(-5));
+    }
+    gx += 10 + Math.floor(Math.random() * 8);
+  }
+
+  // --- Décor sur les plateformes flottantes (petits décors, mis à l'échelle à la largeur) ---
+  if (platformPool.length > 0) {
+    for (let y = 1; y < rows; y++) {
+      let runStart = -1;
+      for (let x = 0; x <= cols; x++) {
+        const gt = x < cols ? groundTopRow[x] : null;
+        const isPlatformSurface = x < cols && tiles[y][x] === '#' && tiles[y - 1][x] !== '#' && (gt == null || y < gt);
+        if (isPlatformSurface) {
+          if (runStart === -1) runStart = x;
+          continue;
+        }
+        if (runStart !== -1) {
+          placePlatformDecor(scene, sprites, platformPool, zoneMap, runStart, x - runStart, y);
+          runStart = -1;
+        }
       }
     }
-    if (floorRow > 0) {
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      const px = x * TILE_SIZE + TILE_SIZE / 2;
-      const py = floorRow * TILE_SIZE;
-      const img = scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(pick.scale).setDepth(-5);
-      sprites.push(img);
-    }
-    x += 10 + Math.floor(Math.random() * 8);
   }
+
   return sprites;
+}
+
+/** Place un petit décor centré sur une plateforme, réduit pour ne jamais déborder de ses bords. */
+function placePlatformDecor(
+  scene: Phaser.Scene,
+  sprites: Phaser.GameObjects.Image[],
+  pool: { key: string; scale: number }[],
+  zoneMap: ZoneMap,
+  startX: number,
+  width: number,
+  row: number,
+): void {
+  if (width < 1 || Math.random() < 0.5) return; // pas systématique : une plateforme sur deux environ
+  const centerX = startX + width / 2;
+
+  // Évite de superposer un décor à un PNJ/déclencheur posé sur cette même plateforme.
+  const tooClose = zoneMap.entities.some(
+    (e) => e.type !== 'spawn' && Math.abs(e.x - centerX) < 1.5 && Math.abs(e.y - (row - 1)) < 1.5,
+  );
+  if (tooClose) return;
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const srcWidth = scene.textures.get(pick.key).source[0]?.width ?? TILE_SIZE;
+  const maxWidthPx = width * TILE_SIZE * 0.75;
+  const scale = Math.min(pick.scale, maxWidthPx / srcWidth);
+
+  const px = centerX * TILE_SIZE;
+  const py = row * TILE_SIZE;
+  sprites.push(scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(scale).setDepth(-5));
 }
