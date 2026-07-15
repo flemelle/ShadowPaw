@@ -124,7 +124,11 @@ function generateZone(profile) {
 
   const GAP_X = 3; // colonnes de vide obligatoires de part et d'autre
   const GAP_Y_ABOVE = 3; // dégagement vertical au-dessus (place pour sauter/atterrir)
-  const GAP_Y_BELOW = 1;
+  // Doit couvrir au moins la clearance minimale voulue entre une plateforme et ce qu'il y a
+  // dessous (cf. plat.heightAbove) : sans ça, une plateforme large posée au-dessus d'un sol
+  // dont la hauteur varie sous son empan pouvait se retrouver à 1 seule tuile du sol à une
+  // extrémité même quand son point d'ancrage respectait les 2 tuiles de dégagement voulues.
+  const GAP_Y_BELOW = 2;
 
   const canPlace = (px, py, width) => {
     if (py < 2 || py >= rows - 1) return false;
@@ -158,8 +162,12 @@ function generateZone(profile) {
 
     for (let step = 0; step < chainLen; step++) {
       const width = plat.width[0] + Math.floor(rand() * (plat.width[1] - plat.width[0] + 1));
-      const hop = plat.heightAbove[0] + Math.floor(rand() * (plat.heightAbove[1] - plat.heightAbove[0] + 1));
-      const py = Math.max(3, refY - hop);
+      // plat.heightAbove est le nombre de tuiles VIDES entre le sommet du sol/de la marche
+      // précédente et le dessous de cette plateforme (donc +1 dans le calcul de la rangée :
+      // avec un delta de rangée égal à heightAbove, la case juste sous la plateforme EST déjà
+      // le sol, ce qui ne laissait qu'une seule tuile de dégagement réel au lieu de deux).
+      const clearance = plat.heightAbove[0] + Math.floor(rand() * (plat.heightAbove[1] - plat.heightAbove[0] + 1));
+      const py = Math.max(3, refY - clearance - 1);
 
       // Quelques essais avec un léger décalage horizontal si la place manque, sinon on abandonne cette marche.
       let placed = false;
@@ -242,7 +250,7 @@ const ZONE_PROFILES = {
   zone1_portes_velkhar: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
     pitChance: 0.06, pitWidth: [2, 4],
-    plat: { count: 18, width: [4, 6], heightAbove: [2, 3] },
+    plat: { count: 18, width: [4, 6], heightAbove: [2, 2] },
     // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
     // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
     // qu'en battant le boss de cette même zone. Sans ça, la zone était infranchissable
@@ -256,7 +264,7 @@ const ZONE_PROFILES = {
   zone2_antre_velours_noir: {
     cols: 145, rows: 15, ceilingGap: 5, seed: 202,
     pitChance: 0.11, pitWidth: [2, 4],
-    plat: { count: 34, width: [2, 3], heightAbove: [2, 3] },
+    plat: { count: 34, width: [2, 3], heightAbove: [2, 2] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
@@ -266,7 +274,7 @@ const ZONE_PROFILES = {
   zone3_velkhar_foyer_ombres: {
     cols: 145, rows: 19, ceilingGap: 3, seed: 303,
     pitChance: 0.1, pitWidth: [2, 4],
-    plat: { count: 30, width: [3, 5], heightAbove: [2, 3] },
+    plat: { count: 30, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, boss_arena0: 0.87, zone_exit0: 0.97 },
@@ -276,7 +284,7 @@ const ZONE_PROFILES = {
   zone4_seikuji_quietude: {
     cols: 160, rows: 16, ceilingGap: 3, seed: 404,
     pitChance: 0.05, pitWidth: [2, 3],
-    plat: { count: 26, width: [4, 7], heightAbove: [2, 3] },
+    plat: { count: 26, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.1, boss_arena0: 0.45, power_altar0: 0.9, zone_exit0: 0.98 },
@@ -286,7 +294,7 @@ const ZONE_PROFILES = {
   zone5_seikuji_corrompu: {
     cols: 160, rows: 15, ceilingGap: 3, seed: 505,
     pitChance: 0.12, pitWidth: [2, 4],
-    plat: { count: 34, width: [2, 6], heightAbove: [2, 3] },
+    plat: { count: 34, width: [2, 6], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, zone_exit0: 0.97 },
@@ -296,7 +304,7 @@ const ZONE_PROFILES = {
   zone6_jardins_oublies: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 606,
     pitChance: 0.08, pitWidth: [2, 4],
-    plat: { count: 30, width: [4, 7], heightAbove: [2, 3] },
+    plat: { count: 30, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
     entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, boss_arena0: 0.85, zone_exit0: 0.97 },
@@ -306,7 +314,7 @@ const ZONE_PROFILES = {
   zone7_salle_miroirs: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 707,
     pitChance: 0.08, pitWidth: [2, 4],
-    plat: { count: 17, width: [3, 5], heightAbove: [2, 3] },
+    plat: { count: 17, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [0.35, 0.7],
     undulate: false,
     mirror: true,
@@ -318,7 +326,7 @@ const ZONE_PROFILES = {
   zone8_vide_entre_deux: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 808,
     pitChance: 0.2, pitWidth: [2, 4],
-    plat: { count: 20, width: [2, 4], heightAbove: [2, 3] },
+    plat: { count: 20, width: [2, 4], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
     entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, boss_arena0: 0.85, ending_trigger0: 0.97 },
