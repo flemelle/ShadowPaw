@@ -167,6 +167,8 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
   // Mis à l'échelle pour ne jamais déborder de la portion de sol continue (même hauteur,
   // sans trou) sur laquelle il repose : un décor plus large que ce replat dépasserait
   // visuellement dans le vide d'une fosse voisine ou par-dessus un changement de hauteur.
+  // Contraint aussi en hauteur par le dégagement libre au-dessus : un grand arbre planté
+  // sous une plateforme flottante proche transperçait visuellement cette dernière sinon.
   let gx = 5;
   let guard = 0;
   while (gx < cols - 5 && guard < 200) {
@@ -179,10 +181,25 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
       while (runEnd < cols - 1 && groundTopRow[runEnd + 1] === floorRow) runEnd += 1;
       const availableWidthPx = (runEnd - runStart + 1) * TILE_SIZE;
 
+      // Dégagement le plus restrictif sur quelques colonnes voisines (pas seulement gx) : la
+      // cime d'un arbre déborde de son point d'ancrage, une plateforme juste à côté (pas
+      // directement au-dessus) pouvait donc encore être frôlée/transpercée sur le côté.
+      let clearanceRows = rows;
+      for (let cx = Math.max(0, gx - 2); cx <= Math.min(cols - 1, gx + 2); cx++) {
+        const cxFloorRow = groundTopRow[cx] ?? floorRow;
+        let c = 0;
+        while (c < cxFloorRow && tiles[cxFloorRow - 1 - c][cx] !== '#') c += 1;
+        clearanceRows = Math.min(clearanceRows, c);
+      }
+      const availableHeightPx = clearanceRows * TILE_SIZE;
+
       const pick = groundPool[Math.floor(Math.random() * groundPool.length)];
-      const srcWidth = scene.textures.get(pick.key).source[0]?.width ?? TILE_SIZE;
+      const tex = scene.textures.get(pick.key).source[0];
+      const srcWidth = tex?.width ?? TILE_SIZE;
+      const srcHeight = tex?.height ?? TILE_SIZE;
       const maxWidthPx = availableWidthPx * 0.6;
-      const scale = Math.min(pick.scale, maxWidthPx / srcWidth);
+      const maxHeightPx = availableHeightPx * 0.8;
+      const scale = Math.min(pick.scale, maxWidthPx / srcWidth, maxHeightPx / srcHeight);
 
       if (scale >= 0.3) {
         const px = gx * TILE_SIZE + TILE_SIZE / 2;

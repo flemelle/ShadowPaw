@@ -43,7 +43,10 @@ export class MenuScene extends Phaser.Scene {
       return;
     }
 
-    this.background = new ParallaxBackground(this, 'FOREST', GAME_WIDTH, false);
+    // Le ciel du set FOREST est peint en 3 bandes de couleur plates (cf. layer_11.png) — très
+    // visible et peu flatteur en fond fixe de menu. GRAVEYARD (déjà utilisé pour le prologue)
+    // a un ciel nuageux continu, plus cohérent avec la première impression du jeu.
+    this.background = new ParallaxBackground(this, 'GRAVEYARD', GAME_WIDTH, false);
     audioManager.playMusic(this, MUSIC_KEYS.MENU);
     this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyUp = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
