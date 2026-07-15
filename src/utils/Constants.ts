@@ -5,6 +5,7 @@ export const TILE_SIZE = 32;
 
 export const SCENE_KEYS = {
   BOOT: 'BootScene',
+  PROLOGUE: 'PrologueScene',
   MENU: 'MenuScene',
   GAME: 'GameScene',
   DIALOG: 'DialogScene',

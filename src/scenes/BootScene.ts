@@ -13,6 +13,8 @@ import {
   DECOR_PATHS,
 } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
+import { isTestModeRequestedFromURL } from '@/systems/GameState';
+import { PROLOGUE_SEEN_KEY } from '@/scenes/PrologueScene';
 
 const FOREST_LAYER_INDICES = Array.from({ length: 12 }, (_, i) => i);
 
@@ -122,7 +124,8 @@ export class BootScene extends Phaser.Scene {
     particle.generateTexture(TEX.PARTICLE, 8, 8);
     particle.destroy();
 
-    this.scene.start(SCENE_KEYS.MENU);
+    const skipPrologue = isTestModeRequestedFromURL() || localStorage.getItem(PROLOGUE_SEEN_KEY) === '1';
+    this.scene.start(skipPrologue ? SCENE_KEYS.MENU : SCENE_KEYS.PROLOGUE);
   }
 
   private buildLoadingBar(): void {
