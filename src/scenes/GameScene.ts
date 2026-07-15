@@ -607,6 +607,9 @@ export class GameScene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.enable = false;
 
+    let burstAlive = true;
+    let beamAlive = true;
+
     this.tweens.add({
       targets: this.player,
       y: py - 64,
@@ -614,6 +617,12 @@ export class GameScene extends Phaser.Scene {
       ease: 'sine.out',
       yoyo: true,
       hold: 1200,
+      // Le halo/rayon suivent le perso pendant qu'il monte : sans ça ils restent plantés à sa
+      // position de départ pendant que le tween ne bouge que sa propriété `y` à lui.
+      onUpdate: () => {
+        if (burstAlive) burst.setPosition(this.player.x, this.player.y);
+        if (beamAlive) beam.setPosition(this.player.x, this.player.y);
+      },
       onComplete: () => {
         body.enable = true;
         this.celebratingPower = false;
@@ -640,6 +649,7 @@ export class GameScene extends Phaser.Scene {
       ease: 'sine.inOut',
       onComplete: () => {
         this.cameras.main.flash(500, 255, 255, 255);
+        burstAlive = false;
         burst.destroy();
       },
     });
@@ -656,7 +666,10 @@ export class GameScene extends Phaser.Scene {
       duration: 950,
       yoyo: true,
       hold: 1650,
-      onComplete: () => beam.destroy(),
+      onComplete: () => {
+        beamAlive = false;
+        beam.destroy();
+      },
     });
   }
 
