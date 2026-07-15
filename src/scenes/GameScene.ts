@@ -76,6 +76,7 @@ export class GameScene extends Phaser.Scene {
   private dialogActive = false;
   private puzzleActive = false;
   private tutorialActive = false;
+  private celebratingPower = false;
   private defeatedThisZone = new Set<string>();
   private lives = LIVES_START;
   private isDead = false;
@@ -89,6 +90,7 @@ export class GameScene extends Phaser.Scene {
     this.dialogActive = false;
     this.puzzleActive = false;
     this.tutorialActive = false;
+    this.celebratingPower = false;
     this.defeatedThisZone = new Set();
     this.lives = LIVES_START;
     this.isDead = false;
@@ -256,12 +258,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
-    if (this.dialogActive || this.puzzleActive || this.tutorialActive) {
+    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower) {
       // Tant que l'overlay reste ouvert plusieurs frames, continue à drainer (cf.
       // drainEdgeInputs plus bas pour l'explication complète du problème).
       this.drainEdgeInputs();
     }
-    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.isDead || this.isTransitioning) return;
+    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower || this.isDead || this.isTransitioning)
+      return;
 
     if (this.player.y > this.built.heightPx + FALL_DEATH_MARGIN) {
       this.handleFallDeath();
@@ -368,13 +371,17 @@ export class GameScene extends Phaser.Scene {
     sprite.setTint(0x555555);
     audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
     if (entity.grantsPower) {
-      this.time.delayedCall(500, () => {
+      const power = entity.grantsPower;
+      // window.setTimeout plutôt que this.time.delayedCall : cf. showGameOver, un minuteur du
+      // Clock de la scène peut se retrouver "en retard" de façon imprévisible (observé jusqu'à
+      // ~1.2s de dérive ici) — un délai natif du navigateur reste fiable dans tous les cas.
+      window.setTimeout(() => {
+        if (!this.scene.isActive()) return;
         audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
-        this.celebratePowerUnlock();
-      });
-      powerSystem.unlock(entity.grantsPower);
-      this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(entity.grantsPower)?.name}`);
-      this.maybeShowPowerTutorial(entity.grantsPower);
+        this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
+      }, 500);
+      powerSystem.unlock(power);
+      this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(power)?.name}`);
     } else {
       this.toast('Gardien vaincu.');
     }
@@ -394,9 +401,11 @@ export class GameScene extends Phaser.Scene {
       if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower, 1800);
     } else {
       audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
-      if (entity.grantsPower) this.celebratePowerUnlock();
+      if (entity.grantsPower) {
+        const power = entity.grantsPower;
+        this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
+      }
       this.toast('Énergie absorbée.');
-      if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower);
     }
     sprite.setTint(0xffe27a);
     persistProgress(this.player.x, this.player.y);
@@ -569,12 +578,17 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Petite célébration à l'acquisition d'un pouvoir : Kiba se soulève doucement, un halo de
-   * lumière dorée grossit autour de lui, un rayon vertical descend, et la caméra flashe —
-   * en plus du son déjà joué par l'appelant (SFX_KEYS.POWER_UNLOCK).
+   * lumière dorée grossit autour de lui, un rayon vertical descend, et la caméra flashe — en
+   * plus du son déjà joué par l'appelant (SFX_KEYS.POWER_UNLOCK). Le joueur est figé (cf. le
+   * flag `celebratingPower` dans update()) le temps de l'animation, pour qu'elle se déroule
+   * sans qu'une touche pressée entre-temps ne l'interrompe visuellement ; `onComplete` (le
+   * mini tutoriel du pouvoir, typiquement) n'est appelé qu'une fois le joueur libéré.
    */
-  private celebratePowerUnlock(): void {
+  private celebratePowerUnlock(onComplete?: () => void): void {
     const px = this.player.x;
     const py = this.player.y;
+    this.celebratingPower = true;
+    this.player.setVelocity(0, 0);
 
     this.tweens.add({
       targets: this.player,
@@ -583,6 +597,11 @@ export class GameScene extends Phaser.Scene {
       ease: 'sine.out',
       yoyo: true,
       hold: 300,
+      onComplete: () => {
+        this.celebratingPower = false;
+        this.drainEdgeInputs();
+        onComplete?.();
+      },
     });
 
     const burst = this.add
@@ -621,12 +640,17 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.flash(350, 255, 240, 200);
   }
 
-  /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
-  private maybeShowPowerTutorial(power: PowerId, delayMs = 900): void {
+  /**
+   * Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel).
+   * Sans délai par défaut : appelé une fois la célébration terminée (cf. celebratePowerUnlock),
+   * le pouvoir vient déjà de rester affiché quelques centaines de ms, inutile d'attendre encore.
+   */
+  private maybeShowPowerTutorial(power: PowerId, delayMs = 0): void {
     const flag = `tuto_power_${power}`;
     if (dialogSystem.hasFlag(flag)) return;
     dialogSystem.setFlag(flag);
-    this.time.delayedCall(delayMs, () => this.startTutorial(buildPowerTutorialSteps(power)));
+    if (delayMs > 0) this.time.delayedCall(delayMs, () => this.startTutorial(buildPowerTutorialSteps(power)));
+    else this.startTutorial(buildPowerTutorialSteps(power));
   }
 
   // ---------- Puzzle ----------
