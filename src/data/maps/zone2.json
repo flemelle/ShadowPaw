@@ -34,7 +34,7 @@
       "type": "npc",
       "x": 20,
       "y": 8,
-      "dialogTree": "tozen_zone1_intro",
+      "dialogTree": "tozen_zone2_hint",
       "optional": true
     },
     {

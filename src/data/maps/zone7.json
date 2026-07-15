@@ -32,6 +32,13 @@
       "y": 12
     },
     {
+      "type": "npc",
+      "x": 8,
+      "y": 12,
+      "dialogTree": "reflet_zone7_intro",
+      "optional": true
+    },
+    {
       "type": "puzzle_trigger",
       "x": 28,
       "y": 12,

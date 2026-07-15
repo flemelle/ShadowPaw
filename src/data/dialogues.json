@@ -29,6 +29,36 @@
         "end": { "lines": [], "end": true }
       }
     },
+    "tozen_zone2_hint": {
+      "npc": "tozen",
+      "displayName": "Tozen, le Moine",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Tes griffes ont retrouvé leur force. Bien. Tu en auras besoin ici.",
+            "Ce dojo a vu naître des générations de novices du Clan. Aujourd'hui, il ne forme plus que des ombres."
+          ],
+          "choices": [
+            { "text": "Que sont devenus les novices ?", "next": "novices" },
+            { "text": "Qui commande ce rituel ?", "next": "who_commands" }
+          ]
+        },
+        "novices": {
+          "lines": [
+            "Ceux qui résistaient au rituel... n'ont pas survécu. Les autres sont devenus ce que tu affronteras bientôt : des ombres parfaites, vidées de tout sauf de l'obéissance."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "who_commands": {
+          "lines": [
+            "Un maître aveugle, à ce qu'on raconte. Il ne voit rien... et pourtant rien ne lui échappe. Ne fais aucun bruit inutile."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
     "tozen_zone3_hint": {
       "npc": "tozen",
       "displayName": "Tozen, le Moine",
@@ -72,6 +102,37 @@
         "end": { "lines": [], "end": true }
       }
     },
+    "veilleur_zone4_intro": {
+      "npc": "veilleur_seikuji",
+      "displayName": "Le Veilleur de Seikūji",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Un vivant... Seikūji n'a plus accueilli de vivant depuis des générations.",
+            "Je suis ce qu'il reste des bâtisseurs de ce temple — la civilisation féline qui a scellé Hikari no Ne loin des griffes du monde."
+          ],
+          "choices": [
+            { "text": "Pourquoi l'avoir scellée ?", "next": "why_sealed" },
+            { "text": "Que dois-je faire ici ?", "next": "what_to_do" }
+          ]
+        },
+        "why_sealed": {
+          "lines": [
+            "Une lumière aussi pure attire toujours une ombre égale. Nous l'avons appris trop tard, et trop cher.",
+            "Malakar rôdait déjà à cette époque. Nous avons choisi de cacher la Source plutôt que de risquer sa chute."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "what_to_do": {
+          "lines": [
+            "Traverse ce temple. Au sommet, la Source t'attend. Mais prends garde : l'atteindre pourrait bien attirer ce que nous avons toujours redouté."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
     "echo_hikari_zone5_intro": {
       "npc": "echo_hikari",
       "displayName": "L'Écho de Hikari",
@@ -83,6 +144,60 @@
             "Retrouve-les, Kiba. Chaque éclat retrouvé affaiblira l'emprise de l'ombre sur ce lieu."
           ],
           "choices": [{ "text": "Je te ramènerai entière.", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "echo_hikari_zone6_hint": {
+      "npc": "echo_hikari",
+      "displayName": "L'Écho de Hikari",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Ces jardins nourrissaient autrefois tout Seikūji. Regarde ce qu'ils sont devenus sous l'emprise de Malakar.",
+            "Un éclat de moi se trouve quelque part ici, enraciné dans la corruption. Le Jardinier qui veillait sur ce lieu... ne veille plus sur rien de bon."
+          ],
+          "choices": [
+            { "text": "Peut-on le sauver ?", "next": "can_save" },
+            { "text": "Je trouverai l'éclat.", "next": "end" }
+          ]
+        },
+        "can_save": {
+          "lines": [
+            "Je l'ignore, Kiba. Mais chaque parcelle de lumière que tu ranimes ici affaiblit un peu plus l'emprise de l'ombre — sur lui, et sur ce lieu."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "reflet_zone7_intro": {
+      "npc": "reflet",
+      "displayName": "??? (Un reflet)",
+      "startNode": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            "...Tiens. Un visiteur. Ou suis-je le visiteur, et toi le reflet ?",
+            "Cette salle ne ment jamais. Elle montre. Parfois, c'est pire."
+          ],
+          "choices": [
+            { "text": "Qui es-tu vraiment ?", "next": "who" },
+            { "text": "Que montres-tu ?", "next": "what" }
+          ]
+        },
+        "who": {
+          "lines": [
+            "Une question mal posée. Demande plutôt ce que tu es, toi qui portes l'ombre et la lumière dans la même peau."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "what": {
+          "lines": [
+            "Ce que tu refuses de voir. Le Double de Lumière qui t'attend plus loin n'est pas ton ennemi — c'est ta question, posée à voix haute."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
         },
         "end": { "lines": [], "end": true }
       }

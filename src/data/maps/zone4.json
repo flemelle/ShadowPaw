@@ -33,6 +33,13 @@
       "requiresPower": "dash_fantome"
     },
     {
+      "type": "npc",
+      "x": 15,
+      "y": 12,
+      "dialogTree": "veilleur_zone4_intro",
+      "optional": true
+    },
+    {
       "type": "boss_arena",
       "x": 49,
       "y": 12,

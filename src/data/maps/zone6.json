@@ -32,6 +32,13 @@
       "y": 12
     },
     {
+      "type": "npc",
+      "x": 6,
+      "y": 12,
+      "dialogTree": "echo_hikari_zone6_hint",
+      "optional": true
+    },
+    {
       "type": "puzzle_trigger",
       "x": 26,
       "y": 9,
