@@ -368,7 +368,10 @@ export class GameScene extends Phaser.Scene {
     sprite.setTint(0x555555);
     audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
     if (entity.grantsPower) {
-      this.time.delayedCall(500, () => audioManager.play(this, SFX_KEYS.POWER_UNLOCK));
+      this.time.delayedCall(500, () => {
+        audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
+        this.celebratePowerUnlock();
+      });
       powerSystem.unlock(entity.grantsPower);
       this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(entity.grantsPower)?.name}`);
       this.maybeShowPowerTutorial(entity.grantsPower);
@@ -391,6 +394,7 @@ export class GameScene extends Phaser.Scene {
       if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower, 1800);
     } else {
       audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
+      if (entity.grantsPower) this.celebratePowerUnlock();
       this.toast('Énergie absorbée.');
       if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower);
     }
@@ -561,6 +565,60 @@ export class GameScene extends Phaser.Scene {
     keyBindings.justDown('shadowForm');
     keyBindings.justDown('interact');
     this.player.drainEdgeInputs();
+  }
+
+  /**
+   * Petite célébration à l'acquisition d'un pouvoir : Kiba se soulève doucement, un halo de
+   * lumière dorée grossit autour de lui, un rayon vertical descend, et la caméra flashe —
+   * en plus du son déjà joué par l'appelant (SFX_KEYS.POWER_UNLOCK).
+   */
+  private celebratePowerUnlock(): void {
+    const px = this.player.x;
+    const py = this.player.y;
+
+    this.tweens.add({
+      targets: this.player,
+      y: py - 26,
+      duration: 450,
+      ease: 'sine.out',
+      yoyo: true,
+      hold: 300,
+    });
+
+    const burst = this.add
+      .image(px, py, TEX.PLAYER_GLOW)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(50)
+      .setAlpha(0)
+      .setScale(0.6)
+      .setTint(0xfff2c0);
+    this.uiCamera?.ignore(burst);
+    this.tweens.add({
+      targets: burst,
+      alpha: { from: 0, to: 1 },
+      scale: { from: 0.6, to: 3.2 },
+      duration: 900,
+      ease: 'sine.out',
+      onComplete: () => burst.destroy(),
+    });
+
+    const beam = this.add
+      .rectangle(px, py, 46, 400, 0xfff2c0, 0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(49)
+      .setOrigin(0.5, 1);
+    this.uiCamera?.ignore(beam);
+    this.tweens.add({
+      targets: beam,
+      alpha: { from: 0, to: 0.55 },
+      duration: 250,
+      yoyo: true,
+      hold: 450,
+      onComplete: () => beam.destroy(),
+    });
+
+    // Flash chaud/doré plutôt que le flash rouge déjà utilisé pour la chute mortelle.
+    this.cameras.main.flash(350, 255, 240, 200);
   }
 
   /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
