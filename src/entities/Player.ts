@@ -138,7 +138,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (grounded && moving && time > this.nextFootstepAt) {
       this.nextFootstepAt = time + FOOTSTEP_INTERVAL_MS;
       const key = Phaser.Utils.Array.GetRandom(this.footstepVariants as string[]);
-      audioManager.play(this.scene, key, { volume: 0.22 });
+      audioManager.play(this.scene, key, { volume: 0.1 });
     }
   }
 

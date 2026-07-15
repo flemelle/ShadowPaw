@@ -84,6 +84,32 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Précharge en arrière-plan les pistes pas encore en cache, une par une avec un
+   * léger délai entre chaque — sans ça, la première visite d'une zone déclenche un
+   * chargement + décodage audio synchrone au moment de la transition, ce qui se
+   * ressent comme un micro-freeze. Silencieux, ne joue rien, n'interrompt rien.
+   */
+  prefetchMusic(scene: Phaser.Scene, keys: string[]): void {
+    const remaining = keys.filter((k) => !scene.cache.audio.exists(k));
+    if (remaining.length === 0) return;
+    const [next, ...rest] = remaining;
+    try {
+      const path = MUSIC_PATHS[next];
+      if (!path) {
+        this.prefetchMusic(scene, rest);
+        return;
+      }
+      scene.load.audio(next, path);
+      scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+        scene.time.delayedCall(600, () => this.prefetchMusic(scene, rest));
+      });
+      if (!scene.load.isLoading()) scene.load.start();
+    } catch (err) {
+      console.warn(`[AudioManager] prefetchMusic("${next}") failed:`, err);
+    }
+  }
+
   stopMusic(): void {
     try {
       this.currentMusic?.stop();

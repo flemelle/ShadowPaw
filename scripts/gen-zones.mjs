@@ -115,8 +115,17 @@ function generateZone(profile) {
   }
 
   // --- Gates (obstruent un passage en hauteur, jamais dans la rangée de sol elle-même) ---
+  // Avec des cratères plus larges/fréquents, la colonne visée tombe parfois dans une
+  // fosse (pas de sol) : on cherche alors la colonne de sol la plus proche pour que
+  // la gate reste posée sur du solide plutôt que de flotter au-dessus du vide.
   gateSpots.forEach((frac) => {
-    const gx = Math.max(10, Math.min(cols - 10, Math.floor(cols * frac)));
+    let gx = Math.max(10, Math.min(cols - 10, Math.floor(cols * frac)));
+    if (floorTopByCol[gx] == null) {
+      for (let d = 1; d < cols; d++) {
+        if (floorTopByCol[gx - d] != null) { gx -= d; break; }
+        if (floorTopByCol[gx + d] != null) { gx += d; break; }
+      }
+    }
     const floorY = floorTopByCol[gx] ?? rows - 2;
     grid[floorY - 1][gx] = gateChar;
     if (rows - 2 >= floorY) grid[floorY][gx] === '#' && (grid[floorY][gx] = gateChar);
@@ -152,7 +161,7 @@ function pickAt(safeCols, cols, frac, used) {
 const ZONE_PROFILES = {
   zone1_portes_velkhar: {
     cols: 90, rows: 14, ceilingGap: 3, seed: 101,
-    pitChance: 0.05, pitWidth: [2, 3],
+    pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 16, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'C', gateSpots: [0.35, 0.68],
     undulate: false,
@@ -160,7 +169,7 @@ const ZONE_PROFILES = {
   },
   zone2_antre_velours_noir: {
     cols: 100, rows: 14, ceilingGap: 3, seed: 202,
-    pitChance: 0.06, pitWidth: [2, 2],
+    pitChance: 0.1, pitWidth: [3, 5],
     plat: { count: 24, width: [2, 4], heightAbove: [2, 3] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: false,
@@ -168,7 +177,7 @@ const ZONE_PROFILES = {
   },
   zone3_velkhar_foyer_ombres: {
     cols: 100, rows: 16, ceilingGap: 3, seed: 303,
-    pitChance: 0.05, pitWidth: [2, 4],
+    pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 22, width: [3, 6], heightAbove: [2, 3] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: false,
@@ -176,7 +185,7 @@ const ZONE_PROFILES = {
   },
   zone4_seikuji_quietude: {
     cols: 110, rows: 16, ceilingGap: 3, seed: 404,
-    pitChance: 0.04, pitWidth: [2, 3],
+    pitChance: 0.08, pitWidth: [3, 6],
     plat: { count: 30, width: [2, 4], heightAbove: [2, 3] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
@@ -184,7 +193,7 @@ const ZONE_PROFILES = {
   },
   zone5_seikuji_corrompu: {
     cols: 110, rows: 15, ceilingGap: 3, seed: 505,
-    pitChance: 0.05, pitWidth: [2, 3],
+    pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 22, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: false,
@@ -192,7 +201,7 @@ const ZONE_PROFILES = {
   },
   zone6_jardins_oublies: {
     cols: 130, rows: 16, ceilingGap: 3, seed: 606,
-    pitChance: 0.05, pitWidth: [2, 3],
+    pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 28, width: [3, 6], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
@@ -200,7 +209,7 @@ const ZONE_PROFILES = {
   },
   zone7_salle_miroirs: {
     cols: 130, rows: 16, ceilingGap: 3, seed: 707,
-    pitChance: 0.05, pitWidth: [2, 3],
+    pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 26, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'S', gateSpots: [0.2, 0.5, 0.75],
     undulate: false,
@@ -208,7 +217,7 @@ const ZONE_PROFILES = {
   },
   zone8_vide_entre_deux: {
     cols: 90, rows: 14, ceilingGap: 3, seed: 808,
-    pitChance: 0.1, pitWidth: [3, 5],
+    pitChance: 0.14, pitWidth: [4, 7],
     plat: { count: 24, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'S', gateSpots: [],
     undulate: false,

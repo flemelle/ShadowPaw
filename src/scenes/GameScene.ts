@@ -13,6 +13,7 @@ import {
   FALL_DEATH_MARGIN,
   DARK_ZONES,
   TEX,
+  MUSIC_KEYS,
 } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -94,6 +95,11 @@ export class GameScene extends Phaser.Scene {
 
     this.buildHUD();
     this.setupUICamera();
+
+    // Réchauffe le cache des musiques de zone en tâche de fond (une par une, avec
+    // délai) pour qu'une première visite de zone ne déclenche plus de chargement/
+    // décodage audio synchrone pile au moment de la transition (micro-freeze).
+    this.time.delayedCall(1500, () => audioManager.prefetchMusic(this, Object.values(MUSIC_KEYS)));
 
     EventBus.on(GameEvents.DIALOG_END, this.onDialogEnd, this);
     EventBus.on(GameEvents.PUZZLE_EXIT, this.onPuzzleExit, this);
