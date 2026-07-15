@@ -125,17 +125,13 @@ function generateZone(profile) {
   const GAP_X = 3; // colonnes de vide obligatoires de part et d'autre
   const GAP_Y_ABOVE = 3; // dégagement vertical au-dessus (place pour sauter/atterrir)
   const GAP_Y_BELOW = 1;
-  // Une plateforme épaisse de 2 tuiles se lit mieux qu'une simple ligne (moins d'impression
-  // de "texture qui dépasse" du bloc de sol tinté, cf. floor_zoneX.png) sans rien changer à
-  // la position où l'on se tient dessus (toujours py - 1, une case au-dessus du sommet).
-  const PLATFORM_THICKNESS = 2;
 
   const canPlace = (px, py, width) => {
     if (py < 2 || py >= rows - 1) return false;
     for (let dx = -GAP_X; dx < width + GAP_X; dx++) {
       const cx = px + dx;
       if (cx < 0 || cx >= cols) return false;
-      for (let dy = -GAP_Y_ABOVE; dy <= GAP_Y_BELOW + PLATFORM_THICKNESS - 1; dy++) {
+      for (let dy = -GAP_Y_ABOVE; dy <= GAP_Y_BELOW; dy++) {
         const cy = py + dy;
         if (cy < 0 || cy >= rows) continue;
         if (occupied[cy][cx]) return false;
@@ -148,12 +144,8 @@ function generateZone(profile) {
     for (let dx = 0; dx < width; dx++) {
       const cx = px + dx;
       if (cx < 0 || cx >= cols) continue;
-      for (let ty = 0; ty < PLATFORM_THICKNESS; ty++) {
-        const cy = py + ty;
-        if (cy >= rows) break;
-        grid[cy][cx] = '#';
-        occupied[cy][cx] = true;
-      }
+      grid[py][cx] = '#';
+      occupied[py][cx] = true;
       safeCols.push({ x: cx, y: py - 1 });
     }
   };
