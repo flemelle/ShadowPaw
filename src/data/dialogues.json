@@ -7,6 +7,7 @@
       "nodes": {
         "start": {
           "lines": [
+            "Je m'appelle Tozen. Un moine du Clan, si ce nom veut encore dire quelque chose ici.",
             "Un autre chat envoyé dans ces ruines... Le Clan ne recule devant rien.",
             "Tu cherches ton maître, n'est-ce pas ? Ryo est allé plus loin que tu ne l'imagines."
           ],
@@ -87,6 +88,7 @@
         "start": {
           "lines": [
             "Kiba... tu m'as trouvé.",
+            "Ryo. Ou ce qu'il en reste — un souffle accroché à ces ruines, depuis que Malakar m'a arraché au monde des vivants.",
             "Je n'ai pas disparu par lâcheté. Je devais te laisser venir ici seul, sans que Malakar ne se doute de rien.",
             "Atteins Seikūji. Absorbe la Source. C'est notre seule chance."
           ],
@@ -110,7 +112,7 @@
         "start": {
           "lines": [
             "Un vivant... Seikūji n'a plus accueilli de vivant depuis des générations.",
-            "Je suis ce qu'il reste des bâtisseurs de ce temple — la civilisation féline qui a scellé Hikari no Ne loin des griffes du monde."
+            "On m'appelle le Veilleur de Seikūji. Je suis ce qu'il reste des bâtisseurs de ce temple — la civilisation féline qui a scellé Hikari no Ne loin des griffes du monde."
           ],
           "choices": [
             { "text": "Pourquoi l'avoir scellée ?", "next": "why_sealed" },
@@ -140,7 +142,7 @@
       "nodes": {
         "start": {
           "lines": [
-            "Je suis ce qu'il reste de moi-même... brisée en cinq éclats par la corruption de Malakar.",
+            "Je suis l'Écho de Hikari no Ne — ce qu'il reste de moi-même... brisée en cinq éclats par la corruption de Malakar.",
             "Retrouve-les, Kiba. Chaque éclat retrouvé affaiblira l'emprise de l'ombre sur ce lieu."
           ],
           "choices": [{ "text": "Je te ramènerai entière.", "next": "end" }]
@@ -180,6 +182,7 @@
         "start": {
           "lines": [
             "...Tiens. Un visiteur. Ou suis-je le visiteur, et toi le reflet ?",
+            "On pourrait m'appeler un reflet. Ou une question sans réponse — choisis ce qui te dérange le moins.",
             "Cette salle ne ment jamais. Elle montre. Parfois, c'est pire."
           ],
           "choices": [
@@ -210,6 +213,7 @@
       "nodes": {
         "start": {
           "lines": [
+            "Je suis Malakar. Le maître de ce Clan que tu as traversé sans jamais me voir.",
             "Te voilà, petit chat. Tu portes en toi la Lumière et l'Ombre, comme moi jadis.",
             "Rejoins-moi. Ensemble nous parfairons ce que Velkhar a commencé. Ou résiste, et détruis tout ce que tu es."
           ],
