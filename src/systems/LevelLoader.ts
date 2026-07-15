@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, DECOR_KEYS } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -149,7 +149,7 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
   const theme = ZONE_BACKGROUND[zoneMap.id as ZoneId];
   if (!theme) return [];
   const groundPool = DECOR_SETS[theme];
-  const platformPool = groundPool.filter((p) => p.key === DECOR_KEYS.BUSH_ROUND || p.key === DECOR_KEYS.ROCK);
+  const platformPool = groundPool.filter((p) => p.small);
   const sprites: Phaser.GameObjects.Image[] = [];
   const { cols, rows, tiles } = zoneMap;
 

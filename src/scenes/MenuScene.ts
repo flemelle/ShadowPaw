@@ -5,6 +5,8 @@ import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
 import { toggleFullscreen, isFullscreen } from '@/utils/Fullscreen';
 import { ScrollableList } from '@/utils/ScrollableList';
+import { Button } from '@/utils/Button';
+import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
 import levelsData from '@/data/levels.json';
 import {
   startNewGame,
@@ -17,7 +19,7 @@ const PANEL_BG = 0x0d0a16;
 const ACCENT = '#d8b34a';
 const TEXT_COLOR = '#e8e2f0';
 
-/** Écran titre : Jouer / Continuer / Mode Admin (exploration libre des niveaux) / Crédits. */
+/** Écran titre : Jouer / Continuer / Mode Admin (exploration libre des niveaux) / Options / Crédits. */
 export class MenuScene extends Phaser.Scene {
   private zoneListContainer?: Phaser.GameObjects.Container;
   private zoneList?: ScrollableList;
@@ -26,6 +28,7 @@ export class MenuScene extends Phaser.Scene {
   private keyUp!: Phaser.Input.Keyboard.Key;
   private keyDown!: Phaser.Input.Keyboard.Key;
   private creditsBox?: Phaser.GameObjects.Container;
+  private optionsBox?: Phaser.GameObjects.Container;
 
   constructor() {
     super(SCENE_KEYS.MENU);
@@ -73,7 +76,7 @@ export class MenuScene extends Phaser.Scene {
       startNewGame();
       this.scene.start(SCENE_KEYS.GAME);
     });
-    y += 64;
+    y += 60;
 
     if (hasSave) {
       this.makeButton(y, 'Continuer', () => {
@@ -81,14 +84,20 @@ export class MenuScene extends Phaser.Scene {
         continueGame();
         this.scene.start(SCENE_KEYS.GAME);
       });
-      y += 64;
+      y += 60;
     }
 
     this.makeButton(y, 'Mode Admin — explorer librement', () => {
       audioManager.play(this, SFX_KEYS.UI_SELECT);
       this.openZoneSelect();
     });
-    y += 64;
+    y += 60;
+
+    this.makeButton(y, 'Options', () => {
+      audioManager.play(this, SFX_KEYS.UI_SELECT);
+      this.openOptions();
+    });
+    y += 60;
 
     this.makeButton(y, 'Crédits', () => {
       audioManager.play(this, SFX_KEYS.UI_SELECT);
@@ -110,6 +119,7 @@ export class MenuScene extends Phaser.Scene {
     if (!this.keyEsc) return;
     if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
       if (this.zoneListContainer) this.closeZoneSelect();
+      else if (this.optionsBox) this.closeOptions();
       else if (this.creditsBox) this.closeCredits();
     }
     if (this.zoneList) {
@@ -152,24 +162,13 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  private makeButton(y: number, label: string, onClick: () => void): void {
-    const btn = this.add
-      .text(GAME_WIDTH / 2, y, label, {
-        fontFamily: 'monospace',
-        fontSize: '24px',
-        color: TEXT_COLOR,
-        backgroundColor: '#1a1428',
-        padding: { x: 20, y: 10 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    btn.on('pointerover', () => {
-      btn.setColor(ACCENT);
-      audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+  private makeButton(y: number, label: string, onClick: () => void): Button {
+    return new Button(this, GAME_WIDTH / 2, y, label, {
+      fontSize: '22px',
+      minWidth: 340,
+      onClick,
+      onHover: () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 }),
     });
-    btn.on('pointerout', () => btn.setColor(TEXT_COLOR));
-    btn.on('pointerdown', onClick);
   }
 
   /** Mode Admin : sélection du chapitre/zone à explorer, tous pouvoirs débloqués, sans sauvegarde. */
@@ -234,16 +233,11 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
     container.add(hintText);
 
-    const closeBtn = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 32, 'Fermer', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#c56b6b',
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => this.closeZoneSelect());
-    container.add(closeBtn);
+    const closeBtn = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 40, 'Fermer', {
+      textColor: '#c56b6b',
+      onClick: () => this.closeZoneSelect(),
+    });
+    container.add(closeBtn.container);
   }
 
   private closeZoneSelect(): void {
@@ -252,6 +246,19 @@ export class MenuScene extends Phaser.Scene {
     this.zoneList = undefined;
     this.zoneListContainer?.destroy();
     this.zoneListContainer = undefined;
+  }
+
+  private openOptions(): void {
+    if (this.optionsBox) {
+      this.closeOptions();
+      return;
+    }
+    this.optionsBox = buildOptionsOverlay(this, () => this.closeOptions());
+  }
+
+  private closeOptions(): void {
+    this.optionsBox?.destroy();
+    this.optionsBox = undefined;
   }
 
   private showCredits(): void {

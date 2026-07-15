@@ -28,6 +28,9 @@ import type { ComboDef } from '@/systems/PowerSystem';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import { toggleFullscreen, isFullscreen } from '@/utils/Fullscreen';
 import { ScrollableList } from '@/utils/ScrollableList';
+import { Button } from '@/utils/Button';
+import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
+import { keyBindings } from '@/systems/KeyBindings';
 import {
   powerSystem,
   dialogSystem,
@@ -57,13 +60,12 @@ export class GameScene extends Phaser.Scene {
   private powerTooltip!: Phaser.GameObjects.Text;
   private testBanner?: Phaser.GameObjects.Text;
   private debugZoneMenu?: Phaser.GameObjects.Container;
-  private keyE!: Phaser.Input.Keyboard.Key;
-  private keyEsc!: Phaser.Input.Keyboard.Key;
   private keyN!: Phaser.Input.Keyboard.Key;
   private keyF1!: Phaser.Input.Keyboard.Key;
   private keyUp!: Phaser.Input.Keyboard.Key;
   private keyDown!: Phaser.Input.Keyboard.Key;
   private pauseMenu?: Phaser.GameObjects.Container;
+  private optionsBox?: Phaser.GameObjects.Container;
   private zoneList?: ScrollableList;
   private dialogActive = false;
   private puzzleActive = false;
@@ -85,9 +87,9 @@ export class GameScene extends Phaser.Scene {
     this.isTransitioning = false;
     this.loadZone(gameState.currentZone);
 
+    keyBindings.attach(this);
+
     const kb = this.input.keyboard!;
-    this.keyE = kb.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.keyEsc = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyN = kb.addKey(Phaser.Input.Keyboard.KeyCodes.N);
     this.keyF1 = kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
     this.keyUp = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
@@ -250,8 +252,9 @@ export class GameScene extends Phaser.Scene {
     if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyF1)) {
       this.toggleDebugZoneMenu();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
-      if (this.debugZoneMenu) this.toggleDebugZoneMenu();
+    if (keyBindings.justDown('pause')) {
+      if (this.optionsBox) this.closeOptions();
+      else if (this.debugZoneMenu) this.toggleDebugZoneMenu();
       else this.togglePauseMenu();
     }
     if (this.debugZoneMenu && this.zoneList) {
@@ -262,7 +265,7 @@ export class GameScene extends Phaser.Scene {
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
 
     this.updateInteractPrompt();
-    if (Phaser.Input.Keyboard.JustDown(this.keyE)) {
+    if (keyBindings.justDown('interact')) {
       this.tryInteract();
     }
 
@@ -537,12 +540,14 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
 
     this.livesText = this.add
-      .text(GAME_WIDTH - 16, 12, '', {
+      .text(GAME_WIDTH - 20, 16, '', {
         fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#c56b6b',
-        backgroundColor: '#00000080',
-        padding: { x: 8, y: 4 },
+        fontSize: '32px',
+        color: '#ff5a5a',
+        letterSpacing: 10,
+        stroke: '#1a0505',
+        strokeThickness: 4,
+        shadow: { color: '#000000', blur: 6, fill: true },
       })
       .setOrigin(1, 0);
     this.hud.add(this.livesText);
@@ -567,12 +572,17 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1001);
     this.hud.add(this.powerTooltip);
 
-    const controlHint = this.add.text(
-      16,
-      GAME_HEIGHT - 30,
-      '←→: Bouger · ↑/W/Espace: Sauter · E: Interagir · Échap: Pause',
-      { fontFamily: 'monospace', fontSize: '13px', color: '#8a7fa0', backgroundColor: '#00000080', padding: { x: 8, y: 4 } },
-    );
+    const hintLine =
+      `${keyBindings.getKeyName('left')}/${keyBindings.getKeyName('right')}: Bouger · ` +
+      `${keyBindings.getKeyName('jump')}/Espace: Sauter · ${keyBindings.getKeyName('interact')}: Interagir · ` +
+      `${keyBindings.getKeyName('pause')}: Pause`;
+    const controlHint = this.add.text(16, GAME_HEIGHT - 30, hintLine, {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#8a7fa0',
+      backgroundColor: '#00000080',
+      padding: { x: 8, y: 4 },
+    });
     this.hud.add(controlHint);
 
     if (powerSystem.isTestMode()) {
@@ -634,39 +644,60 @@ export class GameScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.PAUSE_OPEN);
     const container = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
     const overlay = this.add.rectangle(GAME_WIDTH / 2, 360, GAME_WIDTH, 720, 0x0d0a16, 0.85);
-    const title = this.add.text(GAME_WIDTH / 2, 260, 'Pause', {
+    const title = this.add.text(GAME_WIDTH / 2, 240, 'Pause', {
       fontFamily: 'monospace',
       fontSize: '32px',
       color: '#d8b34a',
     }).setOrigin(0.5);
-    const resume = this.add
-      .text(GAME_WIDTH / 2, 330, 'Reprendre (ESC)', { fontFamily: 'monospace', fontSize: '20px', color: '#e8e2f0' })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.togglePauseMenu());
-    const fullscreenBtn = this.add
-      .text(GAME_WIDTH / 2, 380, isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran', {
-        fontFamily: 'monospace',
-        fontSize: '20px',
-        color: '#e8e2f0',
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
+
+    const hoverSfx = () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+    const resumeBtn = new Button(this, GAME_WIDTH / 2, 310, 'Reprendre (ESC)', {
+      minWidth: 260,
+      onHover: hoverSfx,
+      onClick: () => this.togglePauseMenu(),
+    });
+    const optionsBtn = new Button(this, GAME_WIDTH / 2, 366, 'Options', {
+      minWidth: 260,
+      onHover: hoverSfx,
+      onClick: () => this.openOptions(),
+    });
+    const fullscreenLabel = () => (isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran');
+    const fullscreenBtn = new Button(this, GAME_WIDTH / 2, 422, fullscreenLabel(), {
+      minWidth: 320,
+      onHover: hoverSfx,
+      onClick: () => {
         toggleFullscreen(this);
-        fullscreenBtn.setText(isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran');
-      });
-    const quit = this.add
-      .text(GAME_WIDTH / 2, 430, 'Quitter vers le menu', { fontFamily: 'monospace', fontSize: '20px', color: '#c56b6b' })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
+        fullscreenBtn.setLabel(fullscreenLabel());
+      },
+    });
+    const quitBtn = new Button(this, GAME_WIDTH / 2, 478, 'Quitter vers le menu', {
+      minWidth: 260,
+      textColor: '#c56b6b',
+      hoverTextColor: '#ff9a9a',
+      onHover: hoverSfx,
+      onClick: () => {
         if (!powerSystem.isTestMode()) persistProgress(this.player.x, this.player.y);
         this.scene.start(SCENE_KEYS.MENU);
-      });
-    container.add([overlay, title, resume, fullscreenBtn, quit]);
+      },
+    });
+    container.add([overlay, title, resumeBtn.container, optionsBtn.container, fullscreenBtn.container, quitBtn.container]);
     this.cameras.main.ignore(container);
     this.pauseMenu = container;
+  }
+
+  private openOptions(): void {
+    if (this.optionsBox) {
+      this.closeOptions();
+      return;
+    }
+    this.optionsBox = buildOptionsOverlay(this, () => this.closeOptions());
+    this.optionsBox.setDepth(2100);
+    this.cameras.main.ignore(this.optionsBox);
+  }
+
+  private closeOptions(): void {
+    this.optionsBox?.destroy();
+    this.optionsBox = undefined;
   }
 
   private toggleDebugZoneMenu(): void {

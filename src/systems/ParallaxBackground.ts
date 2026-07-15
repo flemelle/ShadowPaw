@@ -37,9 +37,22 @@ const STRINGSTAR_LAYERS: LayerSpec[] = [
   { key: 'bg_stringstar_02', scrollFactor: 0.16 },
 ];
 
-export const BACKGROUND_SETS: Record<'FOREST' | 'STRINGSTAR', LayerSpec[]> = {
+/**
+ * Domaine de Velkhar (nuit, cimetière, lune) — pack ajouté ultérieurement, en bien plus
+ * haute résolution que Stringstar Fields (768x416+ contre 288x180), cf. ACKNOWLEDGEMENTS.md.
+ * Remplace le mauvais accord Forest/vide utilisé jusqu'ici pour les zones 1-3 de l'Acte 1.
+ */
+const GRAVEYARD_LAYERS: LayerSpec[] = [
+  { key: 'bg_graveyard_00', scrollFactor: 0.04 },
+  { key: 'bg_graveyard_01', scrollFactor: 0.12 },
+  { key: 'bg_graveyard_02', scrollFactor: 0.26 },
+  { key: 'bg_graveyard_03', scrollFactor: 0.4 },
+];
+
+export const BACKGROUND_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', LayerSpec[]> = {
   FOREST: FOREST_LAYERS,
   STRINGSTAR: STRINGSTAR_LAYERS,
+  GRAVEYARD: GRAVEYARD_LAYERS,
 };
 
 export class ParallaxBackground {
@@ -49,7 +62,7 @@ export class ParallaxBackground {
 
   constructor(
     scene: Phaser.Scene,
-    set: 'FOREST' | 'STRINGSTAR' | null,
+    set: 'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | null,
     zoneWidthPx: number,
     withCorruptionOverlay: boolean,
     ambiance?: ZoneAmbiance,
@@ -59,17 +72,19 @@ export class ParallaxBackground {
       // Marge généreuse des deux côtés pour qu'aucun bord ne soit découvert, quel que soit
       // le scrollFactor de la couche ou la largeur de la zone (nos zones restent < GAME_WIDTH).
       const margin = GAME_WIDTH + zoneWidthPx / 2;
-      // Surcadrage vertical : un scrollFactorY figé à 0 laissait apparaître un vide en
-      // haut/bas dès que la caméra suit le joueur sur les niveaux avec beaucoup de
-      // verticalité (plateformes en hauteur) — la couche décrochait de la fenêtre visible.
-      const vMargin = GAME_HEIGHT * 0.6;
       specs.forEach((spec, i) => {
         const tex = scene.textures.get(spec.key);
         const srcH = tex.source[0]?.height ?? GAME_HEIGHT;
-        const scale = (GAME_HEIGHT + 2 * vMargin) / srcH;
+        // Échelle qui fait tenir la composition d'origine (ciel en haut, sol en bas) exactement
+        // dans la hauteur d'écran — ne JAMAIS la modifier pour "surcadrer" verticalement : ces
+        // images ne sont pas conçues pour se répéter à la verticale (bandes de ciel à plat), un
+        // rééchantillonnage recentré fait apparaître une tranche différente = bandes de couleur
+        // qui jurent. Le suivi vertical de la caméra (scrollFactorY ci-dessous) suffit à éviter
+        // le vide en haut/bas sur nos zones, plus courtes que GAME_HEIGHT en pixels monde.
+        const scale = GAME_HEIGHT / srcH;
         const tileW = (GAME_WIDTH + 2 * margin) / scale;
 
-        const layer = scene.add.tileSprite(-margin, -vMargin, tileW, srcH, spec.key).setOrigin(0, 0);
+        const layer = scene.add.tileSprite(-margin, 0, tileW, srcH, spec.key).setOrigin(0, 0);
         layer.setScale(scale);
         layer.setScrollFactor(spec.scrollFactor, spec.scrollFactor);
         layer.setDepth(-100 + i);

@@ -65,6 +65,22 @@ Aucune licence explicite fournie avec le pack (readme informel de
 remerciement aux acheteurs/Patreons) — **à vérifier par l'utilisateur** avant
 toute distribution publique/commerciale.
 
+## Décors + décor + tileset — pack cimetière (Anokolisa)
+
+4 calques (`public/assets/images/backgrounds/graveyard/`, lune/nuages, silhouette
+d'église et cimetière, buissons/pierres tombales) utilisés en zones 1, 2 et 3
+(Domaine de Velkhar) — en bien plus haute résolution (768×416 et plus) que les
+packs précédents, remplaçant l'accord Forest/vide utilisé jusque-là pour ces
+zones. Deux sprites de décor en ont aussi été extraits
+(`images/decor/graveyard_statue.png`, `graveyard_brush.png`) et un tileset
+pierre/fer forgé (`images/tiles/graveyard_tileset.png`, non encore exploité en
+tuiles de gameplay).
+
+**Licence (`Social/Autor_note.txt` du pack)** : usage commercial et non
+commercial libre, crédit apprécié mais non obligatoire — sauf recolorisation/
+modification de forme, où même le crédit optionnel saute. Nos calques ont été
+recadrés mais pas recolorés.
+
 ## Notes
 
 - Les sprites de **personnage** (joueur) et tout ce qui relève du **combat**

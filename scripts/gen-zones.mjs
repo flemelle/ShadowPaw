@@ -163,7 +163,11 @@ const ZONE_PROFILES = {
     cols: 90, rows: 14, ceilingGap: 3, seed: 101,
     pitChance: 0.09, pitWidth: [3, 6],
     plat: { count: 16, width: [3, 5], heightAbove: [2, 3] },
-    gateChar: 'C', gateSpots: [0.35, 0.68],
+    // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
+    // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
+    // qu'en battant le boss de cette même zone. Sans ça, la zone était infranchissable
+    // hors Mode Admin (cf. "les pouvoirs doivent s'acquérir au fur et à mesure").
+    gateChar: 'C', gateSpots: [],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
   },

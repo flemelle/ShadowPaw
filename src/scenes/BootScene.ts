@@ -77,6 +77,9 @@ export class BootScene extends Phaser.Scene {
     ['00', '01', '02'].forEach((n) => {
       this.load.image(`bg_stringstar_${n}`, `${ASSET_BASE}/images/backgrounds/stringstar/layer_${n}.png`);
     });
+    ['00', '01', '02', '03'].forEach((n) => {
+      this.load.image(`bg_graveyard_${n}`, `${ASSET_BASE}/images/backgrounds/graveyard/layer_${n}.png`);
+    });
 
     // --- Textures de sol par zone (pré-teintées, cf. Constants.ZONE_FLOOR_TEX) ---
     Object.entries(ZONE_FLOOR_TEX).forEach(([zoneId, texKey]) => {
@@ -105,6 +108,7 @@ export class BootScene extends Phaser.Scene {
 
     this.generatePlayerTexture();
     this.generateGlowTexture();
+    this.generatePortraitTextures();
     this.generateMarkerTexture(TEX.NPC, 0x4ac9e0, 'circle');
     this.generateMarkerTexture(TEX.BOSS_ARENA, 0xd63b3b, 'diamond');
     this.generateMarkerTexture(TEX.ZONE_EXIT, 0x4ae08a, 'arrow');
@@ -199,6 +203,53 @@ export class BootScene extends Phaser.Scene {
     }
     g.generateTexture(TEX.PLAYER_GLOW, size, size);
     g.destroy();
+  }
+
+  /**
+   * Grandes silhouettes pour l'overlay de dialogue (cf. DialogScene) : mêmes formes
+   * simples que les textures de gameplay, juste agrandies — pas d'art de personnage
+   * détaillé (hors scope, cf. message.txt), seulement des silhouettes reconnaissables.
+   */
+  private generatePortraitTextures(): void {
+    const w = 220;
+    const h = 360;
+
+    const player = this.make.graphics({ x: 0, y: 0 });
+    const bodyTop = 60;
+    const bodyW = 150;
+    const bodyH = h - bodyTop;
+    const bodyX = (w - bodyW) / 2;
+    // Deux oreilles avant le corps, pour lire "chat" même en grande silhouette plate.
+    player.fillStyle(0x9a9aa5, 1);
+    player.fillTriangle(bodyX + 15, bodyTop + 10, bodyX + 40, bodyTop - 35, bodyX + 55, bodyTop + 10);
+    player.fillStyle(0x5a2e8a, 1);
+    player.fillTriangle(bodyX + bodyW - 55, bodyTop + 10, bodyX + bodyW - 40, bodyTop - 35, bodyX + bodyW - 15, bodyTop + 10);
+    player.fillStyle(0x9a9aa5, 1);
+    player.fillRoundedRect(bodyX, bodyTop, bodyW / 2, bodyH, 18);
+    player.fillStyle(0x5a2e8a, 1);
+    player.fillRoundedRect(bodyX + bodyW / 2, bodyTop, bodyW / 2, bodyH, 18);
+    player.fillStyle(0xdedede, 1);
+    player.fillCircle(bodyX + bodyW / 2, bodyTop + 55, 20);
+    player.generateTexture(TEX.PLAYER_PORTRAIT, w, h);
+    player.destroy();
+
+    // Moine encapuchonné : silhouette de robe + yeux luminescents, cf. Tozen dans les dialogues.
+    const npc = this.make.graphics({ x: 0, y: 0 });
+    const robeTop = 70;
+    npc.fillStyle(0x241a33, 1);
+    npc.fillTriangle(w / 2, robeTop - 40, w / 2 - 60, robeTop + 30, w / 2 + 60, robeTop + 30);
+    npc.beginPath();
+    npc.moveTo(w / 2 - 45, robeTop + 20);
+    npc.lineTo(w / 2 + 45, robeTop + 20);
+    npc.lineTo(w / 2 + 85, h);
+    npc.lineTo(w / 2 - 85, h);
+    npc.closePath();
+    npc.fillPath();
+    npc.fillStyle(0x4ac9e0, 0.85);
+    npc.fillCircle(w / 2 - 16, robeTop + 15, 5);
+    npc.fillCircle(w / 2 + 16, robeTop + 15, 5);
+    npc.generateTexture(TEX.NPC_PORTRAIT, w, h);
+    npc.destroy();
   }
 
   private generateMarkerTexture(key: string, color: number, shape: 'circle' | 'diamond' | 'arrow' | 'square' | 'star' | 'shard'): void {

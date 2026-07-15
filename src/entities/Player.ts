@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TEX, SFX_KEYS, FOOTSTEP_VARIANTS } from '@/utils/Constants';
 import type { PowerSystem } from '@/systems/PowerSystem';
 import { audioManager } from '@/systems/AudioManager';
+import { keyBindings } from '@/systems/KeyBindings';
 
 const MOVE_SPEED = 200;
 const JUMP_SPEED = 480;
@@ -17,9 +18,12 @@ const JUMP_BUFFER_MS = 110;
  * Kiba — mouvement de plateforme et traversée liée aux pouvoirs uniquement.
  * Ni combat, ni points de vie, ni animations de personnage : hors scope
  * (cf. message.txt — "à part les mobs, les dynamiques de combats et les personnages").
+ * Les touches (gauche/droite/saut/dash/forme ombre) sont remappables via
+ * l'écran Options — cf. systems/KeyBindings.
  */
 export class Player extends Phaser.Physics.Arcade.Sprite {
-  private keys: Record<string, Phaser.Input.Keyboard.Key>;
+  private downKey: Phaser.Input.Keyboard.Key;
+  private spaceKey: Phaser.Input.Keyboard.Key;
   private isDashing = false;
   private dashUntil = 0;
   private isShadowForm = false;
@@ -39,20 +43,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDragX(900);
     (this.body as Phaser.Physics.Arcade.Body).setMaxVelocity(DASH_SPEED, 900);
 
-    const kb = scene.input.keyboard!;
-    this.keys = {
-      left: kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
-      right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
-      up: kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
-      down: kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
-      a: kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      d: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      w: kb.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      space: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
-      dash: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
-      shadow: kb.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
-      light: kb.addKey(Phaser.Input.Keyboard.KeyCodes.F),
-    };
+    // Touche fixe (non remappable) réservée au noclip du Mode Admin.
+    this.downKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+    // Espace saute toujours, en plus de la touche "Sauter" remappable (défaut ↑) : convention
+    // universelle de plateformer, pénible à casser pour qui la tape par réflexe (cf. retours).
+    this.spaceKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
   }
 
   setFootstepSurface(variants: readonly string[]): void {
@@ -74,19 +69,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   update(time: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
-    const left = this.keys.left.isDown || this.keys.a.isDown;
-    const right = this.keys.right.isDown || this.keys.d.isDown;
-    const jumpKeyDown = this.keys.up.isDown || this.keys.w.isDown || this.keys.space.isDown;
-    const jumpJustPressed =
-      Phaser.Input.Keyboard.JustDown(this.keys.up) ||
-      Phaser.Input.Keyboard.JustDown(this.keys.w) ||
-      Phaser.Input.Keyboard.JustDown(this.keys.space);
+    const left = keyBindings.isDown('left');
+    const right = keyBindings.isDown('right');
+    const jumpKeyDown = keyBindings.isDown('jump') || this.spaceKey.isDown;
+    const jumpJustPressed = keyBindings.justDown('jump') || Phaser.Input.Keyboard.JustDown(this.spaceKey);
 
     if (body.blocked.down || body.touching.down) this.lastGroundedAt = time;
     if (jumpJustPressed) this.jumpPressedAt = time;
 
     if (this.noclip) {
-      const down = this.keys.down.isDown;
+      const down = this.downKey.isDown;
       body.setVelocity(
         (left ? -1 : 0) * MOVE_SPEED + (right ? 1 : 0) * MOVE_SPEED,
         (jumpKeyDown ? -1 : 0) * MOVE_SPEED + (down ? 1 : 0) * MOVE_SPEED,
@@ -107,22 +99,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
       }
 
-      if (
-        this.powers.has('dash_fantome') &&
-        Phaser.Input.Keyboard.JustDown(this.keys.dash) &&
-        !this.isDashing
-      ) {
+      if (this.powers.has('dash_fantome') && keyBindings.justDown('dash') && !this.isDashing) {
         this.startDash(time);
       }
       if (this.isDashing && time > this.dashUntil) {
         this.isDashing = false;
       }
 
-      if (
-        this.powers.has('forme_ombre') &&
-        Phaser.Input.Keyboard.JustDown(this.keys.shadow) &&
-        !this.isShadowForm
-      ) {
+      if (this.powers.has('forme_ombre') && keyBindings.justDown('shadowForm') && !this.isShadowForm) {
         this.startShadowForm(time);
       }
       if (this.isShadowForm && time > this.shadowFormUntil) {

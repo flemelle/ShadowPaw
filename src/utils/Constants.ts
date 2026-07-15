@@ -91,7 +91,9 @@ export const TEX = {
   LIGHT_OBSTACLE: 'tex_light_obstacle',
   PLAYER: 'tex_player',
   PLAYER_GLOW: 'tex_player_glow',
+  PLAYER_PORTRAIT: 'tex_player_portrait',
   NPC: 'tex_npc',
+  NPC_PORTRAIT: 'tex_npc_portrait',
   BOSS_ARENA: 'tex_boss_arena',
   ZONE_EXIT: 'tex_zone_exit',
   PUZZLE_TRIGGER: 'tex_puzzle_trigger',
@@ -183,17 +185,21 @@ export const FOOTSTEP_VARIANTS = {
 export const BG_KEYS = {
   FOREST: 'forest',
   STRINGSTAR: 'stringstar',
+  GRAVEYARD: 'graveyard',
 } as const;
 
 export const ZONE_BACKGROUND: Record<ZoneId, keyof typeof BG_KEYS | null> = {
-  zone1_portes_velkhar: 'FOREST',
-  zone2_antre_velours_noir: null,
-  zone3_velkhar_foyer_ombres: null,
+  // Les 3 zones du Domaine de Velkhar partagent un même décor peint (nuit, lune,
+  // cimetière/dojo en ruines) pour une cohérence de lieu — cf. ACKNOWLEDGEMENTS.md.
+  zone1_portes_velkhar: 'GRAVEYARD',
+  zone2_antre_velours_noir: 'GRAVEYARD',
+  zone3_velkhar_foyer_ombres: 'GRAVEYARD',
   zone4_seikuji_quietude: 'STRINGSTAR',
   zone5_seikuji_corrompu: 'STRINGSTAR',
   zone6_jardins_oublies: 'FOREST',
   zone7_salle_miroirs: 'STRINGSTAR',
-  zone8_vide_entre_deux: 'STRINGSTAR',
+  // Décor abstrait : aucun fond peint, seul le voile de couleur (ZONE_AMBIANCE) habille le vide.
+  zone8_vide_entre_deux: null,
 };
 
 /** Zones où la super­position de corruption (ombre grandissante) réagit aux éclats collectés. */
@@ -254,13 +260,15 @@ export const DARK_ZONES: ZoneId[] = [
   'zone8_vide_entre_deux',
 ];
 
-/** Décors (Stringstar Fields, cf. ACKNOWLEDGEMENTS.md) dispersés dans les zones ayant un décor peint. */
+/** Décors (Stringstar Fields / Graveyard pack, cf. ACKNOWLEDGEMENTS.md) dispersés dans les zones ayant un décor peint. */
 export const DECOR_KEYS = {
   TREE_BIG: 'decor_tree_big',
   TREE_SMALL: 'decor_tree_small',
   BUSH_ROUND: 'decor_bush_round',
   ROCK: 'decor_rock',
   PLATFORM_PLANK: 'decor_platform_plank',
+  GRAVEYARD_STATUE: 'decor_graveyard_statue',
+  GRAVEYARD_BRUSH: 'decor_graveyard_brush',
 } as const;
 
 export const DECOR_PATHS: Record<string, string> = {
@@ -269,19 +277,32 @@ export const DECOR_PATHS: Record<string, string> = {
   [DECOR_KEYS.BUSH_ROUND]: `${ASSET_BASE}/images/decor/bush_round.png`,
   [DECOR_KEYS.ROCK]: `${ASSET_BASE}/images/decor/rock.png`,
   [DECOR_KEYS.PLATFORM_PLANK]: `${ASSET_BASE}/images/decor/platform_plank.png`,
+  [DECOR_KEYS.GRAVEYARD_STATUE]: `${ASSET_BASE}/images/decor/graveyard_statue.png`,
+  [DECOR_KEYS.GRAVEYARD_BRUSH]: `${ASSET_BASE}/images/decor/graveyard_brush.png`,
 };
 
-/** Pool de décors par thème de fond (cf. BG_KEYS / ZONE_BACKGROUND) — placés au sol, sans collision. */
-export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR', { key: string; scale: number }[]> = {
+/**
+ * Pool de décors par thème de fond (cf. BG_KEYS / ZONE_BACKGROUND) — placés au sol, sans
+ * collision. `small: true` marque les décors assez compacts pour tenir sur une plateforme
+ * flottante (cf. `placePlatformDecor` dans LevelLoader.ts) ; les autres ne sont posés qu'au sol.
+ */
+export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', { key: string; scale: number; small?: boolean }[]> = {
   FOREST: [
     { key: DECOR_KEYS.TREE_SMALL, scale: 1 },
-    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1 },
-    { key: DECOR_KEYS.ROCK, scale: 1 },
+    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1, small: true },
+    { key: DECOR_KEYS.ROCK, scale: 1, small: true },
   ],
   STRINGSTAR: [
     { key: DECOR_KEYS.TREE_BIG, scale: 0.85 },
     { key: DECOR_KEYS.TREE_SMALL, scale: 0.9 },
-    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1 },
-    { key: DECOR_KEYS.ROCK, scale: 0.9 },
+    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1, small: true },
+    { key: DECOR_KEYS.ROCK, scale: 0.9, small: true },
+  ],
+  // Cimetière du Domaine de Velkhar : statues et broussailles mortes plutôt que les
+  // arbres/rochers "Stringstar" utilisés ailleurs, pour rester cohérent avec le fond peint.
+  GRAVEYARD: [
+    { key: DECOR_KEYS.GRAVEYARD_STATUE, scale: 0.95 },
+    { key: DECOR_KEYS.GRAVEYARD_BRUSH, scale: 1.1, small: true },
+    { key: DECOR_KEYS.ROCK, scale: 0.9, small: true },
   ],
 };

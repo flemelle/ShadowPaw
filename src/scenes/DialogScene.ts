@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS, TEX } from '@/utils/Constants';
 import { dialogSystem } from '@/systems/GameState';
 import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
@@ -9,12 +9,27 @@ interface DialogSceneData {
   treeId: string;
 }
 
-/** Overlay de dialogue PNJ : texte + choix, pilotée par DialogSystem (arbre + flags). */
+const BOX_WIDTH = GAME_WIDTH - 80;
+const BOX_BOTTOM = GAME_HEIGHT - 40;
+const BOX_MIN_HEIGHT = 170;
+const BOX_MAX_HEIGHT = GAME_HEIGHT - 160;
+const TEXT_X = 100;
+const TEXT_WIDTH = BOX_WIDTH - 200;
+const CHOICE_LINE_H = 30;
+
+/**
+ * Overlay de dialogue PNJ : texte + choix, pilotée par DialogSystem (arbre + flags).
+ * La case grandit vers le haut selon la longueur du texte/nombre de choix (plutôt qu'une
+ * hauteur fixe) pour ne jamais laisser le contenu déborder de son cadre.
+ */
 export class DialogScene extends Phaser.Scene {
+  private boxBg!: Phaser.GameObjects.Graphics;
   private boxText!: Phaser.GameObjects.Text;
   private nameText!: Phaser.GameObjects.Text;
   private choiceTexts: Phaser.GameObjects.Text[] = [];
   private continueHint!: Phaser.GameObjects.Text;
+  private playerPortrait!: Phaser.GameObjects.Image;
+  private npcPortrait!: Phaser.GameObjects.Image;
   private treeId!: string;
   private keySpace!: Phaser.Input.Keyboard.Key;
 
@@ -26,25 +41,29 @@ export class DialogScene extends Phaser.Scene {
     this.treeId = data.treeId;
     const tree = dialogSystem.trees[this.treeId];
 
-    const boxY = GAME_HEIGHT - 170;
-    this.add.rectangle(GAME_WIDTH / 2, boxY, GAME_WIDTH - 80, 220, 0x0d0a16, 0.95).setStrokeStyle(2, 0xd8b34a);
+    // Silhouettes en grand de part et d'autre de la case — Kiba à gauche, le PNJ à
+    // droite — ajoutées avant le fond de la case pour rester visuellement "derrière" elle.
+    this.playerPortrait = this.add.image(10, BOX_BOTTOM, TEX.PLAYER_PORTRAIT).setOrigin(0, 1).setAlpha(0.92);
+    this.npcPortrait = this.add.image(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);
 
-    this.nameText = this.add.text(100, boxY - 90, tree?.displayName ?? '???', {
+    this.boxBg = this.add.graphics();
+
+    this.nameText = this.add.text(TEXT_X, 0, tree?.displayName ?? '???', {
       fontFamily: 'monospace',
       fontSize: '18px',
       color: '#d8b34a',
     });
 
-    this.boxText = this.add.text(100, boxY - 55, '', {
+    this.boxText = this.add.text(TEXT_X, 0, '', {
       fontFamily: 'monospace',
       fontSize: '17px',
       color: '#e8e2f0',
-      wordWrap: { width: GAME_WIDTH - 200 },
+      wordWrap: { width: TEXT_WIDTH },
       lineSpacing: 6,
     });
 
     this.continueHint = this.add
-      .text(GAME_WIDTH - 100, boxY + 80, 'Espace ▸', { fontFamily: 'monospace', fontSize: '14px', color: '#8a7fa0' })
+      .text(GAME_WIDTH - 100, 0, 'Espace ▸', { fontFamily: 'monospace', fontSize: '14px', color: '#8a7fa0' })
       .setOrigin(1, 0.5);
 
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -74,11 +93,32 @@ export class DialogScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.DIALOG_ADVANCE, { volume: 0.4 });
     this.boxText.setText(node.lines.join('\n\n'));
 
-    if (node.choices && node.choices.length > 0) {
+    const choiceCount = node.choices?.length ?? 0;
+    // Hauteur nécessaire : header (nom) + texte + choix éventuels + marges — jamais moins
+    // que BOX_MIN_HEIGHT, jamais plus que BOX_MAX_HEIGHT (au-delà, on tronquerait plutôt
+    // que de recouvrir le HUD ; la longueur des dialogues.json reste bien en-deçà en pratique).
+    const headerH = 46;
+    const textH = this.boxText.height;
+    const choicesH = choiceCount > 0 ? choiceCount * CHOICE_LINE_H + 16 : 30;
+    const contentH = headerH + textH + choicesH + 32;
+    const boxHeight = Phaser.Math.Clamp(contentH, BOX_MIN_HEIGHT, BOX_MAX_HEIGHT);
+    const boxTop = BOX_BOTTOM - boxHeight;
+
+    this.boxBg.clear();
+    this.boxBg.fillStyle(0x0d0a16, 0.95);
+    this.boxBg.fillRect(GAME_WIDTH / 2 - BOX_WIDTH / 2, boxTop, BOX_WIDTH, boxHeight);
+    this.boxBg.lineStyle(2, 0xd8b34a, 1);
+    this.boxBg.strokeRect(GAME_WIDTH / 2 - BOX_WIDTH / 2, boxTop, BOX_WIDTH, boxHeight);
+
+    this.nameText.setPosition(TEXT_X, boxTop + 18);
+    this.boxText.setPosition(TEXT_X, boxTop + 18 + headerH);
+
+    if (choiceCount > 0) {
       this.continueHint.setVisible(false);
-      node.choices.forEach((choice, i) => {
+      const choicesTop = this.boxText.y + textH + 16;
+      node.choices!.forEach((choice, i) => {
         const t = this.add
-          .text(120, GAME_HEIGHT - 90 + i * 26, `▸ ${choice.text}`, {
+          .text(TEXT_X + 20, choicesTop + i * CHOICE_LINE_H, `▸ ${choice.text}`, {
             fontFamily: 'monospace',
             fontSize: '16px',
             color: '#e8e2f0',
@@ -97,6 +137,7 @@ export class DialogScene extends Phaser.Scene {
         this.choiceTexts.push(t);
       });
     } else {
+      this.continueHint.setPosition(GAME_WIDTH - 100, BOX_BOTTOM - 24);
       this.continueHint.setVisible(true);
     }
   }
