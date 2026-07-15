@@ -67,6 +67,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.isShadowForm;
   }
 
+  /**
+   * Consomme les appuis "juste pressés" sans agir. À appeler tant qu'un overlay (dialogue,
+   * tutoriel, puzzle) bloque `GameScene.update()` : sans ça, l'Espace qui sert à valider/fermer
+   * l'overlay reste "en attente" sur cette touche fixe et se rejoue en saut dès que la scène
+   * reprend la main, une frame plus tard.
+   */
+  drainEdgeInputs(): void {
+    Phaser.Input.Keyboard.JustDown(this.spaceKey);
+  }
+
   update(time: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const left = keyBindings.isDown('left');

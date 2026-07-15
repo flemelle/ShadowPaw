@@ -253,6 +253,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
+    if (this.dialogActive || this.puzzleActive || this.tutorialActive) {
+      // Tant que l'overlay reste ouvert plusieurs frames, continue à drainer (cf.
+      // drainEdgeInputs plus bas pour l'explication complète du problème).
+      this.drainEdgeInputs();
+    }
     if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.isDead || this.isTransitioning) return;
 
     if (this.player.y > this.built.heightPx + FALL_DEATH_MARGIN) {
@@ -489,6 +494,7 @@ export class GameScene extends Phaser.Scene {
   private onDialogEnd(): void {
     this.dialogActive = false;
     this.scene.stop(SCENE_KEYS.DIALOG);
+    this.drainEdgeInputs();
   }
 
   // ---------- Tutoriel ----------
@@ -503,6 +509,23 @@ export class GameScene extends Phaser.Scene {
   private onTutorialEnd(): void {
     this.tutorialActive = false;
     this.scene.stop(SCENE_KEYS.TUTORIAL);
+    this.drainEdgeInputs();
+  }
+
+  /**
+   * Consomme les touches "juste pressées" liées au gameplay (saut/dash/forme ombre/interagir,
+   * y compris l'Espace fixe de secours pour le saut) sans agir dessus. Un dialogue/tutoriel/
+   * puzzle se ferme souvent via Espace ou E — des touches qui déclenchent aussi une action en
+   * jeu — et DialogScene/TutorialScene se mettent à jour avant GameScene dans la boucle de la
+   * scène : sans ce drain appelé au moment même de la fermeture, le flag "juste pressée" reste
+   * en attente sur la touche du joueur et se rejoue en saut (ou pire) dès cette même frame.
+   */
+  private drainEdgeInputs(): void {
+    keyBindings.justDown('jump');
+    keyBindings.justDown('dash');
+    keyBindings.justDown('shadowForm');
+    keyBindings.justDown('interact');
+    this.player.drainEdgeInputs();
   }
 
   /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
@@ -528,6 +551,7 @@ export class GameScene extends Phaser.Scene {
   private onPuzzleExit(): void {
     this.puzzleActive = false;
     this.scene.stop(SCENE_KEYS.PUZZLE);
+    this.drainEdgeInputs();
   }
 
   private onComboTriggered(combo: ComboDef): void {
