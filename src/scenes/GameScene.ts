@@ -468,7 +468,30 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Un dialogue/tutoriel/puzzle resté ouvert (ex. le tutoriel d'intro juste après le spawn, ou
+   * un mini tutoriel de pouvoir programmé quelques centaines de ms plus tôt et pas encore
+   * affiché) masquait l'écran de Game Over et, surtout, cassait le retour au menu. Appelée à
+   * la fois immédiatement et juste avant la transition finale, pour couvrir aussi le cas où
+   * l'overlay s'ouvre PENDANT l'attente du Game Over plutôt qu'avant.
+   */
+  private closeOverlayScenes(): void {
+    this.dialogActive = false;
+    this.tutorialActive = false;
+    this.puzzleActive = false;
+    this.scene.stop(SCENE_KEYS.DIALOG);
+    this.scene.stop(SCENE_KEYS.TUTORIAL);
+    this.scene.stop(SCENE_KEYS.PUZZLE);
+  }
+
   private showGameOver(): void {
+    this.closeOverlayScenes();
+
+    // Les pouvoirs/flags/puzzles déjà acquis cette session doivent survivre au Game Over —
+    // sans ça, mourir avant d'avoir atteint un nouveau point de sauvegarde naturel (boss,
+    // autel, sortie de zone) donnait l'impression que "tout" repartait de la dernière fois.
+    if (!powerSystem.isTestMode()) persistProgress(this.player.x, this.player.y);
+
     audioManager.play(this, SFX_KEYS.ENDING_NEGATIVE, { volume: 0.5 });
     const container = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
     const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05040a, 0.92);
@@ -480,7 +503,16 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     container.add([overlay, title, subtitle]);
     this.cameras.main.ignore(container);
-    this.time.delayedCall(2200, () => this.scene.start(SCENE_KEYS.MENU));
+    // window.setTimeout plutôt que this.time.delayedCall : si une autre scène (le tutoriel
+    // d'intro, typiquement) se lance pendant que ce minuteur patiente, l'horloge de GameScene
+    // "oublie" silencieusement tout minuteur encore en attente — vécu concrètement comme un
+    // Game Over qui reste bloqué à l'écran pour de bon. setTimeout ne dépend pas de cette
+    // horloge et déclenche la transition quoi qu'il arrive entre-temps.
+    window.setTimeout(() => {
+      if (!this.scene.isActive()) return;
+      this.closeOverlayScenes();
+      this.scene.start(SCENE_KEYS.MENU);
+    }, 2200);
   }
 
   // ---------- Dialogue ----------
