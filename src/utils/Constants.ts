@@ -8,6 +8,7 @@ export const SCENE_KEYS = {
   MENU: 'MenuScene',
   GAME: 'GameScene',
   DIALOG: 'DialogScene',
+  TUTORIAL: 'TutorialScene',
   PUZZLE: 'PuzzleScene',
   END: 'EndScene',
 } as const;

@@ -14,8 +14,9 @@ import {
   DARK_ZONES,
   TEX,
   MUSIC_KEYS,
+  ZONE_IDS,
 } from '@/utils/Constants';
-import type { ZoneId } from '@/utils/Constants';
+import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
 import { CameraSystem } from '@/systems/CameraSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
@@ -31,6 +32,8 @@ import { ScrollableList } from '@/utils/ScrollableList';
 import { Button } from '@/utils/Button';
 import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
 import { keyBindings } from '@/systems/KeyBindings';
+import { buildIntroTutorialSteps, buildPowerTutorialSteps } from '@/systems/TutorialContent';
+import type { TutorialStep } from '@/systems/TutorialContent';
 import {
   powerSystem,
   dialogSystem,
@@ -69,6 +72,7 @@ export class GameScene extends Phaser.Scene {
   private zoneList?: ScrollableList;
   private dialogActive = false;
   private puzzleActive = false;
+  private tutorialActive = false;
   private defeatedThisZone = new Set<string>();
   private lives = LIVES_START;
   private isDead = false;
@@ -81,11 +85,23 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.dialogActive = false;
     this.puzzleActive = false;
+    this.tutorialActive = false;
     this.defeatedThisZone = new Set();
     this.lives = LIVES_START;
     this.isDead = false;
     this.isTransitioning = false;
     this.loadZone(gameState.currentZone);
+
+    // Tutoriel d'introduction : uniquement au tout début d'une vraie partie (pas en Mode
+    // Admin), une seule fois — dialogSystem.hasFlag survit à la sauvegarde (cf. persistProgress).
+    if (
+      gameState.currentZone === ZONE_IDS[0] &&
+      !powerSystem.isTestMode() &&
+      !dialogSystem.hasFlag('tuto_intro_seen')
+    ) {
+      dialogSystem.setFlag('tuto_intro_seen');
+      this.time.delayedCall(700, () => this.startTutorial(buildIntroTutorialSteps()));
+    }
 
     keyBindings.attach(this);
 
@@ -108,12 +124,14 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(GameEvents.PUZZLE_SOLVED, this.onPuzzleSolved, this);
     EventBus.on(GameEvents.COMBO_TRIGGERED, this.onComboTriggered, this);
     EventBus.on(GameEvents.SHARD_COLLECTED, this.onShardCollected, this);
+    EventBus.on(GameEvents.TUTORIAL_END, this.onTutorialEnd, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       EventBus.off(GameEvents.DIALOG_END, this.onDialogEnd, this);
       EventBus.off(GameEvents.PUZZLE_EXIT, this.onPuzzleExit, this);
       EventBus.off(GameEvents.PUZZLE_SOLVED, this.onPuzzleSolved, this);
       EventBus.off(GameEvents.COMBO_TRIGGERED, this.onComboTriggered, this);
       EventBus.off(GameEvents.SHARD_COLLECTED, this.onShardCollected, this);
+      EventBus.off(GameEvents.TUTORIAL_END, this.onTutorialEnd, this);
     });
   }
 
@@ -235,7 +253,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
-    if (this.dialogActive || this.puzzleActive || this.isDead || this.isTransitioning) return;
+    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.isDead || this.isTransitioning) return;
 
     if (this.player.y > this.built.heightPx + FALL_DEATH_MARGIN) {
       this.handleFallDeath();
@@ -345,6 +363,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(500, () => audioManager.play(this, SFX_KEYS.POWER_UNLOCK));
       powerSystem.unlock(entity.grantsPower);
       this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(entity.grantsPower)?.name}`);
+      this.maybeShowPowerTutorial(entity.grantsPower);
     } else {
       this.toast('Gardien vaincu.');
     }
@@ -361,9 +380,11 @@ export class GameScene extends Phaser.Scene {
       audioManager.play(this, SFX_KEYS.PIVOT_ABSORB);
       this.time.delayedCall(700, () => audioManager.play(this, SFX_KEYS.PIVOT_STING));
       this.toast('Hikari no Ne absorbée... Malakar surgit et corrompt la Source. L\'Acte 2 commence.');
+      if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower, 1800);
     } else {
       audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
       this.toast('Énergie absorbée.');
+      if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower);
     }
     sprite.setTint(0xffe27a);
     persistProgress(this.player.x, this.player.y);
@@ -468,6 +489,28 @@ export class GameScene extends Phaser.Scene {
   private onDialogEnd(): void {
     this.dialogActive = false;
     this.scene.stop(SCENE_KEYS.DIALOG);
+  }
+
+  // ---------- Tutoriel ----------
+
+  private startTutorial(steps: TutorialStep[]): void {
+    if (steps.length === 0) return;
+    this.tutorialActive = true;
+    this.player.setVelocity(0, 0);
+    this.scene.launch(SCENE_KEYS.TUTORIAL, { steps });
+  }
+
+  private onTutorialEnd(): void {
+    this.tutorialActive = false;
+    this.scene.stop(SCENE_KEYS.TUTORIAL);
+  }
+
+  /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
+  private maybeShowPowerTutorial(power: PowerId, delayMs = 900): void {
+    const flag = `tuto_power_${power}`;
+    if (dialogSystem.hasFlag(flag)) return;
+    dialogSystem.setFlag(flag);
+    this.time.delayedCall(delayMs, () => this.startTutorial(buildPowerTutorialSteps(power)));
   }
 
   // ---------- Puzzle ----------

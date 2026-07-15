@@ -14,6 +14,7 @@ export const GameEvents = {
   DIALOG_START: 'dialog-start',
   DIALOG_END: 'dialog-end',
   DIALOG_FLAG_SET: 'dialog-flag-set',
+  TUTORIAL_END: 'tutorial-end',
   PUZZLE_START: 'puzzle-start',
   PUZZLE_SOLVED: 'puzzle-solved',
   PUZZLE_EXIT: 'puzzle-exit',
