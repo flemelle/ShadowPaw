@@ -257,14 +257,18 @@ export class GameScene extends Phaser.Scene {
     this.uiCamera.ignore(worldObjects);
   }
 
+  /** Un overlay (dialogue/tutoriel/puzzle) ou la célébration de pouvoir bloque le joueur. */
+  private get inputLocked(): boolean {
+    return this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower;
+  }
+
   update(time: number): void {
-    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower) {
+    if (this.inputLocked) {
       // Tant que l'overlay reste ouvert plusieurs frames, continue à drainer (cf.
       // drainEdgeInputs plus bas pour l'explication complète du problème).
       this.drainEdgeInputs();
     }
-    if (this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower || this.isDead || this.isTransitioning)
-      return;
+    if (this.inputLocked || this.isDead || this.isTransitioning) return;
 
     if (this.player.y > this.built.heightPx + FALL_DEATH_MARGIN) {
       this.handleFallDeath();
@@ -372,14 +376,10 @@ export class GameScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
     if (entity.grantsPower) {
       const power = entity.grantsPower;
-      // window.setTimeout plutôt que this.time.delayedCall : cf. showGameOver, un minuteur du
-      // Clock de la scène peut se retrouver "en retard" de façon imprévisible (observé jusqu'à
-      // ~1.2s de dérive ici) — un délai natif du navigateur reste fiable dans tous les cas.
-      window.setTimeout(() => {
-        if (!this.scene.isActive()) return;
+      this.safeDelay(500, () => {
         audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
-        this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
-      }, 500);
+        this.grantPowerCelebration(power);
+      });
       powerSystem.unlock(power);
       this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(power)?.name}`);
     } else {
@@ -396,15 +396,18 @@ export class GameScene extends Phaser.Scene {
     if (entity.grantsPower) powerSystem.unlock(entity.grantsPower);
     if (entity.pivotEvent) {
       audioManager.play(this, SFX_KEYS.PIVOT_ABSORB);
-      this.time.delayedCall(700, () => audioManager.play(this, SFX_KEYS.PIVOT_STING));
+      this.safeDelay(700, () => audioManager.play(this, SFX_KEYS.PIVOT_STING));
       this.toast('Hikari no Ne absorbée... Malakar surgit et corrompt la Source. L\'Acte 2 commence.');
-      if (entity.grantsPower) this.maybeShowPowerTutorial(entity.grantsPower, 1800);
-    } else {
-      audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
+      // Célébration dorée sautée ici : le moment est sombre (corruption de la Source par
+      // Malakar), pas triomphant — seul le tutoriel du pouvoir suit, après un délai plus long
+      // pour laisser la scène pivot respirer avant d'afficher quoi que ce soit par-dessus.
       if (entity.grantsPower) {
         const power = entity.grantsPower;
-        this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
+        this.safeDelay(1800, () => this.maybeShowPowerTutorial(power));
       }
+    } else {
+      audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
+      if (entity.grantsPower) this.grantPowerCelebration(entity.grantsPower);
       this.toast('Énergie absorbée.');
     }
     sprite.setTint(0xffe27a);
@@ -485,6 +488,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * `window.setTimeout` plutôt que `this.time.delayedCall` : si une autre scène (un dialogue,
+   * un tutoriel...) se lance pendant qu'un minuteur du Clock de GameScene patiente, ce dernier
+   * peut "disparaître" silencieusement — observé jusqu'à ~1.2s de dérive, et dans le pire cas
+   * (l'écran de Game Over) un minuteur qui ne se déclenche jamais, laissant le joueur bloqué
+   * pour de bon. Un délai natif du navigateur ne dépend pas de cette horloge et reste fiable
+   * quoi qu'il arrive entre-temps ; `fn` ne s'exécute que si la scène est toujours active.
+   */
+  private safeDelay(ms: number, fn: () => void): void {
+    window.setTimeout(() => {
+      if (this.scene.isActive()) fn();
+    }, ms);
+  }
+
+  /**
    * Un dialogue/tutoriel/puzzle resté ouvert (ex. le tutoriel d'intro juste après le spawn, ou
    * un mini tutoriel de pouvoir programmé quelques centaines de ms plus tôt et pas encore
    * affiché) masquait l'écran de Game Over et, surtout, cassait le retour au menu. Appelée à
@@ -519,16 +536,10 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     container.add([overlay, title, subtitle]);
     this.cameras.main.ignore(container);
-    // window.setTimeout plutôt que this.time.delayedCall : si une autre scène (le tutoriel
-    // d'intro, typiquement) se lance pendant que ce minuteur patiente, l'horloge de GameScene
-    // "oublie" silencieusement tout minuteur encore en attente — vécu concrètement comme un
-    // Game Over qui reste bloqué à l'écran pour de bon. setTimeout ne dépend pas de cette
-    // horloge et déclenche la transition quoi qu'il arrive entre-temps.
-    window.setTimeout(() => {
-      if (!this.scene.isActive()) return;
+    this.safeDelay(2200, () => {
       this.closeOverlayScenes();
       this.scene.start(SCENE_KEYS.MENU);
-    }, 2200);
+    });
   }
 
   // ---------- Dialogue ----------
@@ -640,17 +651,17 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.flash(350, 255, 240, 200);
   }
 
-  /**
-   * Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel).
-   * Sans délai par défaut : appelé une fois la célébration terminée (cf. celebratePowerUnlock),
-   * le pouvoir vient déjà de rester affiché quelques centaines de ms, inutile d'attendre encore.
-   */
-  private maybeShowPowerTutorial(power: PowerId, delayMs = 0): void {
+  /** Célèbre un pouvoir tout juste accordé, puis enchaîne sur son mini tutoriel une fois fini. */
+  private grantPowerCelebration(power: PowerId): void {
+    this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
+  }
+
+  /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
+  private maybeShowPowerTutorial(power: PowerId): void {
     const flag = `tuto_power_${power}`;
     if (dialogSystem.hasFlag(flag)) return;
     dialogSystem.setFlag(flag);
-    if (delayMs > 0) this.time.delayedCall(delayMs, () => this.startTutorial(buildPowerTutorialSteps(power)));
-    else this.startTutorial(buildPowerTutorialSteps(power));
+    this.startTutorial(buildPowerTutorialSteps(power));
   }
 
   // ---------- Puzzle ----------
