@@ -600,15 +600,22 @@ export class GameScene extends Phaser.Scene {
     const py = this.player.y;
     this.celebratingPower = true;
     this.player.setVelocity(0, 0);
+    // Sort le corps de la simulation physique le temps de l'animation : sinon la gravité
+    // continue de s'accumuler à chaque step (setVelocity(0,0) n'est appliqué qu'une fois) et
+    // percute le sol/la plateforme, ce qui repositionne le sprite au sol pour une frame avant
+    // que le tween ne reprenne la main l'instant d'après (flash visible perso-au-sol-puis-en-l'air).
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.enable = false;
 
     this.tweens.add({
       targets: this.player,
       y: py - 64,
-      duration: 700,
+      duration: 1900,
       ease: 'sine.out',
       yoyo: true,
-      hold: 400,
+      hold: 1200,
       onComplete: () => {
+        body.enable = true;
         this.celebratingPower = false;
         this.drainEdgeInputs();
         onComplete?.();
@@ -629,10 +636,10 @@ export class GameScene extends Phaser.Scene {
       targets: burst,
       alpha: { from: 0, to: 1 },
       scale: { from: 0.6, to: 3.2 },
-      duration: 1300,
+      duration: 4600,
       ease: 'sine.inOut',
       onComplete: () => {
-        this.cameras.main.flash(350, 255, 255, 255);
+        this.cameras.main.flash(500, 255, 255, 255);
         burst.destroy();
       },
     });
@@ -646,9 +653,9 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: beam,
       alpha: { from: 0, to: 0.55 },
-      duration: 350,
+      duration: 950,
       yoyo: true,
-      hold: 600,
+      hold: 1650,
       onComplete: () => beam.destroy(),
     });
   }
