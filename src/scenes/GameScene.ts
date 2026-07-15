@@ -603,11 +603,11 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.player,
-      y: py - 26,
-      duration: 450,
+      y: py - 64,
+      duration: 700,
       ease: 'sine.out',
       yoyo: true,
-      hold: 300,
+      hold: 400,
       onComplete: () => {
         this.celebratingPower = false;
         this.drainEdgeInputs();
@@ -615,6 +615,8 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
+    // Halo qui grossit graduellement ; le flash blanc plein écran n'arrive qu'à la toute fin
+    // de son apparition (onComplete), pas en même temps que le reste de l'animation.
     const burst = this.add
       .image(px, py, TEX.PLAYER_GLOW)
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -627,9 +629,12 @@ export class GameScene extends Phaser.Scene {
       targets: burst,
       alpha: { from: 0, to: 1 },
       scale: { from: 0.6, to: 3.2 },
-      duration: 900,
-      ease: 'sine.out',
-      onComplete: () => burst.destroy(),
+      duration: 1300,
+      ease: 'sine.inOut',
+      onComplete: () => {
+        this.cameras.main.flash(350, 255, 255, 255);
+        burst.destroy();
+      },
     });
 
     const beam = this.add
@@ -641,14 +646,11 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: beam,
       alpha: { from: 0, to: 0.55 },
-      duration: 250,
+      duration: 350,
       yoyo: true,
-      hold: 450,
+      hold: 600,
       onComplete: () => beam.destroy(),
     });
-
-    // Flash chaud/doré plutôt que le flash rouge déjà utilisé pour la chute mortelle.
-    this.cameras.main.flash(350, 255, 240, 200);
   }
 
   /** Célèbre un pouvoir tout juste accordé, puis enchaîne sur son mini tutoriel une fois fini. */
