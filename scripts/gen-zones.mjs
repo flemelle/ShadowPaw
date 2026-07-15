@@ -28,8 +28,52 @@ function mulberry32(seed) {
 // imparfait, un saut débuté un peu en retard, etc. — plutôt que de coller au maximum théorique.
 const MAX_SAFE_PIT_WIDTH = 4;
 
+/**
+ * "Salle des Miroirs" (zone7) : génère une moitié normalement puis la duplique en miroir
+ * pour l'autre — plutôt qu'un simple réglage de paramètres, une vraie symétrie structurelle
+ * qui distingue enfin cette zone des sept autres construites sur le même moule aléatoire.
+ */
+function generateMirroredZone(profile) {
+  const halfCols = Math.floor(profile.cols / 2);
+  const half = generateZone({ ...profile, cols: halfCols, mirror: false });
+  const { rows } = profile;
+  const cols = halfCols * 2;
+
+  const tiles = half.tiles.map((row) => row + [...row].reverse().join(''));
+  const floorTopByCol = [...half.floorTopByCol, ...[...half.floorTopByCol].reverse()];
+
+  // safeCols/groundCols doivent être reconstruits sur la grille complète (celles de `half`
+  // ne couvrent que la première moitié) plutôt que simplement dupliquées-inversées.
+  const occupied = Array.from({ length: rows }, () => new Array(cols).fill(false));
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (tiles[y][x] === '#') occupied[y][x] = true;
+    }
+  }
+  const safeCols = [];
+  const groundCols = [];
+  for (let x = 0; x < cols; x++) {
+    if (floorTopByCol[x] != null) {
+      groundCols.push({ x, y: floorTopByCol[x] - 1 });
+      safeCols.push({ x, y: floorTopByCol[x] - 1 });
+    }
+  }
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (tiles[y][x] === '#' && (y === 0 || tiles[y - 1][x] !== '#') && (floorTopByCol[x] == null || y < floorTopByCol[x])) {
+        safeCols.push({ x, y: y - 1 });
+      }
+    }
+  }
+  safeCols.sort((a, b) => a.x - b.x);
+  groundCols.sort((a, b) => a.x - b.x);
+
+  return { tiles, safeCols, groundCols, floorTopByCol };
+}
+
 function generateZone(profile) {
   const { cols, rows, seed, pitChance, pitWidth, plat, gateChar, gateSpots, undulate, ceilingGap } = profile;
+  if (profile.mirror) return generateMirroredZone(profile);
   const rand = mulberry32(seed);
   const grid = Array.from({ length: rows }, () => Array(cols).fill('.'));
 
@@ -194,10 +238,11 @@ function pickAt(safeCols, cols, frac, used) {
 }
 
 const ZONE_PROFILES = {
+  // Ruines extérieures, nuit — zone d'intro : calme, peu de fosses, plateformes larges.
   zone1_portes_velkhar: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
-    pitChance: 0.09, pitWidth: [2, 4],
-    plat: { count: 23, width: [3, 5], heightAbove: [2, 3] },
+    pitChance: 0.06, pitWidth: [2, 4],
+    plat: { count: 18, width: [4, 6], heightAbove: [2, 3] },
     // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
     // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
     // qu'en battant le boss de cette même zone. Sans ça, la zone était infranchissable
@@ -206,58 +251,74 @@ const ZONE_PROFILES = {
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
+  // Dojo souterrain, chaînes — plafond bas et dense : plateformes étroites et rapprochées,
+  // moins de dégagement vertical, pour une sensation d'enfermement distincte du plein air.
   zone2_antre_velours_noir: {
-    cols: 145, rows: 14, ceilingGap: 3, seed: 202,
-    pitChance: 0.1, pitWidth: [2, 4],
-    plat: { count: 35, width: [2, 4], heightAbove: [2, 3] },
+    cols: 145, rows: 15, ceilingGap: 5, seed: 202,
+    pitChance: 0.11, pitWidth: [2, 4],
+    plat: { count: 34, width: [2, 3], heightAbove: [2, 3] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
+  // Cœur du sanctuaire, énergie sombre pulsante — verticalité marquée, sol qui monte et
+  // descend sans cesse (undulate) : une traversée en dents de scie plutôt qu'un sol plat.
   zone3_velkhar_foyer_ombres: {
-    cols: 145, rows: 16, ceilingGap: 3, seed: 303,
-    pitChance: 0.09, pitWidth: [2, 4],
-    plat: { count: 32, width: [3, 6], heightAbove: [2, 3] },
+    cols: 145, rows: 19, ceilingGap: 3, seed: 303,
+    pitChance: 0.1, pitWidth: [2, 4],
+    plat: { count: 30, width: [3, 5], heightAbove: [2, 3] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
-    undulate: false,
+    undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
+  // Temple au sommet, silence absolu — sobre et ordonné : fosses rares, plateformes larges
+  // et régulièrement espacées, aucune ondulation. L'antithèse du chaos qui suivra en Acte 2.
   zone4_seikuji_quietude: {
     cols: 160, rows: 16, ceilingGap: 3, seed: 404,
-    pitChance: 0.08, pitWidth: [2, 4],
-    plat: { count: 44, width: [2, 4], heightAbove: [2, 3] },
+    pitChance: 0.05, pitWidth: [2, 3],
+    plat: { count: 26, width: [4, 7], heightAbove: [2, 3] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
     entityFracs: { spawn: 0.03, npc0: 0.1, boss_arena0: 0.45, power_altar0: 0.9, zone_exit0: 0.98 },
   },
+  // Le même temple, corrompu — l'ordre de la zone 4 se fissure : plus de fosses, sol
+  // irrégulier (undulate), plateformes de tailles très inégales.
   zone5_seikuji_corrompu: {
     cols: 160, rows: 15, ceilingGap: 3, seed: 505,
-    pitChance: 0.09, pitWidth: [2, 4],
-    plat: { count: 32, width: [3, 5], heightAbove: [2, 3] },
+    pitChance: 0.12, pitWidth: [2, 4],
+    plat: { count: 34, width: [2, 6], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
-    undulate: false,
+    undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, zone_exit0: 0.97 },
   },
+  // Jardins extérieurs, végétation corrompue — terrain organique et sinueux : ondulation
+  // plus fréquente que partout ailleurs, plateformes larges façon frondaisons.
   zone6_jardins_oublies: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 606,
-    pitChance: 0.09, pitWidth: [2, 4],
-    plat: { count: 41, width: [3, 6], heightAbove: [2, 3] },
+    pitChance: 0.08, pitWidth: [2, 4],
+    plat: { count: 30, width: [4, 7], heightAbove: [2, 3] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
     entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
+  // Salle des Miroirs — vraie symétrie structurelle (cf. generateMirroredZone) plutôt qu'un
+  // simple réglage de paramètres : la moitié gauche est reflétée à l'identique à droite.
   zone7_salle_miroirs: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 707,
-    pitChance: 0.09, pitWidth: [2, 4],
-    plat: { count: 38, width: [3, 5], heightAbove: [2, 3] },
-    gateChar: 'S', gateSpots: [0.2, 0.5, 0.75],
+    pitChance: 0.08, pitWidth: [2, 4],
+    plat: { count: 17, width: [3, 5], heightAbove: [2, 3] },
+    gateChar: 'S', gateSpots: [0.35, 0.7],
     undulate: false,
+    mirror: true,
     entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
+  // Le vide entre lumière et ombre, décor abstrait — le moins de sol possible : de rares
+  // îlots flottants largement espacés au-dessus d'un vide quasi continu, jamais un long
+  // couloir de terrain plein comme les sept autres zones.
   zone8_vide_entre_deux: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 808,
-    pitChance: 0.14, pitWidth: [2, 4],
-    plat: { count: 35, width: [3, 5], heightAbove: [2, 3] },
+    pitChance: 0.2, pitWidth: [2, 4],
+    plat: { count: 20, width: [2, 4], heightAbove: [2, 3] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
     entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, boss_arena0: 0.85, ending_trigger0: 0.97 },
