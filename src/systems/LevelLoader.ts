@@ -164,16 +164,31 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
   }
 
   // --- Décor au sol (grands décors, jamais sur une plateforme isolée) ---
+  // Mis à l'échelle pour ne jamais déborder de la portion de sol continue (même hauteur,
+  // sans trou) sur laquelle il repose : un décor plus large que ce replat dépasserait
+  // visuellement dans le vide d'une fosse voisine ou par-dessus un changement de hauteur.
   let gx = 5;
   let guard = 0;
   while (gx < cols - 5 && guard < 200) {
     guard += 1;
     const floorRow = groundTopRow[gx];
     if (floorRow != null) {
+      let runStart = gx;
+      while (runStart > 0 && groundTopRow[runStart - 1] === floorRow) runStart -= 1;
+      let runEnd = gx;
+      while (runEnd < cols - 1 && groundTopRow[runEnd + 1] === floorRow) runEnd += 1;
+      const availableWidthPx = (runEnd - runStart + 1) * TILE_SIZE;
+
       const pick = groundPool[Math.floor(Math.random() * groundPool.length)];
-      const px = gx * TILE_SIZE + TILE_SIZE / 2;
-      const py = floorRow * TILE_SIZE;
-      sprites.push(scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(pick.scale).setDepth(-5));
+      const srcWidth = scene.textures.get(pick.key).source[0]?.width ?? TILE_SIZE;
+      const maxWidthPx = availableWidthPx * 0.6;
+      const scale = Math.min(pick.scale, maxWidthPx / srcWidth);
+
+      if (scale >= 0.3) {
+        const px = gx * TILE_SIZE + TILE_SIZE / 2;
+        const py = floorRow * TILE_SIZE;
+        sprites.push(scene.add.image(px, py, pick.key).setOrigin(0.5, 1).setScale(scale).setDepth(-5));
+      }
     }
     gx += 10 + Math.floor(Math.random() * 8);
   }
