@@ -263,6 +263,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
+    this.cameraSystem?.update();
     if (this.inputLocked) {
       // Tant que l'overlay reste ouvert plusieurs frames, continue à drainer (cf.
       // drainEdgeInputs plus bas pour l'explication complète du problème).
