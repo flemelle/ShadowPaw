@@ -889,6 +889,10 @@ export class GameScene extends Phaser.Scene {
       onHover: hoverSfx,
       onClick: () => {
         if (!powerSystem.isTestMode()) persistProgress(this.player.x, this.player.y);
+        // cf. showGameOver : un dialogue/tutoriel/puzzle resté lancé (ex. le mini tutoriel
+        // différé d'un pouvoir déjà débloqué) survit sinon à la transition et reste affiché
+        // par-dessus le menu, bloquant tout clic sur les écrans suivants (Mode Admin y compris).
+        this.closeOverlayScenes();
         this.scene.start(SCENE_KEYS.MENU);
       },
     });
