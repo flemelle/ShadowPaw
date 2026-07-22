@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '@/utils/Constants';
 
-/** Niveau de zoom par défaut en jeu — rapproche la caméra pour une lecture plus immersive. */
-export const GAMEPLAY_ZOOM = 2;
+/** Niveau de zoom par défaut en jeu — dézoomé pour laisser voir davantage de plateformes autour du joueur. */
+export const GAMEPLAY_ZOOM = 1.4;
 
 /** Configure la caméra principale pour suivre le joueur dans les limites d'une zone. */
 export class CameraSystem {
