@@ -155,7 +155,13 @@ function generateZone(profile) {
   };
 
   for (let i = 0; i < plat.count; i++) {
-    const chainLen = rand() < 0.35 ? 2 + Math.floor(rand() * 2) : 1; // 35% de chances d'un escalier de 2-3 marches
+    // 15% de chances d'une "tour" en hauteur (4-6 marches), 30% d'un escalier classique (2-3),
+    // le reste une plateforme seule. Chaque marche reste construite exactement comme avant
+    // (même formule de clearance/écart horizontal) : une tour n'est donc jamais qu'un escalier
+    // classique poursuivi plus longtemps, ce qui garantit par construction qu'aucune marche
+    // n'est jamais à plus d'un saut de la précédente, même en haut d'une tour de 6 marches.
+    const chainRoll = rand();
+    const chainLen = chainRoll < 0.15 ? 4 + Math.floor(rand() * 3) : chainRoll < 0.45 ? 2 + Math.floor(rand() * 2) : 1;
     let px = 6 + Math.floor(rand() * (cols - 16));
     let refY = floorTopByCol[Math.min(cols - 1, Math.max(0, px))] ?? rows - 2;
     const dir = rand() < 0.5 ? -1 : 1;
@@ -256,7 +262,9 @@ const ZONE_PROFILES = {
     // qu'en battant le boss de cette même zone. Sans ça, la zone était infranchissable
     // hors Mode Admin (cf. "les pouvoirs doivent s'acquérir au fur et à mesure").
     gateChar: 'C', gateSpots: [],
-    undulate: false,
+    // Un léger relief plutôt qu'un sol parfaitement plat sur 130 colonnes : reste calme
+    // (amplitude ±1 tuile, 12% des colonnes), juste moins monotone à traverser.
+    undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   // Dojo souterrain, chaînes — plafond bas et dense : plateformes étroites et rapprochées,
@@ -266,7 +274,9 @@ const ZONE_PROFILES = {
     pitChance: 0.11, pitWidth: [2, 4],
     plat: { count: 34, width: [2, 3], heightAbove: [2, 2] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
-    undulate: false,
+    // Sol de caverne irrégulier plutôt que plat : cohérent avec l'ambiance "grotte" et casse
+    // la linéarité du couloir.
+    undulate: true,
     entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   // Cœur du sanctuaire, énergie sombre pulsante — verticalité marquée, sol qui monte et
