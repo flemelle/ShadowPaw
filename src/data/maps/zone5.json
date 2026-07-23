@@ -47,6 +47,36 @@
       "x": 155,
       "y": 11,
       "targetZone": "zone6_jardins_oublies"
+    },
+    {
+      "type": "mob",
+      "x": 26,
+      "y": 12,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 55,
+      "y": 12,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 79,
+      "y": 12,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 105,
+      "y": 12,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 131,
+      "y": 12,
+      "tier": 5
     }
   ]
 }

@@ -13,12 +13,17 @@ const FOOTSTEP_INTERVAL_MS = 320;
 /** Coyote time + jump buffer : tolère quelques frames de retard/anticipation sur l'appui saut. */
 const COYOTE_MS = 110;
 const JUMP_BUFFER_MS = 110;
+const ATTACK_COOLDOWN_MS = 350;
+const ATTACK_DURATION_MS = 140;
+const ATTACK_RANGE = 26;
+const ATTACK_HEIGHT = 26;
 
 /**
- * Kiba — mouvement de plateforme et traversée liée aux pouvoirs uniquement.
- * Ni combat, ni points de vie, ni animations de personnage : hors scope
+ * Kiba — mouvement de plateforme, traversée liée aux pouvoirs, et attaque de griffes de base
+ * (cf. GameScene pour l'application des dégâts aux ennemis — Player expose juste la fenêtre
+ * d'attaque active et son montant de dégâts). Aucune animation de personnage : hors scope
  * (cf. message.txt — "à part les mobs, les dynamiques de combats et les personnages").
- * Les touches (gauche/droite/saut/dash/forme ombre) sont remappables via
+ * Les touches (gauche/droite/saut/dash/forme ombre/attaque) sont remappables via
  * l'écran Options — cf. systems/KeyBindings.
  */
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -33,6 +38,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private nextFootstepAt = 0;
   private lastGroundedAt = -Infinity;
   private jumpPressedAt = -Infinity;
+  private lastAttackAt = -Infinity;
+  private attackActiveUntil = -Infinity;
+  private knockbackUntil = -Infinity;
 
   constructor(scene: Phaser.Scene, x: number, y: number, private readonly powers: PowerSystem) {
     super(scene, x, y, TEX.PLAYER);
@@ -67,6 +75,48 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.isShadowForm;
   }
 
+  /** Contact ennemi pendant un dash : dégâts massifs à l'ennemi plutôt qu'au joueur (cf. GameScene). */
+  get dashActive(): boolean {
+    return this.isDashing;
+  }
+
+  /**
+   * Recul après un coup reçu (cf. GameScene.handlePlayerHurt) : suspend brièvement le contrôle
+   * horizontal normal, sans quoi la logique de mouvement du joueur (aucune touche gauche/droite
+   * pressée -> vélocité X remise à 0) annulait le recul dès la frame suivante.
+   */
+  applyKnockback(vx: number, vy: number, time: number, durationMs = 200): void {
+    this.knockbackUntil = time + durationMs;
+    (this.body as Phaser.Physics.Arcade.Body).setVelocity(vx, vy);
+  }
+
+  /**
+   * Fenêtre d'attaque active (griffure), ou `null` hors fenêtre — GameScene teste ce rectangle
+   * contre les ennemis à chaque frame plutôt que Player ne connaisse lui-même la liste des
+   * ennemis (cohérent avec le reste des interactions, toutes centralisées dans GameScene).
+   */
+  getAttackHitbox(time: number): Phaser.Geom.Rectangle | null {
+    if (time > this.attackActiveUntil) return null;
+    const dir = this.flipX ? -1 : 1;
+    const w = ATTACK_RANGE;
+    const h = ATTACK_HEIGHT;
+    const x = dir > 0 ? this.x + this.width / 2 : this.x - this.width / 2 - w;
+    const y = this.y - h / 2;
+    return new Phaser.Geom.Rectangle(x, y, w, h);
+  }
+
+  /**
+   * Dégâts de la griffure : 1 de base, +1 par pouvoir de dégâts débloqué (Griffes renforcées —
+   * "attaque améliorée" — puis Éclat de Lumière) — la progression d'attaque demandée passe par
+   * ces mêmes pouvoirs plutôt que par de nouvelles touches, cf. message.txt.
+   */
+  attackDamage(): number {
+    let dmg = 1;
+    if (this.powers.has('griffes_renforcees')) dmg += 1;
+    if (this.powers.has('eclat_lumiere')) dmg += 1;
+    return dmg;
+  }
+
   /**
    * Consomme les appuis "juste pressés" sans agir. À appeler tant qu'un overlay (dialogue,
    * tutoriel, puzzle) bloque `GameScene.update()` : sans ça, l'Espace qui sert à valider/fermer
@@ -94,7 +144,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         (jumpKeyDown ? -1 : 0) * MOVE_SPEED + (down ? 1 : 0) * MOVE_SPEED,
       );
     } else {
-      if (!this.isDashing) {
+      if (!this.isDashing && time > this.knockbackUntil) {
         if (left) body.setVelocityX(-MOVE_SPEED);
         else if (right) body.setVelocityX(MOVE_SPEED);
         else body.setVelocityX(0);
@@ -122,6 +172,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.isShadowForm && time > this.shadowFormUntil) {
         this.isShadowForm = false;
       }
+    }
+
+    if (keyBindings.justDown('attack') && time > this.lastAttackAt + ATTACK_COOLDOWN_MS) {
+      this.lastAttackAt = time;
+      this.attackActiveUntil = time + ATTACK_DURATION_MS;
+      audioManager.play(this.scene, SFX_KEYS.ATTACK_SWING, { volume: 0.5 });
     }
 
     this.setFlipX(left && !right);

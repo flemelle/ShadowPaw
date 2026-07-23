@@ -110,6 +110,17 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Ajuste la hauteur/vitesse de la piste en cours, sans la relancer ni la recharger — utilisé
+   * pour donner à chaque combat de boss une identité audible propre (cf. Constants.BOSS_DEFS)
+   * quand aucune piste dédiée par boss n'existe : la musique de zone déjà en cours change de
+   * régime le temps du combat, puis `setMusicRate(1)` la restaure à la fin.
+   */
+  setMusicRate(rate: number): void {
+    const sound = this.currentMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | undefined;
+    sound?.setRate?.(rate);
+  }
+
   stopMusic(): void {
     try {
       this.currentMusic?.stop();

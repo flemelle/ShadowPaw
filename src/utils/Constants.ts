@@ -102,6 +102,7 @@ export const TEX = {
   POWER_ALTAR: 'tex_power_altar',
   SHARD: 'tex_shard',
   PARTICLE: 'tex_particle',
+  ENEMY: 'tex_enemy',
 } as const;
 
 /**
@@ -176,6 +177,13 @@ export const SFX_KEYS = {
   DASH: 'sfx_dash',
   ZONE_TRANSITION: 'sfx_zone_transition',
   SHADOW_FORM: 'sfx_shadow_form',
+  // Pas de fichiers dédiés (aucun asset combat n'existe, cf. ACKNOWLEDGEMENTS.md) : clés propres
+  // mais rechargeant les MÊMES .wav que ci-dessus (cf. BootScene.ts), dont le grain convient déjà
+  // à l'usage (whoosh, impact, ping, échec).
+  ATTACK_SWING: 'sfx_attack_swing',
+  ENEMY_HIT: 'sfx_enemy_hit',
+  ENEMY_DEFEATED: 'sfx_enemy_defeated',
+  PLAYER_HURT: 'sfx_player_hurt',
 } as const;
 
 export const FOOTSTEP_VARIANTS = {
@@ -311,4 +319,34 @@ export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', { key: st
     { key: DECOR_KEYS.GRAVEYARD_BRUSH, scale: 1.1, small: true },
     { key: DECOR_KEYS.ROCK, scale: 0.9, small: true },
   ],
+};
+
+/**
+ * Comportement de combat par boss (cf. message.txt, tableau des boss, pour le gimmick visé) :
+ * - `slow_slam` : lent, rayon de contact large ("attaques de zone").
+ * - `erratic_fast` : rapide, change de direction sans prévenir.
+ * - `mirror` : reproduit la position horizontale récente du joueur avec un délai (~1s).
+ * - `phases` / `phases3` : devient plus rapide/dangereux sous un seuil de PV (2 ou 3 paliers).
+ * `musicRate` : aucune piste dédiée par boss n'existe (10 pistes déjà toutes utilisées pour les
+ * zones/menu/fin, cf. ACKNOWLEDGEMENTS.md) — la musique de la zone en cours est rejouée à un
+ * régime (vitesse/hauteur) distinct par boss pendant le combat, pour une identité audible propre
+ * à chacun sans nécessiter un nouveau fichier.
+ */
+export interface BossDef {
+  name: string;
+  hp: number;
+  speed: number;
+  pattern: 'slow_slam' | 'erratic_fast' | 'mirror' | 'phases' | 'phases3';
+  musicRate: number;
+  dialogTree?: string;
+}
+
+export const BOSS_DEFS: Record<string, BossDef> = {
+  boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight' },
+  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight' },
+  boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight' },
+  boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
+  boss_jardinier_corrompu: { name: 'Le Jardinier Corrompu', hp: 11, speed: 35, pattern: 'slow_slam', musicRate: 1.02, dialogTree: 'boss_jardinier_corrompu_pre_fight' },
+  boss_double_de_lumiere: { name: 'Le Double de Lumière', hp: 12, speed: 75, pattern: 'mirror', musicRate: 1.18, dialogTree: 'boss_double_de_lumiere_pre_fight' },
+  boss_malakar_final: { name: 'Malakar, Sensei de l\'Ombre', hp: 18, speed: 60, pattern: 'phases3', musicRate: 0.85, dialogTree: 'malakar_zone8_pre_boss' },
 };

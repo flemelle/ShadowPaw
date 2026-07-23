@@ -48,6 +48,36 @@
       "y": 8,
       "targetZone": "zone2_antre_velours_noir",
       "requiresBossDefeated": "boss_gardien_de_pierre"
+    },
+    {
+      "type": "mob",
+      "x": 21,
+      "y": 9,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 44,
+      "y": 9,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 65,
+      "y": 10,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 85,
+      "y": 9,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 106,
+      "y": 8,
+      "tier": 5
     }
   ]
 }

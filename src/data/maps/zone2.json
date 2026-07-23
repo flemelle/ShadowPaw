@@ -51,6 +51,36 @@
       "y": 11,
       "targetZone": "zone3_velkhar_foyer_ombres",
       "requiresBossDefeated": "boss_maitre_aveugle"
+    },
+    {
+      "type": "mob",
+      "x": 27,
+      "y": 8,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 49,
+      "y": 10,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 72,
+      "y": 11,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 96,
+      "y": 11,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 118,
+      "y": 10,
+      "tier": 5
     }
   ]
 }

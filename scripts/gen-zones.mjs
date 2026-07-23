@@ -343,12 +343,22 @@ const ZONE_PROFILES = {
   },
 };
 
+// 5 mobs par zone, répartis uniformément de gauche à droite — le tier (1-5) monte avec la
+// position dans la zone, pour une difficulté "crescendo" au sein même du chapitre (en plus de
+// l'escalade d'une zone à l'autre, cf. mobHp/mobSpeed dans entities/Enemy.ts qui combinent les deux).
+const MOB_FRACS = [0.18, 0.34, 0.5, 0.66, 0.82];
+
 for (const file of fs.readdirSync(MAPS_DIR)) {
   if (!/^zone\d\.json$/.test(file)) continue;
   const full = path.join(MAPS_DIR, file);
   const data = JSON.parse(fs.readFileSync(full, 'utf8'));
   const profile = ZONE_PROFILES[data.id];
   if (!profile) continue;
+
+  // Idempotent : n'ajoute les mobs qu'une fois, un ré-run du script ne les duplique pas.
+  if (!data.entities.some((e) => e.type === 'mob')) {
+    for (let tier = 1; tier <= 5; tier++) data.entities.push({ type: 'mob', x: 0, y: 0, tier });
+  }
 
   const { tiles, groundCols } = generateZone(profile);
   const used = new Set();
@@ -361,7 +371,7 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
     const idx = typeCounters[entity.type] ?? 0;
     typeCounters[entity.type] = idx + 1;
     const key = idx === 0 ? `${entity.type}0` : `${entity.type}${idx}`;
-    const frac = profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5;
+    const frac = entity.type === 'mob' ? MOB_FRACS[entity.tier - 1] : (profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5);
     const pos = pickAt(groundCols, profile.cols, frac, used);
     return { ...entity, x: pos.x, y: pos.y };
   });

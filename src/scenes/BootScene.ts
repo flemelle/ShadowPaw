@@ -62,6 +62,10 @@ export class BootScene extends Phaser.Scene {
       [SFX_KEYS.DASH]: 'dash',
       [SFX_KEYS.ZONE_TRANSITION]: 'zone_transition',
       [SFX_KEYS.SHADOW_FORM]: 'shadow_form',
+      [SFX_KEYS.ATTACK_SWING]: 'dash',
+      [SFX_KEYS.ENEMY_HIT]: 'combo_trigger',
+      [SFX_KEYS.ENEMY_DEFEATED]: 'shard_collect',
+      [SFX_KEYS.PLAYER_HURT]: 'puzzle_fail',
     };
     Object.entries(sfxFile).forEach(([key, file]) => {
       this.load.audio(key, `${ASSET_BASE}/audio/sfx/${file}.wav`);
@@ -117,6 +121,7 @@ export class BootScene extends Phaser.Scene {
     this.generateMarkerTexture(TEX.PUZZLE_TRIGGER, 0xd8b34a, 'square');
     this.generateMarkerTexture(TEX.POWER_ALTAR, 0xffffff, 'star');
     this.generateMarkerTexture(TEX.SHARD, 0xffe27a, 'shard');
+    this.generateMarkerTexture(TEX.ENEMY, 0x8a1f3a, 'spike');
 
     const particle = this.make.graphics({ x: 0, y: 0 });
     particle.fillStyle(0xffffff, 1);
@@ -255,7 +260,7 @@ export class BootScene extends Phaser.Scene {
     npc.destroy();
   }
 
-  private generateMarkerTexture(key: string, color: number, shape: 'circle' | 'diamond' | 'arrow' | 'square' | 'star' | 'shard'): void {
+  private generateMarkerTexture(key: string, color: number, shape: 'circle' | 'diamond' | 'arrow' | 'square' | 'star' | 'shard' | 'spike'): void {
     const size = 28;
     const g = this.make.graphics({ x: 0, y: 0 });
     g.fillStyle(color, 0.9);
@@ -295,6 +300,22 @@ export class BootScene extends Phaser.Scene {
         for (let i = 0; i < 5; i++) {
           const ang = (Math.PI * 2 * i) / 5 - Math.PI / 2;
           const r = i % 2 === 0 ? c - 2 : c / 2.4;
+          const px = c + r * Math.cos(ang);
+          const py = c + r * Math.sin(ang);
+          if (i === 0) g.moveTo(px, py);
+          else g.lineTo(px, py);
+        }
+        g.closePath();
+        g.fillPath();
+        g.strokePath();
+        break;
+      // Silhouette "hérissée" (8 pointes) — distincte des marqueurs UI ronds/lisses, pour se lire
+      // immédiatement comme une menace plutôt qu'un élément d'interface.
+      case 'spike':
+        g.beginPath();
+        for (let i = 0; i < 16; i++) {
+          const ang = (Math.PI * 2 * i) / 16 - Math.PI / 2;
+          const r = i % 2 === 0 ? c - 1 : c / 2.2;
           const px = c + r * Math.cos(ang);
           const py = c + r * Math.sin(ang);
           if (i === 0) g.moveTo(px, py);

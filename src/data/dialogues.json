@@ -205,6 +205,103 @@
         "end": { "lines": [], "end": true }
       }
     },
+    "boss_gardien_de_pierre_pre_fight": {
+      "npc": "gardien_de_pierre",
+      "displayName": "Le Gardien de Pierre",
+      "startNode": "start",
+      "description": "Courte tirade avant le premier combat de boss du jeu.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "...",
+            "Un chat de plus, envoyé se briser sur mes pierres.",
+            "Le Clan n'apprend donc jamais."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "boss_maitre_aveugle_pre_fight": {
+      "npc": "maitre_aveugle",
+      "displayName": "Maître Aveugle",
+      "startNode": "start",
+      "description": "Courte tirade avant le combat — le boss se repère au bruit, pas à la vue.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "J'entends ton cœur battre, petit chat. Plus vite qu'il ne le devrait.",
+            "Bouge, et je te trouverai. Reste immobile, et peut-être vivras-tu un peu plus longtemps."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "boss_ombre_jumelle_pre_fight": {
+      "npc": "ombre_jumelle",
+      "displayName": "L'Ombre Jumelle",
+      "startNode": "start",
+      "description": "Courte tirade avant le combat — un clone sombre de Kiba lui-même.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Tu te bats contre toi-même, Kiba. Tu l'as toujours fait.",
+            "Regarde. Je bouge comme toi. Je frappe comme toi. Je ne suis qu'un instant en retard sur ce que tu es déjà devenu."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "boss_velkhar_ancien_pre_fight": {
+      "npc": "velkhar_ancien",
+      "displayName": "Velkhar l'Ancien",
+      "startNode": "start",
+      "description": "Courte tirade avant le combat de fin d'Acte 1 — deux phases, invocateur d'ombres.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Je garde ce lieu depuis avant la naissance de ton Clan.",
+            "Seikūji ne se donne pas à qui frappe à sa porte. Il se mérite, ombre après ombre."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "boss_jardinier_corrompu_pre_fight": {
+      "npc": "jardinier_corrompu",
+      "displayName": "Le Jardinier Corrompu",
+      "startNode": "start",
+      "description": "Courte tirade avant le combat, zone 6 — introducteur des combos lumière/ombre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "J'ai fait pousser ces jardins pendant mille ans. Malakar les a fait pourrir en un jour.",
+            "Si tu portes vraiment la Lumière et l'Ombre toutes les deux... montre-moi qu'elles savent encore travailler ensemble."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "boss_double_de_lumiere_pre_fight": {
+      "npc": "double_de_lumiere",
+      "displayName": "Le Double de Lumière",
+      "startNode": "start",
+      "description": "Courte tirade avant le combat, zone 7 — miroir lumineux de Kiba, immunisé à l'ombre seule.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Le reflet t'a prévenu, non ? Me voici.",
+            "L'ombre seule glisse sur moi sans laisser de marque. Il te faudra les deux lames, Kiba — ou aucune ne suffira."
+          ],
+          "choices": [{ "text": "(Combat)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
     "malakar_zone8_pre_boss": {
       "npc": "malakar",
       "displayName": "Malakar, Sensei de l'Ombre",

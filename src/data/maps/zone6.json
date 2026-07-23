@@ -68,6 +68,36 @@
       "y": 12,
       "targetZone": "zone7_salle_miroirs",
       "requiresBossDefeated": "boss_jardinier_corrompu"
+    },
+    {
+      "type": "mob",
+      "x": 34,
+      "y": 13,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 64,
+      "y": 12,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 95,
+      "y": 13,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 125,
+      "y": 13,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 153,
+      "y": 11,
+      "tier": 5
     }
   ]
 }

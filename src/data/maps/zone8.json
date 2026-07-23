@@ -53,6 +53,36 @@
       "x": 126,
       "y": 10,
       "requiresBossDefeated": "boss_malakar_final"
+    },
+    {
+      "type": "mob",
+      "x": 23,
+      "y": 10,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 45,
+      "y": 10,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 65,
+      "y": 10,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 85,
+      "y": 10,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 106,
+      "y": 10,
+      "tier": 5
     }
   ]
 }

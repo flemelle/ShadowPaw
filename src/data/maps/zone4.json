@@ -61,6 +61,36 @@
       "y": 12,
       "targetZone": "zone5_seikuji_corrompu",
       "requiresAltar": "hikari_no_ne"
+    },
+    {
+      "type": "mob",
+      "x": 28,
+      "y": 12,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 54,
+      "y": 12,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 80,
+      "y": 12,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 105,
+      "y": 12,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 132,
+      "y": 12,
+      "tier": 5
     }
   ]
 }

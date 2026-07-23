@@ -26,6 +26,14 @@ export interface EntityBossArena {
   isFinalBoss?: boolean;
 }
 
+export interface EntityMob {
+  type: 'mob';
+  x: number;
+  y: number;
+  /** 1-5, difficulté croissante au sein de sa propre zone (cf. gen-zones.mjs). */
+  tier: number;
+}
+
 export interface EntityZoneExit {
   type: 'zone_exit';
   x: number;
@@ -74,7 +82,8 @@ export type ZoneEntity =
   | EntityShardPickup
   | EntityPuzzleTrigger
   | EntityPowerAltar
-  | EntityEndingTrigger;
+  | EntityEndingTrigger
+  | EntityMob;
 
 export interface ZoneMap {
   id: string;

@@ -15,6 +15,8 @@ import {
   TEX,
   MUSIC_KEYS,
   ZONE_IDS,
+  BOSS_DEFS,
+  TILE_SIZE,
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -23,6 +25,7 @@ import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
 import { Player } from '@/entities/Player';
 import { NPC } from '@/entities/NPC';
+import { Enemy, mobHp, mobSpeed } from '@/entities/Enemy';
 import levelsData from '@/data/levels.json';
 import type { ZoneEntity } from '@/utils/Types';
 import type { ComboDef } from '@/systems/PowerSystem';
@@ -57,6 +60,9 @@ export class GameScene extends Phaser.Scene {
   private playerGlow?: Phaser.GameObjects.Image;
   private built!: BuiltZone;
   private npcs: NPC[] = [];
+  private enemies: Enemy[] = [];
+  private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
+  private pendingBossFight?: { entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private hud!: Phaser.GameObjects.Container;
   private powerIconTexts: Phaser.GameObjects.Text[] = [];
   private zoneLabel!: Phaser.GameObjects.Text;
@@ -143,6 +149,10 @@ export class GameScene extends Phaser.Scene {
   private loadZone(zoneId: string): void {
     this.npcs.forEach((n) => n.destroy());
     this.npcs = [];
+    this.enemies.forEach((e) => e.destroy());
+    this.enemies = [];
+    this.activeBoss = undefined;
+    this.pendingBossFight = undefined;
 
     if (this.built) {
       [
@@ -218,6 +228,19 @@ export class GameScene extends Phaser.Scene {
       if (entity.type === 'zone_exit' || entity.type === 'ending_trigger') {
         this.physics.add.overlap(this.player, sprite, () => this.handleAutoTrigger(entity));
       }
+    });
+
+    // Mobs : 5 par zone, difficulté croissante avec le tier ET la zone (cf. entities/Enemy.ts) —
+    // pas de marqueur statique (cf. LevelLoader qui les exclut d'entityMarkers), un vrai corps
+    // dynamique qui patrouille et inflige des dégâts de contact.
+    const zoneIndex = Number(zoneId.match(/^zone(\d)/)?.[1] ?? 1);
+    zoneMap.entities.forEach((entity) => {
+      if (entity.type !== 'mob') return;
+      const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
+      const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
+      const enemy = new Enemy(this, px, py, mobHp(zoneIndex, entity.tier), mobSpeed(zoneIndex, entity.tier));
+      this.physics.add.collider(enemy, this.built.solidGroup);
+      this.enemies.push(enemy);
     });
 
     if (this.zoneLabel) this.updateZoneLabel();
@@ -297,6 +320,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
+    this.enemies.forEach((e) => e.updateAI(this.player.x));
+    this.resolveCombat(time);
 
     this.updateInteractPrompt();
     if (keyBindings.justDown('interact')) {
@@ -370,11 +395,42 @@ export class GameScene extends Phaser.Scene {
       this.toast(`Combo requis pour affronter ce gardien : ${entity.requiresCombo}`);
       return;
     }
-    // Le combat n'est pas implémenté ici (hors scope) : la victoire est actée directement.
+    if (this.activeBoss || this.pendingBossFight) {
+      this.toast('Le combat est déjà engagé.');
+      return;
+    }
+
+    const bossDef = BOSS_DEFS[entity.bossId];
+    const introFlag = `boss_intro_seen_${entity.bossId}`;
+    if (bossDef?.dialogTree && !dialogSystem.hasFlag(introFlag)) {
+      dialogSystem.setFlag(introFlag);
+      this.pendingBossFight = { entity, sprite };
+      this.startDialog(bossDef.dialogTree);
+      return;
+    }
+    this.startBossFight(entity, sprite);
+  }
+
+  /** Fait apparaître le boss (vrai combat : PV, pattern, cf. entities/Enemy.ts) et bascule sa musique. */
+  private startBossFight(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
+    const bossDef = BOSS_DEFS[entity.bossId];
+    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, { isBoss: true, bossDef });
+    this.physics.add.collider(boss, this.built.solidGroup);
+    this.enemies.push(boss);
+    this.activeBoss = { boss, entity, sprite };
+    sprite.setVisible(false);
+    if (bossDef) audioManager.setMusicRate(bossDef.musicRate);
+    this.toast(`Le combat commence : ${bossDef?.name ?? entity.bossId} !`);
+  }
+
+  /** Boss vaincu (PV à 0, cf. onEnemyDefeated) : reprend exactement l'ancien flux de victoire. */
+  private resolveBossVictory(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
     gameState.defeatedBosses.add(entity.bossId);
     this.defeatedThisZone.add(entity.bossId);
-    sprite.setTint(0x555555);
+    sprite.destroy();
+    audioManager.setMusicRate(1);
     audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
+    this.activeBoss = undefined;
     if (entity.grantsPower) {
       const power = entity.grantsPower;
       this.safeDelay(500, () => {
@@ -459,6 +515,65 @@ export class GameScene extends Phaser.Scene {
       this.loadZone(targetZone);
       this.isTransitioning = false;
     });
+  }
+
+  // ---------- Combat ----------
+
+  /**
+   * Griffure du joueur contre les ennemis à portée, puis contact ennemi -> joueur (sauf en Forme
+   * ombre, intangible — cf. message.txt — ou en dash, qui inflige des dégâts massifs à l'ennemi
+   * plutôt que d'en subir, cohérent avec l'invincibilité courte déjà documentée pour ce pouvoir).
+   */
+  private resolveCombat(time: number): void {
+    const hitbox = this.player.getAttackHitbox(time);
+    const playerBounds = this.player.getBounds();
+    this.enemies.forEach((enemy) => {
+      if (enemy.isDefeated) return;
+      const enemyBounds = enemy.getBounds();
+
+      if (hitbox && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, enemyBounds)) {
+        if (enemy.takeDamage(this.player.attackDamage(), time)) this.onEnemyDefeated(enemy);
+        return;
+      }
+
+      if (!Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, enemyBounds)) return;
+      if (this.player.isInShadowForm()) return;
+      if (this.player.dashActive) {
+        if (enemy.takeDamage(999, time)) this.onEnemyDefeated(enemy);
+        return;
+      }
+      if (enemy.canContactHurt(time)) {
+        enemy.markContact(time);
+        this.handlePlayerHurt(enemy);
+      }
+    });
+  }
+
+  private onEnemyDefeated(enemy: Enemy): void {
+    this.enemies = this.enemies.filter((e) => e !== enemy);
+    const activeBoss = this.activeBoss;
+    const boss = activeBoss && activeBoss.boss === enemy ? activeBoss : undefined;
+    enemy.playDefeatedAnimation(() => {
+      if (boss) this.resolveBossVictory(boss.entity, boss.sprite);
+    });
+  }
+
+  /** Dégâts de contact d'un ennemi : coûte une vie (sans effet en Mode Admin), petit recul + i-frames via le cooldown de contact. */
+  private handlePlayerHurt(source: Enemy): void {
+    audioManager.play(this, SFX_KEYS.PLAYER_HURT);
+    this.cameras.main.flash(200, 200, 0, 0);
+    const dir = this.player.x >= source.x ? 1 : -1;
+    this.player.applyKnockback(dir * 220, -180, this.time.now);
+
+    const isAdmin = powerSystem.isTestMode();
+    if (isAdmin) return;
+    this.lives -= 1;
+    this.updateLivesDisplay();
+    if (this.lives <= 0) {
+      this.showGameOver();
+      return;
+    }
+    this.toast('Touché !');
   }
 
   // ---------- Chute mortelle ----------
@@ -555,6 +670,13 @@ export class GameScene extends Phaser.Scene {
     this.dialogActive = false;
     this.scene.stop(SCENE_KEYS.DIALOG);
     this.drainEdgeInputs();
+    // Le dialogue d'intro d'un boss (cf. handleBossArena) ne fait que précéder le combat réel :
+    // celui-ci ne démarre qu'une fois la fenêtre de dialogue refermée.
+    if (this.pendingBossFight) {
+      const { entity, sprite } = this.pendingBossFight;
+      this.pendingBossFight = undefined;
+      this.startBossFight(entity, sprite);
+    }
   }
 
   // ---------- Tutoriel ----------

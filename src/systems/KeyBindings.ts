@@ -2,9 +2,9 @@ import Phaser from 'phaser';
 
 const STORAGE_KEY = 'shadowpaw_keybindings_v1';
 
-export type ControlAction = 'left' | 'right' | 'jump' | 'dash' | 'shadowForm' | 'interact' | 'pause';
+export type ControlAction = 'left' | 'right' | 'jump' | 'dash' | 'shadowForm' | 'interact' | 'attack' | 'pause';
 
-export const CONTROL_ACTIONS: ControlAction[] = ['left', 'right', 'jump', 'dash', 'shadowForm', 'interact', 'pause'];
+export const CONTROL_ACTIONS: ControlAction[] = ['left', 'right', 'jump', 'dash', 'shadowForm', 'interact', 'attack', 'pause'];
 
 export const ACTION_LABELS: Record<ControlAction, string> = {
   left: 'Gauche',
@@ -13,6 +13,7 @@ export const ACTION_LABELS: Record<ControlAction, string> = {
   dash: 'Dash fantôme',
   shadowForm: 'Forme ombre',
   interact: 'Interagir',
+  attack: 'Attaquer',
   pause: 'Pause / Menu',
 };
 
@@ -23,6 +24,7 @@ export const DEFAULT_BINDINGS: Record<ControlAction, number> = {
   dash: Phaser.Input.Keyboard.KeyCodes.SHIFT,
   shadowForm: Phaser.Input.Keyboard.KeyCodes.Q,
   interact: Phaser.Input.Keyboard.KeyCodes.E,
+  attack: Phaser.Input.Keyboard.KeyCodes.X,
   pause: Phaser.Input.Keyboard.KeyCodes.ESC,
 };
 

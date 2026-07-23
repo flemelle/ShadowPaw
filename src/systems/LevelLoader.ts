@@ -112,7 +112,9 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
   };
 
   const entityMarkers = zoneMap.entities
-    .filter((e) => e.type !== 'spawn')
+    // 'mob' a besoin d'un corps dynamique (patrouille) : construit à part par GameScene (cf.
+    // entities/Enemy.ts), pas ici où toutes les autres entités reçoivent un corps statique.
+    .filter((e) => e.type !== 'spawn' && e.type !== 'mob')
     .map((entity) => {
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;

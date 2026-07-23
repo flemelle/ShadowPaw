@@ -61,6 +61,36 @@
       "y": 16,
       "targetZone": "zone4_seikuji_quietude",
       "requiresBossDefeated": "boss_ombre_jumelle"
+    },
+    {
+      "type": "mob",
+      "x": 26,
+      "y": 16,
+      "tier": 1
+    },
+    {
+      "type": "mob",
+      "x": 49,
+      "y": 15,
+      "tier": 2
+    },
+    {
+      "type": "mob",
+      "x": 72,
+      "y": 15,
+      "tier": 3
+    },
+    {
+      "type": "mob",
+      "x": 95,
+      "y": 16,
+      "tier": 4
+    },
+    {
+      "type": "mob",
+      "x": 118,
+      "y": 16,
+      "tier": 5
     }
   ]
 }
