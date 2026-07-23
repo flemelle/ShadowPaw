@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/utils/Constants';
+import { GAMEPLAY_ZOOM } from '@/systems/CameraSystem';
 import type { ZoneAmbiance } from '@/utils/Constants';
 
 interface LayerSpec {
@@ -81,7 +82,11 @@ export class ParallaxBackground {
         // rééchantillonnage recentré fait apparaître une tranche différente = bandes de couleur
         // qui jurent. Le suivi vertical de la caméra (scrollFactorY ci-dessous) suffit à éviter
         // le vide en haut/bas sur nos zones, plus courtes que GAME_HEIGHT en pixels monde.
-        const scale = GAME_HEIGHT / srcH;
+        // Divisé par GAMEPLAY_ZOOM : la caméra grossit tout ce qu'elle affiche (elle-même
+        // dézoomée à 1.4x), donc sans cette compensation l'image rendait 1.4x plus grande que
+        // "exactement un écran" — assez pour pousser le premier plan (branches, etc.) hors du
+        // cadre en bas plutôt que de rester à sa place conçue.
+        const scale = GAME_HEIGHT / srcH / GAMEPLAY_ZOOM;
         const tileW = (GAME_WIDTH + 2 * margin) / scale;
 
         const layer = scene.add.tileSprite(-margin, 0, tileW, srcH, spec.key).setOrigin(0, 0);

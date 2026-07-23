@@ -49,13 +49,14 @@ export class CameraSystem {
     if (!this.target) return;
     const cam = this.scene.cameras.main;
     const viewHalfHeight = cam.height / cam.zoom / 2;
-    const rest = this.restScrollY();
-    const midWorldY = cam.scrollY + viewHalfHeight;
-    // Au-delà de la moitié haute de l'écran, la caméra suit pour garder le joueur sur cette
-    // ligne ; sinon elle se détend vers `rest` (jamais plus bas, pour garder le sol en bas d'écran).
-    const desiredScrollY = this.target.y < midWorldY ? this.target.y - viewHalfHeight : rest;
-    const clamped = Math.min(desiredScrollY, rest);
-    cam.scrollY = Phaser.Math.Linear(cam.scrollY, clamped, 0.14);
+    // Le point de comparaison (target.y - viewHalfHeight) ne dépend que de la position du
+    // joueur, jamais du scrollY courant : comparer au scrollY courant (comme avant) créait une
+    // boucle de rétroaction — le moindre saut faisait osciller le joueur autour du seuil d'une
+    // frame à l'autre, chaque flip relançant la caméra vers une cible différente (le "sautillement").
+    // `Math.min` retombe naturellement sur `rest` tant que le joueur reste sous la moitié de
+    // l'écran, et suit sans à-coup au-delà — aucun branchement nécessaire.
+    const desired = Math.min(this.restScrollY(), this.target.y - viewHalfHeight);
+    cam.scrollY = Phaser.Math.Linear(cam.scrollY, desired, 0.14);
   }
 
   fadeOutIn(durationMs = 300, onMid?: () => void): void {
