@@ -221,22 +221,26 @@ export interface ZoneAmbiance {
 }
 
 export const ZONE_AMBIANCE: Record<ZoneId, ZoneAmbiance> = {
+  // wallTint = couleur dominante du fond peint de la zone (calculée depuis les assets, cf.
+  // scripts/gen-floor-textures.py) composée avec le washColor ci-dessous — pas un accent choisi
+  // à la main : le sol/les plateformes doivent lire comme appartenant au décor, pas comme une
+  // couleur qui lui est étrangère.
   // Nuit, torches violettes
-  zone1_portes_velkhar: { wallTint: 0x6a3fb5, washColor: 0x4a2f7a, washAlpha: 0.12 },
+  zone1_portes_velkhar: { wallTint: 0x151631, washColor: 0x4a2f7a, washAlpha: 0.12 },
   // Obscurité presque totale, chaînes
-  zone2_antre_velours_noir: { wallTint: 0x241a33, washColor: 0x0a0712, washAlpha: 0.35 },
+  zone2_antre_velours_noir: { wallTint: 0x0d0f20, washColor: 0x0a0712, washAlpha: 0.35 },
   // Vide noir, énergie sombre pulsante
-  zone3_velkhar_foyer_ombres: { wallTint: 0x4a1f5c, washColor: 0x6a1f6a, washAlpha: 0.22, pulse: true },
+  zone3_velkhar_foyer_ombres: { wallTint: 0x221636, washColor: 0x6a1f6a, washAlpha: 0.22, pulse: true },
   // Blanc et doré, silence absolu
-  zone4_seikuji_quietude: { wallTint: 0xb8a06a, washColor: 0xffe9b0, washAlpha: 0.1 },
+  zone4_seikuji_quietude: { wallTint: 0x6093c4, washColor: 0xffe9b0, washAlpha: 0.1 },
   // Mélange lumière brisée / ombre envahissante
-  zone5_seikuji_corrompu: { wallTint: 0x8a6a8a, washColor: 0x3a1f5c, washAlpha: 0.28 },
+  zone5_seikuji_corrompu: { wallTint: 0x486ba8, washColor: 0x3a1f5c, washAlpha: 0.28 },
   // Végétation corrompue
-  zone6_jardins_oublies: { wallTint: 0x3a5c3a, washColor: 0x2a4a2a, washAlpha: 0.22 },
+  zone6_jardins_oublies: { wallTint: 0x4b626c, washColor: 0x2a4a2a, washAlpha: 0.22 },
   // Réflexions, illusions
-  zone7_salle_miroirs: { wallTint: 0x4a7fae, washColor: 0x3a5f8a, washAlpha: 0.2 },
+  zone7_salle_miroirs: { wallTint: 0x4a81ba, washColor: 0x3a5f8a, washAlpha: 0.2 },
   // Décor abstrait, vide
-  zone8_vide_entre_deux: { wallTint: 0x2a2038, washColor: 0x0a0612, washAlpha: 0.4 },
+  zone8_vide_entre_deux: { wallTint: 0x0a0612, washColor: 0x0a0612, washAlpha: 0.4 },
 };
 
 /**
