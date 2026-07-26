@@ -83,7 +83,7 @@ export class MenuScene extends Phaser.Scene {
     // mais ne doit pas à lui seul faire apparaître le bouton.
     const hasSave = SaveSystem.hasCheckpoint();
     let y = 320;
-    this.add.image(GAME_WIDTH / 2 - 194, y, TEX.UI_ICON_PLAY).setDisplaySize(26, 26);
+    this.add.image(GAME_WIDTH / 2 - 164, y, TEX.UI_ICON_PLAY).setDisplaySize(22, 22);
     this.makeButton(y, 'Nouvelle partie', () => {
       audioManager.play(this, SFX_KEYS.UI_CONFIRM);
       startNewGame();
@@ -92,7 +92,7 @@ export class MenuScene extends Phaser.Scene {
     y += 60;
 
     if (hasSave) {
-      this.add.image(GAME_WIDTH / 2 - 194, y, TEX.UI_ICON_PLAY).setDisplaySize(26, 26);
+      this.add.image(GAME_WIDTH / 2 - 164, y, TEX.UI_ICON_PLAY).setDisplaySize(22, 22);
       this.makeButton(y, 'Continuer', () => {
         audioManager.play(this, SFX_KEYS.UI_CONFIRM);
         continueGame();
@@ -185,8 +185,8 @@ export class MenuScene extends Phaser.Scene {
 
   private makeButton(y: number, label: string, onClick: () => void): Button {
     return new Button(this, GAME_WIDTH / 2, y, label, {
-      fontSize: '22px',
-      minWidth: 340,
+      fontSize: '18px',
+      minWidth: 280,
       onClick,
       onHover: () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 }),
     });

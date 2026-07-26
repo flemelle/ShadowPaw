@@ -38,6 +38,7 @@ export class TutorialScene extends Phaser.Scene {
   private skipHint!: Phaser.GameObjects.Text;
   private nextButton!: Button;
   private keySpace!: Phaser.Input.Keyboard.Key;
+  private keyEsc!: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super(SCENE_KEYS.TUTORIAL);
@@ -93,12 +94,22 @@ export class TutorialScene extends Phaser.Scene {
     container.add(this.nextButton.container);
 
     this.keySpace = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.finish());
+    // Sondée dans update() plutôt qu'un listener 'down' immédiat : ce dernier se déclenchait
+    // hors du cycle update(), avant celui de GameScene qui partage la même touche (Échap =
+    // pause) — le tutoriel se fermait ET le menu pause s'ouvrait sur le même appui. GameScene
+    // met à jour AVANT les scènes lancées par-dessus (cf. scene.launch), donc son propre
+    // update() lit encore `tutorialActive === true` ce tour-ci et ignore correctement la pause ;
+    // ce n'est qu'ensuite que ce update()-ci referme le tutoriel.
+    this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     this.renderStep();
   }
 
   update(): void {
+    if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
+      this.finish();
+      return;
+    }
     const confirmPressed =
       Phaser.Input.Keyboard.JustDown(this.keySpace) || keyBindings.justDown('interact') || keyBindings.justDown('jump');
     if (confirmPressed) this.advance();

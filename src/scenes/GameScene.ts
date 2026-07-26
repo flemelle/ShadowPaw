@@ -77,6 +77,8 @@ export class GameScene extends Phaser.Scene {
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private pendingBossFight?: { entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private hud!: Phaser.GameObjects.Container;
+  private hitImpactFx!: Phaser.GameObjects.Sprite;
+  private dashImpactFx!: Phaser.GameObjects.Sprite;
   private powerIconTexts: Phaser.GameObjects.Text[] = [];
   private zoneLabel!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
@@ -114,6 +116,10 @@ export class GameScene extends Phaser.Scene {
     this.lives = LIVES_START;
     this.isDead = false;
     this.isTransitioning = false;
+    this.hitImpactFx = this.add.sprite(0, 0, TEX.HIT_IMPACT_FX).setVisible(false).setDepth(10);
+    this.hitImpactFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.hitImpactFx.setVisible(false));
+    this.dashImpactFx = this.add.sprite(0, 0, TEX.DASH_IMPACT_FX).setVisible(false).setDepth(10);
+    this.dashImpactFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.dashImpactFx.setVisible(false));
     this.loadZone(gameState.currentZone);
 
     // Tutoriel d'introduction : uniquement au tout début d'une vraie partie (pas en Mode
@@ -343,8 +349,11 @@ export class GameScene extends Phaser.Scene {
       ...this.built.entityMarkers.map((m) => m.sprite),
       ...this.built.decorSprites,
       ...this.catDecorSprites,
+      ...this.enemies,
       this.player,
       this.player.attackEffect,
+      this.hitImpactFx,
+      this.dashImpactFx,
       this.promptText,
     ];
     if (this.playerGlow) worldObjects.push(this.playerGlow);
@@ -393,7 +402,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
-    this.enemies.forEach((e) => e.updateAI(this.player.x));
+    this.enemies.forEach((e) => e.updateAI(this.player.x, time));
     this.maybeShowCombatTutorial();
     this.resolveCombat(time);
 
@@ -497,6 +506,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.physics.add.collider(boss, this.built.solidGroup);
     this.enemies.push(boss);
+    // Sans ça, le boss (ajouté après le calcul initial de la liste des objets ignorés par la
+    // caméra HUD, cf. loadZone) restait rendu par LES DEUX caméras : un doublon visuel exact du
+    // même sprite, disparaissant donc en même temps que l'original une fois vaincu.
+    this.syncCameraIgnoreLists();
     this.activeBoss = { boss, entity, sprite };
     sprite.setVisible(false);
     if (bossDef) audioManager.setMusicRate(bossDef.musicRate);
@@ -608,6 +621,16 @@ export class GameScene extends Phaser.Scene {
    * ombre, intangible — cf. message.txt — ou en dash, qui inflige des dégâts massifs à l'ennemi
    * plutôt que d'en subir, cohérent avec l'invincibilité courte déjà documentée pour ce pouvoir).
    */
+  /** Rafale (RPG Effect All Free, cf. ACKNOWLEDGEMENTS.md) au point d'impact d'une griffure réussie. */
+  private playHitImpactFx(x: number, y: number): void {
+    this.hitImpactFx.setPosition(x, y).setVisible(true).play(ANIM_KEYS.HIT_IMPACT);
+  }
+
+  /** Même pack, teinte distincte (cyan) : le dash fantôme est une attaque à part, pas une griffure. */
+  private playDashImpactFx(x: number, y: number): void {
+    this.dashImpactFx.setPosition(x, y).setVisible(true).play(ANIM_KEYS.DASH_IMPACT);
+  }
+
   private resolveCombat(time: number): void {
     const hitbox = this.player.getAttackHitbox(time);
     const playerBounds = this.player.getBounds();
@@ -616,14 +639,16 @@ export class GameScene extends Phaser.Scene {
       const enemyBounds = enemy.getBounds();
 
       if (hitbox && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, enemyBounds)) {
-        if (enemy.takeDamage(this.player.attackDamage(), time)) this.onEnemyDefeated(enemy);
+        this.playHitImpactFx(enemy.x, enemy.y);
+        if (enemy.takeDamage(this.player.attackDamage(), time, this.player.x)) this.onEnemyDefeated(enemy);
         return;
       }
 
       if (!Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, enemyBounds)) return;
       if (this.player.isInShadowForm()) return;
       if (this.player.dashActive) {
-        if (enemy.takeDamage(999, time)) this.onEnemyDefeated(enemy);
+        this.playDashImpactFx(enemy.x, enemy.y);
+        if (enemy.takeDamage(999, time, this.player.x)) this.onEnemyDefeated(enemy);
         return;
       }
       if (enemy.canContactHurt(time)) {
@@ -795,13 +820,27 @@ export class GameScene extends Phaser.Scene {
 
   private startTutorial(steps: TutorialStep[]): void {
     if (steps.length === 0) return;
+    // Attend l'atterrissage plutôt que d'ouvrir en plein saut : `setVelocity(0, 0)` juste en
+    // dessous couperait net l'élan vertical, un arrêt en plein vol visuellement/sensiblement
+    // brutal. Le déclencheur (combat/pouvoir) a déjà posé son flag "vu" avant d'appeler ceci,
+    // donc reprogrammer cet appel jusqu'à l'atterrissage ne le redéclenche jamais en double.
+    if (!this.player.isGrounded()) {
+      this.safeDelay(120, () => this.startTutorial(steps));
+      return;
+    }
     this.tutorialActive = true;
     this.player.setVelocity(0, 0);
+    // GameScene.update() skipping enemy.updateAI()/resolveCombat() only stops NEW AI decisions —
+    // Arcade Physics keeps simulating existing velocity/gravity independently of Scene.update(),
+    // so an enemy already mid-patrol kept sliding/falling under the tutorial overlay. Pausing the
+    // whole physics world actually freezes everything, not just the player's own input handling.
+    this.physics.pause();
     this.scene.launch(SCENE_KEYS.TUTORIAL, { steps });
   }
 
   private onTutorialEnd(): void {
     this.tutorialActive = false;
+    this.physics.resume();
     this.scene.stop(SCENE_KEYS.TUTORIAL);
     this.drainEdgeInputs();
   }
@@ -819,6 +858,9 @@ export class GameScene extends Phaser.Scene {
     keyBindings.justDown('dash');
     keyBindings.justDown('shadowForm');
     keyBindings.justDown('interact');
+    // 'pause' aussi : Échap ferme un tutoriel (TutorialScene) tout en étant la touche pause —
+    // sans ce drain, GameScene rouvrait le menu pause sur ce même appui juste après la fermeture.
+    keyBindings.justDown('pause');
     this.player.drainEdgeInputs();
   }
 
@@ -1106,7 +1148,7 @@ export class GameScene extends Phaser.Scene {
     // pancarte suspendue lit naturellement comme un panneau "Pause" affiché en jeu plutôt que le
     // simple aplat sombre précédent.
     const panelSrc = this.textures.get(TEX.UI_PANEL).source[0];
-    const panelH = 460;
+    const panelH = 500;
     const panelW = panelH * (panelSrc.width / panelSrc.height);
     const panel = this.add.image(GAME_WIDTH / 2, 360, TEX.UI_PANEL).setDisplaySize(panelW, panelH);
     const pauseIcon = this.add.image(GAME_WIDTH / 2 - 110, 240, TEX.UI_ICON_PAUSE).setDisplaySize(32, 32);
@@ -1118,18 +1160,21 @@ export class GameScene extends Phaser.Scene {
 
     const hoverSfx = () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
     const resumeBtn = new Button(this, GAME_WIDTH / 2, 310, 'Reprendre (ESC)', {
-      minWidth: 260,
+      minWidth: 220,
+      fontSize: '16px',
       onHover: hoverSfx,
       onClick: () => this.togglePauseMenu(),
     });
     const optionsBtn = new Button(this, GAME_WIDTH / 2, 366, 'Options', {
-      minWidth: 260,
+      minWidth: 220,
+      fontSize: '16px',
       onHover: hoverSfx,
       onClick: () => this.openOptions(),
     });
     const fullscreenLabel = () => (isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran');
     const fullscreenBtn = new Button(this, GAME_WIDTH / 2, 422, fullscreenLabel(), {
-      minWidth: 320,
+      minWidth: 220,
+      fontSize: '16px',
       onHover: hoverSfx,
       onClick: () => {
         toggleFullscreen(this);
@@ -1137,7 +1182,8 @@ export class GameScene extends Phaser.Scene {
       },
     });
     const quitBtn = new Button(this, GAME_WIDTH / 2, 478, 'Quitter vers le menu', {
-      minWidth: 260,
+      minWidth: 220,
+      fontSize: '16px',
       textColor: '#c56b6b',
       hoverTextColor: '#ff9a9a',
       onHover: hoverSfx,

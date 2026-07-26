@@ -117,12 +117,18 @@ intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédu
 - **MediavelFree.png / Idle.png** — chatte-ninja, boss "L'Ombre Jumelle"
   (`images/bosses/catgirl_idle.png`).
 - **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
-  de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`) ;
-  quelques frames de `BLUEMeleeAttackStrip.png` réutilisées, teintées dans la
-  palette gris/violet de Kiba, comme éclair d'attaque du joueur plutôt qu'un
-  nouveau personnage (`images/creatures/player_attack_fx.png`).
-- **Pixel Art Tiles and Backgrounds - Woods** — deux touffes d'herbe ajoutées au
-  pool de décor de la zone Forêt (`images/decor/forest_grass_*.png`).
+  de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`).
+- **RPG Effect All Free** — rafale d'énergie (une des 9 teintes x 8 frames de fondu de
+  `Part 16/766.png`) réutilisée trois fois avec une teinte différente selon le contexte :
+  violet pour l'éclair d'attaque du joueur (`images/creatures/player_attack_fx.png`),
+  orange pour l'impact d'une griffure réussie sur un ennemi
+  (`images/creatures/hit_impact_fx.png`), cyan pour l'impact du dash fantôme, distinct
+  d'une simple griffure (`images/creatures/dash_impact_fx.png`).
+- **Pixel Art Tiles and Backgrounds - Woods** — tuile de sol herbe/terre du vrai tileset
+  (`Tiles/Tilesheet - WOODS.png`) pour le sol de la zone Forêt, à la place du sol
+  Stringstar recoloré utilisé ailleurs (`images/tiles/ground_forest.png`, cf.
+  `scripts/gen-floor-textures.py`) ; deux touffes d'herbe ajoutées au pool de décor de
+  la même zone (`images/decor/forest_grass_*.png`).
 
 Aucun de ces packs ne fournissait de licence explicite (au mieux une note de
 remerciement informelle) — **à vérifier par l'utilisateur** avant toute

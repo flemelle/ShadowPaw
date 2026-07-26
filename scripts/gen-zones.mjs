@@ -21,10 +21,10 @@ function mulberry32(seed) {
  * Génère une grille (rows de chars) + la liste des colonnes "sûres" (sol présent,
  * plafond dégagé) utilisables pour poser des entités, en fonction d'un profil.
  */
-// Portée maximale d'un saut en course (cf. entities/Player.ts : MOVE_SPEED=200, JUMP_SPEED=480,
-// gravité=900) : temps de vol 2*480/900 ≈ 1.067s à 200px/s ≈ 213px ≈ 6.67 tuiles de 32px. Une
+// Portée maximale d'un saut en course (cf. entities/Player.ts : MOVE_SPEED=200, JUMP_SPEED=560,
+// gravité=900) : temps de vol 2*560/900 ≈ 1.244s à 200px/s ≈ 249px ≈ 7.78 tuiles de 32px. Une
 // fosse plus large que ça est mathématiquement infranchissable au jugé, quel que soit le doigté
-// du joueur ; on plafonne donc à 4 tuiles pour garder une marge confortable (~40%) pour un élan
+// du joueur ; on plafonne donc à 4 tuiles pour garder une marge confortable pour un élan
 // imparfait, un saut débuté un peu en retard, etc. — plutôt que de coller au maximum théorique.
 const MAX_SAFE_PIT_WIDTH = 4;
 
@@ -359,7 +359,9 @@ const ZONE_PROFILES = {
     plat: { count: 26, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
-    entityFracs: { spawn: 0.03, npc0: 0.1, boss_arena0: 0.45, power_altar0: 0.9, zone_exit0: 0.98 },
+    // Le boss reste toujours juste avant la sortie (comme les 7 autres zones), pas au milieu du
+    // parcours : seul l'autel de pouvoir vient s'intercaler entre le combat et la sortie elle-même.
+    entityFracs: { spawn: 0.03, npc0: 0.1, boss_arena0: 0.85, power_altar0: 0.92, zone_exit0: 0.98 },
   },
   // Le même temple, corrompu — l'ordre de la zone 4 se fissure : plus de fosses, sol
   // irrégulier (undulate), plateformes de tailles très inégales.

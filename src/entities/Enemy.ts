@@ -8,6 +8,8 @@ const HIT_FLASH_MS = 120;
 const CONTACT_COOLDOWN_MS = 800; // évite de ré-appliquer les dégâts de contact frame après frame
 const HIT_INVULN_MS = 400; // > durée de la fenêtre d'attaque du joueur (cf. Player.ATTACK_DURATION_MS)
 const MIRROR_HISTORY_FRAMES = 60; // ~1s à 60fps, cf. bossDef.pattern === 'mirror'
+const KNOCKBACK_MS = 160;
+const KNOCKBACK_SPEED = 240;
 
 /** PV/vitesse d'un mob "normal" : croît avec la zone (1-8) ET le tier au sein de la zone (1-5). */
 export function mobHp(zoneIndex: number, tier: number): number {
@@ -31,6 +33,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly spawnX: number;
   private lastContactAt = -Infinity;
   private invulnerableUntil = -Infinity;
+  private knockbackUntil = -Infinity;
   private readonly mirrorHistory: number[] = [];
   private defeated = false;
   private readonly groundTopByCol: (number | null)[];
@@ -95,8 +98,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** À appeler chaque frame par GameScene avec la position X courante du joueur (pattern 'mirror'). */
-  updateAI(playerX: number): void {
+  updateAI(playerX: number, time: number): void {
     if (this.defeated) return;
+    // Laisse le recul (cf. takeDamage) porter l'ennemi sans que l'IA n'écrase sa vélocité au
+    // frame suivant : sans cette fenêtre, setVelocityX ci-dessous (patrouille/mirror) annulerait
+    // l'impulsion de recul dès la frame suivante, la rendant invisible en jeu.
+    if (time < this.knockbackUntil) return;
     const body = this.body as Phaser.Physics.Arcade.Body;
     const pattern = this.bossDef?.pattern;
 
@@ -163,10 +170,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
    * chaque coup reçu — sans elle, la fenêtre d'attaque du joueur (plusieurs frames) toucherait
    * le même ennemi une fois par frame plutôt qu'une fois par coup de griffe.
    */
-  takeDamage(amount: number, time: number): boolean {
+  takeDamage(amount: number, time: number, sourceX?: number): boolean {
     if (this.defeated || time < this.invulnerableUntil) return false;
     this.invulnerableUntil = time + HIT_INVULN_MS;
     this.hp -= amount;
+    if (sourceX != null) {
+      const dir = this.x >= sourceX ? 1 : -1;
+      (this.body as Phaser.Physics.Arcade.Body).setVelocity(dir * KNOCKBACK_SPEED, -80);
+      this.knockbackUntil = time + KNOCKBACK_MS;
+    }
     audioManager.play(this.scene, SFX_KEYS.ENEMY_HIT, { volume: 0.5 });
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {

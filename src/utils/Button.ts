@@ -16,15 +16,15 @@ export interface ButtonOptions {
 }
 
 const DEFAULTS: Required<Omit<ButtonOptions, 'onClick' | 'onHover' | 'minWidth'>> = {
-  fontSize: '22px',
+  fontSize: '18px',
   textColor: '#e8e2f0',
   hoverTextColor: '#ffe9b0',
   bgColor: 0x1a1428,
   hoverBgColor: 0x2e2350,
   borderColor: 0x4a3f6a,
   hoverBorderColor: 0xd8b34a,
-  paddingX: 20,
-  paddingY: 12,
+  paddingX: 14,
+  paddingY: 8,
 };
 
 /**

@@ -5,7 +5,7 @@ import { audioManager } from '@/systems/AudioManager';
 import { keyBindings } from '@/systems/KeyBindings';
 
 const MOVE_SPEED = 200;
-const JUMP_SPEED = 480;
+const JUMP_SPEED = 560;
 const DASH_SPEED = 620;
 const DASH_DURATION_MS = 180;
 const SHADOW_FORM_DURATION_MS = 5000;
@@ -22,9 +22,8 @@ const ATTACK_HEIGHT = 26;
  * Kiba — mouvement de plateforme, traversée liée aux pouvoirs, et attaque de griffes de base
  * (cf. GameScene pour l'application des dégâts aux ennemis — Player expose juste la fenêtre
  * d'attaque active et son montant de dégâts). Le corps du joueur reste procédural (cf.
- * BootScene), mais l'attaque affiche un bref éclair de griffure (BLUE Aseprite pack, cf.
- * ACKNOWLEDGEMENTS.md) teinté dans la palette gris/violet de Kiba plutôt qu'un sprite bleu
- * détonnant, comme un accès ponctuel à sa "forme d'ombre" plutôt qu'un nouveau personnage.
+ * BootScene), mais l'attaque affiche une brève rafale d'énergie (RPG Effect All Free, cf.
+ * ACKNOWLEDGEMENTS.md) dans une teinte violette déjà proche de la palette de Kiba.
  * Les touches (gauche/droite/saut/dash/forme ombre/attaque) sont remappables via
  * l'écran Options — cf. systems/KeyBindings.
  */
@@ -60,7 +59,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // universelle de plateformer, pénible à casser pour qui la tape par réflexe (cf. retours).
     this.spaceKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-    this.attackFx = scene.add.sprite(x, y, TEX.PLAYER_ATTACK_FX).setVisible(false).setTint(0xb8a0e0);
+    this.attackFx = scene.add.sprite(x, y, TEX.PLAYER_ATTACK_FX).setVisible(false);
     this.attackFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.attackFx.setVisible(false));
   }
 
@@ -114,6 +113,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Exposé pour GameScene.syncCameraIgnoreLists (cf. playerGlow, le même besoin). */
   get attackEffect(): Phaser.GameObjects.Sprite {
     return this.attackFx;
+  }
+
+  /** Au sol maintenant (pas de coyote time ici) — cf. GameScene.startTutorial, qui attend
+   * l'atterrissage plutôt que d'ouvrir un tutoriel en pleine réception de saut. */
+  isGrounded(): boolean {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    return body.blocked.down || body.touching.down;
   }
 
   private playAttackFx(dir: 1 | -1): void {

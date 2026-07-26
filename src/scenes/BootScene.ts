@@ -112,7 +112,9 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
     this.load.spritesheet(TEX.GHOST_CAT_BLUE, REAL_TEX_PATHS[TEX.GHOST_CAT_BLUE], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.GHOST_CAT_RED, REAL_TEX_PATHS[TEX.GHOST_CAT_RED], { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet(TEX.PLAYER_ATTACK_FX, REAL_TEX_PATHS[TEX.PLAYER_ATTACK_FX], { frameWidth: 48, frameHeight: 48 });
+    this.load.spritesheet(TEX.PLAYER_ATTACK_FX, REAL_TEX_PATHS[TEX.PLAYER_ATTACK_FX], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.HIT_IMPACT_FX, REAL_TEX_PATHS[TEX.HIT_IMPACT_FX], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.DASH_IMPACT_FX, REAL_TEX_PATHS[TEX.DASH_IMPACT_FX], { frameWidth: 64, frameHeight: 64 });
     for (const { texture } of CAT_DECOR_VARIANTS) {
       this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
     }
@@ -182,14 +184,28 @@ export class BootScene extends Phaser.Scene {
       frameRate: 10,
       repeat: -1,
     });
-    // Éclair d'attaque de Kiba (BLUE Aseprite pack, cf. ACKNOWLEDGEMENTS.md) — juste les frames du
-    // coup de griffe (14-19 sur les 30 de la feuille, le reste est l'élan/la retombée), teinté à la
-    // volée (cf. Player.ts) pour rester dans la palette gris/violet du joueur plutôt que d'importer
-    // une nouvelle identité visuelle bleue en plein combat.
+    // Éclair d'attaque de Kiba + impact d'un coup qui touche (RPG Effect All Free, cf.
+    // ACKNOWLEDGEMENTS.md) — la même feuille de rafale (9 teintes x 8 frames de fondu) fournie
+    // déjà dans la palette gris/violet du joueur (ligne violette) pour l'attaque, et une teinte
+    // vive orange/rouge (ligne orange) pour l'impact sur l'ennemi touché.
     this.anims.create({
       key: ANIM_KEYS.PLAYER_ATTACK_SWIPE,
-      frames: this.anims.generateFrameNumbers(TEX.PLAYER_ATTACK_FX, { start: 14, end: 19 }),
-      frameRate: 30,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_ATTACK_FX, { start: 0, end: 7 }),
+      frameRate: 24,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.HIT_IMPACT,
+      frames: this.anims.generateFrameNumbers(TEX.HIT_IMPACT_FX, { start: 0, end: 7 }),
+      frameRate: 24,
+      repeat: 0,
+    });
+    // Distincte de la griffure normale (cyan plutôt qu'orange) : le dash fantôme est une attaque
+    // à part (traverse/exécute au contact), pas une simple griffure plus forte.
+    this.anims.create({
+      key: ANIM_KEYS.DASH_IMPACT,
+      frames: this.anims.generateFrameNumbers(TEX.DASH_IMPACT_FX, { start: 0, end: 7 }),
+      frameRate: 24,
       repeat: 0,
     });
     for (const { texture, animKey } of CAT_DECOR_VARIANTS) {

@@ -117,6 +117,8 @@ export const TEX = {
   GHOST_CAT_BLUE: 'tex_ghost_cat_blue',
   GHOST_CAT_RED: 'tex_ghost_cat_red',
   PLAYER_ATTACK_FX: 'tex_player_attack_fx',
+  HIT_IMPACT_FX: 'tex_hit_impact_fx',
+  DASH_IMPACT_FX: 'tex_dash_impact_fx',
   NPC_TOZEN: 'tex_npc_tozen',
   NPC_RYO_SPIRIT: 'tex_npc_ryo_spirit',
   NPC_VEILLEUR: 'tex_npc_veilleur',
@@ -152,6 +154,8 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.GHOST_CAT_BLUE]: `${ASSET_BASE}/images/bosses/ghost_cat_blue_idle.png`,
   [TEX.GHOST_CAT_RED]: `${ASSET_BASE}/images/bosses/ghost_cat_red_idle.png`,
   [TEX.PLAYER_ATTACK_FX]: `${ASSET_BASE}/images/creatures/player_attack_fx.png`,
+  [TEX.HIT_IMPACT_FX]: `${ASSET_BASE}/images/creatures/hit_impact_fx.png`,
+  [TEX.DASH_IMPACT_FX]: `${ASSET_BASE}/images/creatures/dash_impact_fx.png`,
   [TEX.NPC_TOZEN]: `${ASSET_BASE}/images/creatures/npc_tozen.png`,
   [TEX.NPC_RYO_SPIRIT]: `${ASSET_BASE}/images/creatures/npc_ryo_spirit.png`,
   [TEX.NPC_VEILLEUR]: `${ASSET_BASE}/images/creatures/npc_veilleur.png`,
@@ -215,6 +219,8 @@ export const ANIM_KEYS = {
   GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
   GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
   PLAYER_ATTACK_SWIPE: 'anim_player_attack_swipe',
+  HIT_IMPACT: 'anim_hit_impact',
+  DASH_IMPACT: 'anim_dash_impact',
 } as const;
 
 export const MUSIC_KEYS = {

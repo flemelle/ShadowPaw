@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""One-off generator: bakes 8 per-zone floor/platform textures from the
-Stringstar Fields ground texture (public/assets/images/tiles/ground_stringstar.png,
-itself cropped from the purchased tileset.png — cf. ACKNOWLEDGEMENTS.md).
+"""One-off generator: bakes 8 per-zone floor/platform textures from a ground texture
+SOURCED FROM THE SAME PACK AS EACH ZONE'S PAINTED BACKGROUND (cf. ZONE_SRC below) —
+Stringstar Fields' own ground for its zones, "Pixel Art Woods Tileset" for the forest
+zone. The graveyard pack (Anokolisa) has no plain repeatable ground tile — only scenic
+silhouette props (cf. graveyard_tileset.png) — so graveyard zones still fall back to the
+Stringstar ground rather than an unrelated look; cf. ACKNOWLEDGEMENTS.md for all sources.
 
 Each zone's tint is derived from the *actual painted background it uses* rather than
 a hand-picked accent color: the dominant color of that background's farthest (sky)
@@ -12,10 +15,21 @@ Run with: python3 scripts/gen-floor-textures.py
 """
 from PIL import Image, ImageEnhance
 
-SRC = 'public/assets/images/tiles/ground_stringstar.png'
 BG_DIR = 'public/assets/images/backgrounds'
 OUT_DIR = 'public/assets/images/tiles'
 TILE = 32
+
+# Source ground crop per zone — cf. module docstring for why graveyard falls back to Stringstar.
+ZONE_SRC = {
+    'zone1': f'{OUT_DIR}/ground_stringstar.png',
+    'zone2': f'{OUT_DIR}/ground_stringstar.png',
+    'zone3': f'{OUT_DIR}/ground_stringstar.png',
+    'zone4': f'{OUT_DIR}/ground_stringstar.png',
+    'zone5': f'{OUT_DIR}/ground_stringstar.png',
+    'zone6': f'{OUT_DIR}/ground_forest.png',
+    'zone7': f'{OUT_DIR}/ground_stringstar.png',
+    'zone8': f'{OUT_DIR}/ground_stringstar.png',
+}
 
 # Farthest (sky) layer per background set — cf. ParallaxBackground.ts, lowest scrollFactor —
 # since it's the one fully-opaque layer that covers the whole frame and best represents
@@ -107,16 +121,23 @@ def tint(im: Image.Image, rgb: tuple[int, int, int]) -> Image.Image:
     return im
 
 
-def main() -> None:
-    src = Image.open(SRC).convert('RGBA')
-    base = src.crop((0, 0, TILE, 18)).resize((TILE, TILE), Image.NEAREST)
-    base = ImageEnhance.Contrast(base).enhance(1.3)
-    # Le crop source est très sombre (canal max ~87/255) ; boost fort pour que la texture ait
-    # une vraie plage de luminance (mortier sombre / pierre claire) à restituer via tint().
-    base = ImageEnhance.Brightness(base).enhance(4.2)
+def load_base(src_path: str) -> Image.Image:
+    """Prépare le crop source en tuile 32x32 prête à teinter. Le crop Stringstar est une bande
+    fine (128x18) très sombre, recadrée/étirée puis boostée pour restituer une vraie plage de
+    luminance (mortier sombre / pierre claire) ; les autres sources sont déjà des tuiles 32x32
+    correctement contrastées (vrai tileset), pas besoin du même traitement correctif."""
+    src = Image.open(src_path).convert('RGBA')
+    if src_path.endswith('ground_stringstar.png'):
+        base = src.crop((0, 0, TILE, 18)).resize((TILE, TILE), Image.NEAREST)
+        base = ImageEnhance.Contrast(base).enhance(1.3)
+        return ImageEnhance.Brightness(base).enhance(4.2)
+    return src.resize((TILE, TILE), Image.NEAREST) if src.size != (TILE, TILE) else src
 
+
+def main() -> None:
+    bases = {zone: load_base(path) for zone, path in ZONE_SRC.items()}
     for name, color in compute_zone_tints().items():
-        tinted = tint(base.copy(), normalize(color))
+        tinted = tint(bases[name].copy(), normalize(color))
         tinted.save(f'{OUT_DIR}/floor_{name}.png')
         print(name, f'0x{color:06x}', 'done')
 
