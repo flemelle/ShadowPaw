@@ -34,6 +34,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly mirrorHistory: number[] = [];
   private defeated = false;
   private readonly groundTopByCol: (number | null)[];
+  /** Teinte à restaurer après le flash blanc de dégâts — absente pour un sprite réel (catgirl,
+   * chat, sanglier...) dont les couleurs propres ne doivent pas être écrasées par un aplat rouge. */
+  private readonly restingTint?: number;
   readonly isBoss: boolean;
   readonly bossDef?: BossDef;
 
@@ -43,9 +46,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     y: number,
     hp: number,
     speed: number,
-    opts?: { isBoss?: boolean; bossDef?: BossDef; groundTopByCol?: (number | null)[] },
+    opts?: { isBoss?: boolean; bossDef?: BossDef; groundTopByCol?: (number | null)[]; texture?: string; animKey?: string },
   ) {
-    super(scene, x, y, TEX.ENEMY);
+    super(scene, x, y, opts?.texture ?? TEX.ENEMY);
     scene.add.existing(this);
     this.spawnX = x;
     this.hp = hp;
@@ -58,7 +61,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // affichée AU MOMENT de sa création et ne suit plus les changements de scale ensuite — un
     // boss agrandi après coup aurait gardé une hitbox (et donc un point de vérification de sol,
     // cf. hasGroundAhead) de la taille du sprite non agrandi.
-    if (this.isBoss) this.setScale(1.7).setTint(0xff8a8a);
+    if (this.isBoss) {
+      this.setScale(1.7);
+      // Le losange générique (TEX.ENEMY) a besoin d'un accent rouge pour se lire comme "boss" ;
+      // un vrai sprite (catgirl...) a déjà sa propre identité visuelle, pas touché.
+      if (!opts?.texture) {
+        this.restingTint = 0xff8a8a;
+        this.setTint(this.restingTint);
+      }
+    }
+    if (opts?.animKey) this.play(opts.animKey);
     scene.physics.add.existing(this);
     // Pas de vélocité initiale ici : au chargement d'une zone, le premier pas de physique peut
     // s'exécuter plusieurs fois d'affilée (rattrapage du pas fixe de Phaser après le hoquet de
@@ -158,7 +170,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     audioManager.play(this.scene, SFX_KEYS.ENEMY_HIT, { volume: 0.5 });
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(HIT_FLASH_MS, () => {
-      if (!this.defeated) this.isBoss ? this.setTint(0xff8a8a) : this.clearTint();
+      if (this.defeated) return;
+      if (this.restingTint != null) this.setTint(this.restingTint);
+      else this.clearTint();
     });
     if (this.hp <= 0) {
       this.defeated = true;

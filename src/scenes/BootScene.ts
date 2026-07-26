@@ -11,6 +11,9 @@ import {
   FOOTSTEP_VARIANTS,
   ZONE_FLOOR_TEX,
   DECOR_PATHS,
+  REAL_TEX_PATHS,
+  ANIM_KEYS,
+  CAT_DECOR_VARIANTS,
 } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
 import { isTestModeRequestedFromURL } from '@/systems/GameState';
@@ -97,6 +100,20 @@ export class BootScene extends Phaser.Scene {
     Object.entries(DECOR_PATHS).forEach(([key, path]) => {
       this.load.image(key, path);
     });
+
+    // --- Mobs/boss/PNJ réels (cf. Constants.REAL_TEX_PATHS) : statiques ou feuilles de sprites
+    // pour celles avec une animation d'idle (32x32 pour les chats/sanglier, 48x48/64x64 pour les boss).
+    [TEX.MOB_CAT, TEX.MOB_SKULL, TEX.UI_PANEL, TEX.UI_ICON_PLAY, TEX.UI_ICON_PAUSE].forEach((key) => {
+      this.load.image(key, REAL_TEX_PATHS[key]);
+    });
+    this.load.spritesheet(TEX.MOB_BOAR, REAL_TEX_PATHS[TEX.MOB_BOAR], { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet(TEX.RESCUE_CAT, REAL_TEX_PATHS[TEX.RESCUE_CAT], { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
+    this.load.spritesheet(TEX.GHOST_CAT_BLUE, REAL_TEX_PATHS[TEX.GHOST_CAT_BLUE], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.GHOST_CAT_RED, REAL_TEX_PATHS[TEX.GHOST_CAT_RED], { frameWidth: 64, frameHeight: 64 });
+    for (const { texture } of CAT_DECOR_VARIANTS) {
+      this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
+    }
   }
 
   create(): void {
@@ -128,6 +145,46 @@ export class BootScene extends Phaser.Scene {
     particle.fillCircle(4, 4, 4);
     particle.generateTexture(TEX.PARTICLE, 8, 8);
     particle.destroy();
+
+    // --- Animations d'idle pour les mobs/PNJ/boss en vrais sprites ---
+    this.anims.create({
+      key: ANIM_KEYS.BOAR_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.MOB_BOAR, { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.RESCUE_CAT_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.RESCUE_CAT, { start: 0, end: 6 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.CATGIRL_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.CATGIRL_BOSS, { start: 0, end: 7 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.GHOST_CAT_BLUE_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.GHOST_CAT_BLUE, { start: 0, end: 19 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.GHOST_CAT_RED_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.GHOST_CAT_RED, { start: 0, end: 19 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+    for (const { texture, animKey } of CAT_DECOR_VARIANTS) {
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(texture, { start: 0, end: 6 }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
 
     const skipPrologue = isTestModeRequestedFromURL() || localStorage.getItem(PROLOGUE_SEEN_KEY) === '1';
     this.scene.start(skipPrologue ? SCENE_KEYS.MENU : SCENE_KEYS.PROLOGUE);

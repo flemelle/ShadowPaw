@@ -103,6 +103,19 @@ export const TEX = {
   SHARD: 'tex_shard',
   PARTICLE: 'tex_particle',
   ENEMY: 'tex_enemy',
+  MOB_CAT: 'tex_mob_cat',
+  MOB_SKULL: 'tex_mob_skull',
+  MOB_BOAR: 'tex_mob_boar',
+  RESCUE_CAT: 'tex_rescue_cat',
+  CATGIRL_BOSS: 'tex_catgirl_boss',
+  UI_PANEL: 'tex_ui_panel',
+  UI_ICON_PLAY: 'tex_ui_icon_play',
+  UI_ICON_PAUSE: 'tex_ui_icon_pause',
+  CAT_DECOR_BLACK: 'tex_cat_decor_black',
+  CAT_DECOR_BROWN: 'tex_cat_decor_brown',
+  CAT_DECOR_WHITE: 'tex_cat_decor_white',
+  GHOST_CAT_BLUE: 'tex_ghost_cat_blue',
+  GHOST_CAT_RED: 'tex_ghost_cat_red',
 } as const;
 
 /**
@@ -110,6 +123,65 @@ export const TEX = {
  * les sources et licences. Servis statiquement depuis /public/assets.
  */
 export const ASSET_BASE = 'assets';
+
+/**
+ * Textures de mob/boss/PNJ réelles (pas générées) — cf. ACKNOWLEDGEMENTS.md. `MOB_TEX_BY_BG`
+ * fait correspondre le look d'un mob au thème visuel de sa zone plutôt qu'un sprite unique
+ * partout : chat d'ombre dans les zones cimetière, crâne dans les zones temple/abstraites,
+ * sanglier dans la forêt.
+ */
+export const REAL_TEX_PATHS: Record<string, string> = {
+  [TEX.MOB_CAT]: `${ASSET_BASE}/images/creatures/mob_cat.png`,
+  [TEX.MOB_SKULL]: `${ASSET_BASE}/images/creatures/skull_enemy.png`,
+  [TEX.MOB_BOAR]: `${ASSET_BASE}/images/creatures/boar_idle.png`,
+  [TEX.RESCUE_CAT]: `${ASSET_BASE}/images/creatures/rescue_cat_idle.png`,
+  [TEX.CATGIRL_BOSS]: `${ASSET_BASE}/images/bosses/catgirl_idle.png`,
+  [TEX.UI_PANEL]: `${ASSET_BASE}/images/ui/panel_wood.png`,
+  [TEX.UI_ICON_PLAY]: `${ASSET_BASE}/images/ui/btn_play_light.png`,
+  [TEX.UI_ICON_PAUSE]: `${ASSET_BASE}/images/ui/btn_pause_light.png`,
+  [TEX.CAT_DECOR_BLACK]: `${ASSET_BASE}/images/decor/cat_wild_black.png`,
+  [TEX.CAT_DECOR_BROWN]: `${ASSET_BASE}/images/decor/cat_wild_brown.png`,
+  [TEX.CAT_DECOR_WHITE]: `${ASSET_BASE}/images/decor/cat_wild_white.png`,
+  [TEX.GHOST_CAT_BLUE]: `${ASSET_BASE}/images/bosses/ghost_cat_blue_idle.png`,
+  [TEX.GHOST_CAT_RED]: `${ASSET_BASE}/images/bosses/ghost_cat_red_idle.png`,
+};
+
+/**
+ * Chats sauvages décoratifs (pack "Free"/AllCats, cf. ACKNOWLEDGEMENTS.md) dispersés un peu
+ * partout sur la carte — non-traversables (corps statique via LevelLoader.entityMarkers, comme
+ * toute entité hors 'spawn'/'mob') mais purement décoratifs, sans dialogue ni interaction.
+ */
+export const CAT_DECOR_VARIANTS = [
+  { texture: TEX.CAT_DECOR_BLACK, animKey: 'anim_cat_decor_black_idle' },
+  { texture: TEX.CAT_DECOR_BROWN, animKey: 'anim_cat_decor_brown_idle' },
+  { texture: TEX.CAT_DECOR_WHITE, animKey: 'anim_cat_decor_white_idle' },
+];
+
+/** Résout un `EntityCatDecor.variant` (index libre, cf. gen-zones.mjs) sur son texture+animKey. */
+export function getCatDecorVariant(variant: number): (typeof CAT_DECOR_VARIANTS)[number] {
+  return CAT_DECOR_VARIANTS[variant % CAT_DECOR_VARIANTS.length];
+}
+
+// Réassigné après vérification visuelle en jeu (screenshots) : un crâne flottant contre le ciel
+// bleu/doré serein des zones STRINGSTAR (temple de la Quiétude, Salle des Miroirs) lisait comme
+// une erreur de thème (mort/charogne dans un décor apaisé), alors qu'un crâne au milieu des
+// pierres tombales des zones GRAVEYARD est un pairing évident. Le chat d'ombre, silhouette sombre
+// bien plus neutre, se lit à l'inverse comme "esprit corrompu" dans un ciel clair sans détonner.
+export const MOB_TEX_BY_BG: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'NONE', string> = {
+  GRAVEYARD: TEX.MOB_SKULL,
+  FOREST: TEX.MOB_BOAR,
+  STRINGSTAR: TEX.MOB_CAT,
+  NONE: TEX.MOB_SKULL,
+};
+
+/** Clés des animations d'idle enregistrées au Boot (cf. BootScene.ts) pour les textures ci-dessus. */
+export const ANIM_KEYS = {
+  BOAR_IDLE: 'anim_boar_idle',
+  RESCUE_CAT_IDLE: 'anim_rescue_cat_idle',
+  CATGIRL_IDLE: 'anim_catgirl_idle',
+  GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
+  GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
+} as const;
 
 export const MUSIC_KEYS = {
   MENU: 'music_menu',
@@ -283,6 +355,8 @@ export const DECOR_KEYS = {
   PLATFORM_PLANK: 'decor_platform_plank',
   GRAVEYARD_STATUE: 'decor_graveyard_statue',
   GRAVEYARD_BRUSH: 'decor_graveyard_brush',
+  FOREST_GRASS_LEAFY: 'decor_forest_grass_leafy',
+  FOREST_GRASS_SPIKY: 'decor_forest_grass_spiky',
 } as const;
 
 export const DECOR_PATHS: Record<string, string> = {
@@ -293,6 +367,8 @@ export const DECOR_PATHS: Record<string, string> = {
   [DECOR_KEYS.PLATFORM_PLANK]: `${ASSET_BASE}/images/decor/platform_plank.png`,
   [DECOR_KEYS.GRAVEYARD_STATUE]: `${ASSET_BASE}/images/decor/graveyard_statue.png`,
   [DECOR_KEYS.GRAVEYARD_BRUSH]: `${ASSET_BASE}/images/decor/graveyard_brush.png`,
+  [DECOR_KEYS.FOREST_GRASS_LEAFY]: `${ASSET_BASE}/images/decor/forest_grass_leafy.png`,
+  [DECOR_KEYS.FOREST_GRASS_SPIKY]: `${ASSET_BASE}/images/decor/forest_grass_spiky.png`,
 };
 
 /**
@@ -305,6 +381,10 @@ export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', { key: st
     { key: DECOR_KEYS.TREE_SMALL, scale: 1 },
     { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1, small: true },
     { key: DECOR_KEYS.ROCK, scale: 1, small: true },
+    // Touffes d'herbe (Pixel Art Tiles and Backgrounds - Woods, cf. ACKNOWLEDGEMENTS.md) —
+    // décor au sol supplémentaire, assez compact pour aussi tenir sur une plateforme.
+    { key: DECOR_KEYS.FOREST_GRASS_LEAFY, scale: 1.6, small: true },
+    { key: DECOR_KEYS.FOREST_GRASS_SPIKY, scale: 1.8, small: true },
   ],
   STRINGSTAR: [
     { key: DECOR_KEYS.TREE_BIG, scale: 0.85 },
@@ -339,14 +419,22 @@ export interface BossDef {
   pattern: 'slow_slam' | 'erratic_fast' | 'mirror' | 'phases' | 'phases3';
   musicRate: number;
   dialogTree?: string;
+  /** Sprite réel (+ animation d'idle) pour ce boss précis — sinon TEX.ENEMY générique teinté rouge. */
+  texture?: string;
+  animKey?: string;
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
   boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight' },
   boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight' },
-  boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight' },
+  // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
+  boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
   boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
   boss_jardinier_corrompu: { name: 'Le Jardinier Corrompu', hp: 11, speed: 35, pattern: 'slow_slam', musicRate: 1.02, dialogTree: 'boss_jardinier_corrompu_pre_fight' },
-  boss_double_de_lumiere: { name: 'Le Double de Lumière', hp: 12, speed: 75, pattern: 'mirror', musicRate: 1.18, dialogTree: 'boss_double_de_lumiere_pre_fight' },
-  boss_malakar_final: { name: 'Malakar, Sensei de l\'Ombre', hp: 18, speed: 60, pattern: 'phases3', musicRate: 0.85, dialogTree: 'malakar_zone8_pre_boss' },
+  // Esprit-chat spectral bleu (BLUE/RED Aseprite pack, cf. ACKNOWLEDGEMENTS.md) plutôt que le
+  // losange générique : la teinte froide/éthérée se lit bien comme un double "de lumière".
+  boss_double_de_lumiere: { name: 'Le Double de Lumière', hp: 12, speed: 75, pattern: 'mirror', musicRate: 1.18, dialogTree: 'boss_double_de_lumiere_pre_fight', texture: TEX.GHOST_CAT_BLUE, animKey: ANIM_KEYS.GHOST_CAT_BLUE_IDLE },
+  // Boss final : variante rouge du même esprit-chat, la plus menaçante — cohérente avec Malakar
+  // comme source de la corruption dont les doubles/esprits des autres boss ne sont que des échos.
+  boss_malakar_final: { name: 'Malakar, Sensei de l\'Ombre', hp: 18, speed: 60, pattern: 'phases3', musicRate: 0.85, dialogTree: 'malakar_zone8_pre_boss', texture: TEX.GHOST_CAT_RED, animKey: ANIM_KEYS.GHOST_CAT_RED_IDLE },
 };

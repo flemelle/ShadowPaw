@@ -91,3 +91,32 @@ recadrés mais pas recolorés.
 - Tous les fichiers sources (zips) sont ignorés par git (`.gitignore`) pour ne
   pas redistribuer les packs bruts ; seuls les fichiers effectivement utilisés
   par le jeu sont commités, dans `public/assets/`.
+
+## Mobs/PNJ/créatures réels et UI — ajouts ultérieurs
+
+Contrairement à la note ci-dessus, quelques sprites réels ont finalement été
+intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédural) :
+
+- **UI Medieval** (`images/ui/`) — panneau bois suspendu (fond du menu Pause) et
+  icônes play/pause (`panel_wood.png`, `btn_play_light.png`, `btn_pause_light.png`).
+- **AllCats** (pack multi-variantes de chats "Idle") — `ThreeColorFree/IdleCatt.png`
+  pour la créature piégée à sauver (`images/creatures/rescue_cat_idle.png`) ;
+  `BlackCat`, `Brown`, `White` pour les chats sauvages décoratifs dispersés sur
+  la carte (`images/decor/cat_wild_*.png`, non-traversables mais sans interaction).
+- **SedentaryCats** (`.aseprite`, rastérisé par un script maison faute d'outil
+  Aseprite disponible) — chat-ombre assis, mob des zones au décor STRINGSTAR
+  (`images/creatures/mob_cat.png`).
+- **Free - Raven Fantasy Icons** — crâne, mob des zones GRAVEYARD et de la zone 8
+  (décor abstrait) (`images/creatures/skull_enemy.png`).
+- **Legacy Fantasy - High Forest 2.0** — sanglier, mob de la zone Forêt
+  (`images/creatures/boar_idle.png`).
+- **MediavelFree.png / Idle.png** — chatte-ninja, boss "L'Ombre Jumelle"
+  (`images/bosses/catgirl_idle.png`).
+- **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
+  de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`).
+- **Pixel Art Tiles and Backgrounds - Woods** — deux touffes d'herbe ajoutées au
+  pool de décor de la zone Forêt (`images/decor/forest_grass_*.png`).
+
+Aucun de ces packs ne fournissait de licence explicite (au mieux une note de
+remerciement informelle) — **à vérifier par l'utilisateur** avant toute
+distribution publique/commerciale du jeu, comme pour Stringstar Fields ci-dessus.
