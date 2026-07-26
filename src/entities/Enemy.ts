@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEX, SFX_KEYS } from '@/utils/Constants';
+import { TEX, SFX_KEYS, TILE_SIZE } from '@/utils/Constants';
 import type { BossDef } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
 
@@ -33,10 +33,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private invulnerableUntil = -Infinity;
   private readonly mirrorHistory: number[] = [];
   private defeated = false;
+  private readonly groundTopByCol: (number | null)[];
   readonly isBoss: boolean;
   readonly bossDef?: BossDef;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, hp: number, speed: number, opts?: { isBoss?: boolean; bossDef?: BossDef }) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    hp: number,
+    speed: number,
+    opts?: { isBoss?: boolean; bossDef?: BossDef; groundTopByCol?: (number | null)[] },
+  ) {
     super(scene, x, y, TEX.ENEMY);
     scene.add.existing(this);
     this.spawnX = x;
@@ -45,6 +53,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.baseSpeed = speed;
     this.isBoss = opts?.isBoss ?? false;
     this.bossDef = opts?.bossDef;
+    this.groundTopByCol = opts?.groundTopByCol ?? [];
     // setScale AVANT physics.add.existing : le corps Arcade est dimensionné d'après la taille
     // affichée AU MOMENT de sa création et ne suit plus les changements de scale ensuite — un
     // boss agrandi après coup aurait gardé une hitbox (et donc un point de vérification de sol,
@@ -104,13 +113,28 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setFlipX(this.dir < 0);
   }
 
-  /** Y a-t-il du sol juste devant, un cran plus loin dans `dir` ? (cf. updateAI, évite les chutes.) */
+  /**
+   * Y a-t-il du sol dans la colonne de tuile suivante ? (cf. updateAI, évite les chutes.) Lit
+   * directement la grille de tuiles plutôt qu'un capteur physique à distance fixe : un capteur
+   * peut se faire tromper par un chevauchement d'un seul pixel pile à la frontière d'une tuile ou
+   * par une ondulation de terrain, alors que la grille elle-même ne laisse aucune ambiguïté.
+   */
   private hasGroundAhead(dir: 1 | -1): boolean {
+    if (this.groundTopByCol.length === 0) return true; // pas de données passées par GameScene : ne bloque jamais
     const body = this.body as Phaser.Physics.Arcade.Body;
-    const checkX = this.x + dir * (body.width / 2 + 6);
-    const checkY = this.y + body.height / 2 + 6;
-    const hits = this.scene.physics.overlapRect(checkX - 3, checkY, 6, 10, false, true);
-    return hits.length > 0;
+    // 0.75 tuile au-delà du bord du corps : garantit d'être pleinement dans la colonne SUIVANTE,
+    // quelle que soit la position exacte du mob par rapport à la frontière de tuile courante.
+    const aheadX = this.x + dir * (body.width / 2 + TILE_SIZE * 0.75);
+    const nextCol = Math.floor(aheadX / TILE_SIZE);
+    if (nextCol < 0 || nextCol >= this.groundTopByCol.length) return false;
+    const nextGroundRow = this.groundTopByCol[nextCol];
+    if (nextGroundRow == null) return false; // pas de sol du tout dans cette colonne = fosse
+
+    const currentCol = Math.floor(this.x / TILE_SIZE);
+    const currentGroundRow = this.groundTopByCol[currentCol] ?? nextGroundRow;
+    // Tolère une petite marche (ondulation de terrain), pas un vrai vide : au-delà, il ne s'agit
+    // plus d'un sol qui continue mais d'une chute que la marche à pied ne permet pas de suivre.
+    return Math.abs(nextGroundRow - currentGroundRow) <= 2;
   }
 
   /** Paliers de vitesse sous certains seuils de PV, pour les patterns 'phases'/'phases3'. */

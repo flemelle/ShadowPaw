@@ -61,6 +61,8 @@ export class GameScene extends Phaser.Scene {
   private built!: BuiltZone;
   private npcs: NPC[] = [];
   private enemies: Enemy[] = [];
+  /** Rangée du sol par colonne (index tuile, pas pixel) — cf. entities/Enemy.ts, hasGroundAhead. */
+  private groundTopByCol: (number | null)[] = [];
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private pendingBossFight?: { entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private hud!: Phaser.GameObjects.Container;
@@ -230,6 +232,21 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
+    // Rangée du SOL (pas d'une plateforme flottante) par colonne, lue directement dans la grille
+    // de tuiles — sert de base fiable à la détection de rebord des ennemis (entities/Enemy.ts,
+    // hasGroundAhead). Balayage du BAS vers le HAUT, en s'arrêtant dès que la colonne cesse d'être
+    // pleine : un balayage du haut vers le bas aurait trouvé la tuile la plus HAUTE de la colonne,
+    // c'est-à-dire souvent une tour/plateforme flottante ajoutée par-dessus le sol réel plutôt que
+    // le sol lui-même — deux colonnes avec des plateformes à des hauteurs proches auraient alors pu
+    // sembler "au même niveau" alors que le vrai sol, en dessous, avait une fosse entre les deux.
+    this.groundTopByCol = new Array(zoneMap.cols).fill(null);
+    for (let x = 0; x < zoneMap.cols; x++) {
+      if (zoneMap.tiles[zoneMap.rows - 1][x] !== '#') continue; // colonne = fosse, pas de sol du tout
+      let y = zoneMap.rows - 1;
+      while (y > 0 && zoneMap.tiles[y - 1][x] === '#') y -= 1;
+      this.groundTopByCol[x] = y;
+    }
+
     // Mobs : 5 par zone, difficulté croissante avec le tier ET la zone (cf. entities/Enemy.ts) —
     // pas de marqueur statique (cf. LevelLoader qui les exclut d'entityMarkers), un vrai corps
     // dynamique qui patrouille et inflige des dégâts de contact.
@@ -238,7 +255,7 @@ export class GameScene extends Phaser.Scene {
       if (entity.type !== 'mob') return;
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
-      const enemy = new Enemy(this, px, py, mobHp(zoneIndex, entity.tier), mobSpeed(zoneIndex, entity.tier));
+      const enemy = new Enemy(this, px, py, mobHp(zoneIndex, entity.tier), mobSpeed(zoneIndex, entity.tier), { groundTopByCol: this.groundTopByCol });
       this.physics.add.collider(enemy, this.built.solidGroup);
       this.enemies.push(enemy);
     });
@@ -414,7 +431,7 @@ export class GameScene extends Phaser.Scene {
   /** Fait apparaître le boss (vrai combat : PV, pattern, cf. entities/Enemy.ts) et bascule sa musique. */
   private startBossFight(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
     const bossDef = BOSS_DEFS[entity.bossId];
-    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, { isBoss: true, bossDef });
+    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, { isBoss: true, bossDef, groundTopByCol: this.groundTopByCol });
     this.physics.add.collider(boss, this.built.solidGroup);
     this.enemies.push(boss);
     this.activeBoss = { boss, entity, sprite };
