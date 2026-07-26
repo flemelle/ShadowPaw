@@ -28,6 +28,35 @@ function mulberry32(seed) {
 // imparfait, un saut débuté un peu en retard, etc. — plutôt que de coller au maximum théorique.
 const MAX_SAFE_PIT_WIDTH = 4;
 
+// Largeur (de part et d'autre du centre) de la plaine dégagée autour de chaque arène de boss.
+const ARENA_HALF_WIDTH = 14;
+
+/**
+ * Dégage une "grande plaine" plate et sans plateforme flottante autour de la position prévue du
+ * boss (cf. entityFracs.boss_arena0) : un combat de boss ne doit pas se dérouler au milieu d'un
+ * parcours de plateformes ni au bord d'une fosse. Mute `grid` (tableau 2D de caractères) et
+ * `floorTopByCol` en place. Prend la hauteur de la colonne valide la plus proche du centre comme
+ * référence plutôt qu'une hauteur fixe, pour rester raccord avec le reste de la zone.
+ */
+function clearBossArena(grid, floorTopByCol, cols, rows, bossFrac) {
+  if (bossFrac == null) return;
+  const bossCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * bossFrac)));
+  const lo = Math.max(1, bossCol - ARENA_HALF_WIDTH);
+  const hi = Math.min(cols - 2, bossCol + ARENA_HALF_WIDTH);
+
+  let refFloor = null;
+  for (let d = 0; d <= ARENA_HALF_WIDTH && refFloor == null; d++) {
+    if (floorTopByCol[bossCol - d] != null) refFloor = floorTopByCol[bossCol - d];
+    else if (floorTopByCol[bossCol + d] != null) refFloor = floorTopByCol[bossCol + d];
+  }
+  if (refFloor == null) refFloor = rows - 3;
+
+  for (let x = lo; x <= hi; x++) {
+    for (let y = 0; y < rows; y++) grid[y][x] = y >= refFloor ? '#' : '.';
+    floorTopByCol[x] = refFloor;
+  }
+}
+
 /**
  * "Salle des Miroirs" (zone7) : génère une moitié normalement puis la duplique en miroir
  * pour l'autre — plutôt qu'un simple réglage de paramètres, une vraie symétrie structurelle
@@ -39,8 +68,17 @@ function generateMirroredZone(profile) {
   const { rows } = profile;
   const cols = halfCols * 2;
 
-  const tiles = half.tiles.map((row) => row + [...row].reverse().join(''));
+  let tiles = half.tiles.map((row) => row + [...row].reverse().join(''));
   const floorTopByCol = [...half.floorTopByCol, ...[...half.floorTopByCol].reverse()];
+
+  // Dégage la plaine d'arène sur la grille COMPLÈTE (une fraction côté droit, comme boss_arena0
+  // pour zone7, tombe dans la moitié miroitée — la clearing doit donc s'appliquer après la fusion
+  // des deux moitiés, pas à l'intérieur de generateZone() qui ne voit qu'une moitié).
+  if (profile.entityFracs?.boss_arena0 != null) {
+    const grid = tiles.map((row) => [...row]);
+    clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs.boss_arena0);
+    tiles = grid.map((row) => row.join(''));
+  }
 
   // safeCols/groundCols doivent être reconstruits sur la grille complète (celles de `half`
   // ne couvrent que la première moitié) plutôt que simplement dupliquées-inversées.
@@ -196,6 +234,11 @@ function generateZone(profile) {
       if (px < 4 || px > cols - 6) break;
     }
   }
+
+  // Dégage une grande plaine plate autour de l'arène de boss, sans plateforme ni fosse (cf.
+  // clearBossArena) — DOIT s'exécuter après les plateformes (pour les retirer) mais avant le
+  // calcul de groundCols/safeCols ci-dessous (pour qu'ils reflètent le sol corrigé).
+  clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs?.boss_arena0);
 
   // --- Gates (obstruent un passage en hauteur, jamais dans la rangée de sol elle-même) ---
   // Avec des cratères plus larges/fréquents, la colonne visée tombe parfois dans une
