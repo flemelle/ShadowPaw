@@ -80,11 +80,26 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (pattern === 'erratic_fast' && Math.random() < 0.02) this.dir = this.dir === 1 ? -1 : 1;
-    if (body.blocked.left || this.x <= this.spawnX - PATROL_RANGE) this.dir = 1;
-    else if (body.blocked.right || this.x >= this.spawnX + PATROL_RANGE) this.dir = -1;
+
+    // Demi-tour au mur, en bout de zone de patrouille, OU si le prochain pas tomberait dans le
+    // vide (pas de mur à un rebord de plateforme/fosse, donc rien ne l'arrêterait sinon — le mob
+    // marchait alors hors de la zone et tombait de la carte).
+    const hitWall = this.dir === 1 ? body.blocked.right : body.blocked.left;
+    const pastRange = this.dir === 1 ? this.x >= this.spawnX + PATROL_RANGE : this.x <= this.spawnX - PATROL_RANGE;
+    const aboutToFall = body.blocked.down && !this.hasGroundAhead(this.dir);
+    if (hitWall || pastRange || aboutToFall) this.dir = this.dir === 1 ? -1 : 1;
 
     body.setVelocityX(this.currentSpeed() * this.dir);
     this.setFlipX(this.dir < 0);
+  }
+
+  /** Y a-t-il du sol juste devant, un cran plus loin dans `dir` ? (cf. updateAI, évite les chutes.) */
+  private hasGroundAhead(dir: 1 | -1): boolean {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const checkX = this.x + dir * (body.width / 2 + 6);
+    const checkY = this.y + body.height / 2 + 6;
+    const hits = this.scene.physics.overlapRect(checkX - 3, checkY, 6, 10, false, true);
+    return hits.length > 0;
   }
 
   /** Paliers de vitesse sous certains seuils de PV, pour les patterns 'phases'/'phases3'. */
