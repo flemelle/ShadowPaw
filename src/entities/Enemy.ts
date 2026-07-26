@@ -39,14 +39,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene: Phaser.Scene, x: number, y: number, hp: number, speed: number, opts?: { isBoss?: boolean; bossDef?: BossDef }) {
     super(scene, x, y, TEX.ENEMY);
     scene.add.existing(this);
-    scene.physics.add.existing(this);
     this.spawnX = x;
     this.hp = hp;
     this.maxHp = hp;
     this.baseSpeed = speed;
     this.isBoss = opts?.isBoss ?? false;
     this.bossDef = opts?.bossDef;
+    // setScale AVANT physics.add.existing : le corps Arcade est dimensionné d'après la taille
+    // affichée AU MOMENT de sa création et ne suit plus les changements de scale ensuite — un
+    // boss agrandi après coup aurait gardé une hitbox (et donc un point de vérification de sol,
+    // cf. hasGroundAhead) de la taille du sprite non agrandi.
     if (this.isBoss) this.setScale(1.7).setTint(0xff8a8a);
+    scene.physics.add.existing(this);
     (this.body as Phaser.Physics.Arcade.Body).setVelocityX(this.baseSpeed * this.dir);
   }
 
