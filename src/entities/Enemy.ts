@@ -51,7 +51,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // cf. hasGroundAhead) de la taille du sprite non agrandi.
     if (this.isBoss) this.setScale(1.7).setTint(0xff8a8a);
     scene.physics.add.existing(this);
-    (this.body as Phaser.Physics.Arcade.Body).setVelocityX(this.baseSpeed * this.dir);
+    // Pas de vélocité initiale ici : au chargement d'une zone, le premier pas de physique peut
+    // s'exécuter plusieurs fois d'affilée (rattrapage du pas fixe de Phaser après le hoquet de
+    // chargement des assets) avant même le premier appel à updateAI() — une vélocité posée à
+    // l'aveugle ici (toujours vers la droite) se serait donc appliquée sans le moindre contrôle
+    // de bord plusieurs fois de suite, capable de pousser un mob loin au-delà du rebord d'une
+    // plateforme étroite avant que la logique de demi-tour n'ait la moindre chance de tourner.
+    // Rester à vélocité nulle jusqu'au premier updateAI() (qui vérifie AVANT de bouger) garantit
+    // qu'aucun déplacement, même le tout premier, ne saute ce contrôle.
   }
 
   get currentHp(): number {
