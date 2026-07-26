@@ -77,6 +77,18 @@
       "x": 131,
       "y": 12,
       "tier": 5
+    },
+    {
+      "type": "cat_decor",
+      "x": 12,
+      "y": 12,
+      "variant": 2
+    },
+    {
+      "type": "cat_decor",
+      "x": 148,
+      "y": 11,
+      "variant": 0
     }
   ]
 }

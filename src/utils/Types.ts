@@ -34,6 +34,22 @@ export interface EntityMob {
   tier: number;
 }
 
+export interface EntityCaptive {
+  type: 'captive';
+  x: number;
+  y: number;
+  /** Identifiant stable (persisté dans rescuedCreatures, choisit son dialogue de remerciement). */
+  id: string;
+}
+
+export interface EntityCatDecor {
+  type: 'cat_decor';
+  x: number;
+  y: number;
+  /** Index dans CAT_DECOR_VARIANTS (cf. Constants.ts) — juste une variété visuelle. */
+  variant: number;
+}
+
 export interface EntityZoneExit {
   type: 'zone_exit';
   x: number;
@@ -83,7 +99,9 @@ export type ZoneEntity =
   | EntityPuzzleTrigger
   | EntityPowerAltar
   | EntityEndingTrigger
-  | EntityMob;
+  | EntityMob
+  | EntityCaptive
+  | EntityCatDecor;
 
 export interface ZoneMap {
   id: string;
@@ -103,6 +121,8 @@ export interface SaveData {
   currentZone: string;
   unlockedPowers: PowerId[];
   defeatedBosses: string[];
+  rescuedCreatures?: string[];
+  endingsReached?: string[];
   collectedShards: string[];
   dialogFlags: Record<string, boolean>;
   solvedPuzzles: string[];

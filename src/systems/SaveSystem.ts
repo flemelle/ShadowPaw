@@ -8,6 +8,8 @@ function defaultSave(): SaveData {
     currentZone: ZONE_IDS[0],
     unlockedPowers: [],
     defeatedBosses: [],
+    rescuedCreatures: [],
+    endingsReached: [],
     collectedShards: [],
     dialogFlags: {},
     solvedPuzzles: [],

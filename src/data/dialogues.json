@@ -302,6 +302,102 @@
         "end": { "lines": [], "end": true }
       }
     },
+    "captive_cat_zone2_thanks": {
+      "npc": "cat_zone2",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 2.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Miaou... merci, petit chat-ombre. Ils m'avaient enchaîné ici depuis si longtemps que j'avais oublié le goût de l'air libre.",
+            "Le Clan enferme tout ce qui refuse le rituel — bête ou chat des rues, peu importe. Fais attention à toi là-dedans."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "captive_cat_zone3_thanks": {
+      "npc": "cat_zone3",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 3.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Tu m'as sorti de là juste à temps — encore un peu et l'ombre du Foyer m'aurait rongé comme les autres.",
+            "J'ai vu des chats entrer ici en marchant et en ressortir en rampant, les yeux vides. Ne reste pas trop longtemps toi non plus."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "captive_cat_zone4_thanks": {
+      "npc": "cat_zone4",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 4.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Merci, voyageur. Ce temple n'accueille plus grand monde depuis des siècles — j'ai eu de la chance que tu passes.",
+            "On raconte qu'une lumière dort encore au cœur de Seikūji, assez forte pour réveiller ce qui est éteint. Toi seul sauras si c'est vrai."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "captive_cat_zone6_thanks": {
+      "npc": "cat_zone6",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 6.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Ouf... ces ronces corrompues me tenaient serré depuis des jours. Merci, petit chat.",
+            "Ces jardins étaient magnifiques avant que l'ombre de Malakar ne s'y répande. J'espère que tu pourras encore les sauver."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "captive_cat_zone7_thanks": {
+      "npc": "cat_zone7",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 7.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Un reflet m'avait piégé ici — j'ai cru rester enfermé dans cette salle de miroirs pour toujours.",
+            "Fais attention à ton propre reflet, Kiba. Dans cette salle, ce n'est pas toujours toi qu'il montre."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "captive_cat_zone8_thanks": {
+      "npc": "cat_zone8",
+      "displayName": "Un chat piégé",
+      "startNode": "start",
+      "description": "Remerciement à la libération de la créature piégée de la zone 8.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Même ici, dans ce vide entre lumière et ombre, tu as pris le temps de me trouver. Merci.",
+            "Ce qui t'attend plus loin n'a pardonné à personne d'autre. Va — et reviens entier, si tu peux."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
     "malakar_zone8_pre_boss": {
       "npc": "malakar",
       "displayName": "Malakar, Sensei de l'Ombre",

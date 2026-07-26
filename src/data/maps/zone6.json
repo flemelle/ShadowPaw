@@ -98,6 +98,24 @@
       "x": 155,
       "y": 11,
       "tier": 5
+    },
+    {
+      "type": "captive",
+      "x": 87,
+      "y": 13,
+      "id": "cat_zone6"
+    },
+    {
+      "type": "cat_decor",
+      "x": 14,
+      "y": 12,
+      "variant": 0
+    },
+    {
+      "type": "cat_decor",
+      "x": 176,
+      "y": 12,
+      "variant": 1
     }
   ]
 }

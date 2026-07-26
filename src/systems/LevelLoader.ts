@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getCatDecorVariant } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -106,6 +106,10 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
         return TEX.POWER_ALTAR;
       case 'shard_pickup':
         return TEX.SHARD;
+      case 'captive':
+        return TEX.RESCUE_CAT;
+      case 'cat_decor':
+        return getCatDecorVariant(e.variant).texture;
       default:
         return TEX.NPC;
     }

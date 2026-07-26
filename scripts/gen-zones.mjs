@@ -391,6 +391,24 @@ const ZONE_PROFILES = {
 // l'escalade d'une zone à l'autre, cf. mobHp/mobSpeed dans entities/Enemy.ts qui combinent les deux).
 const MOB_FRACS = [0.18, 0.34, 0.5, 0.66, 0.82];
 
+// Créatures piégées à sauver (une par zone listée) — jamais zone1 ("pas dès le début"), une
+// seule par zone concernée, à une fraction qui évite les autres entités déjà positionnées.
+const CAPTIVE_FRAC = {
+  zone2_antre_velours_noir: 0.62,
+  zone3_velkhar_foyer_ombres: 0.52,
+  zone4_seikuji_quietude: 0.72,
+  zone6_jardins_oublies: 0.46,
+  zone7_salle_miroirs: 0.52,
+  zone8_vide_entre_deux: 0.68,
+};
+
+// Chats sauvages décoratifs ("Free pack"/AllCats, cf. ACKNOWLEDGEMENTS.md) — un peu partout sur
+// la carte (2 par zone, proches du début/de la fin plutôt que du milieu déjà chargé en mobs/PNJ).
+// CAT_DECOR_VARIANT_COUNT doit rester égal à CAT_DECOR_VARIANTS.length (src/utils/Constants.ts) —
+// ce script ne peut pas importer le module TS directement, d'où la constante dupliquée ici.
+const CAT_DECOR_FRACS = [0.08, 0.93];
+const CAT_DECOR_VARIANT_COUNT = 3;
+
 for (const file of fs.readdirSync(MAPS_DIR)) {
   if (!/^zone\d\.json$/.test(file)) continue;
   const full = path.join(MAPS_DIR, file);
@@ -398,9 +416,19 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
   const profile = ZONE_PROFILES[data.id];
   if (!profile) continue;
 
-  // Idempotent : n'ajoute les mobs qu'une fois, un ré-run du script ne les duplique pas.
+  // Idempotent : n'ajoute les mobs/créatures qu'une fois, un ré-run du script ne les duplique pas.
   if (!data.entities.some((e) => e.type === 'mob')) {
     for (let tier = 1; tier <= 5; tier++) data.entities.push({ type: 'mob', x: 0, y: 0, tier });
+  }
+  if (CAPTIVE_FRAC[data.id] != null && !data.entities.some((e) => e.type === 'captive')) {
+    const zoneNum = data.id.match(/^zone(\d)/)[1];
+    data.entities.push({ type: 'captive', x: 0, y: 0, id: `cat_zone${zoneNum}` });
+  }
+  if (!data.entities.some((e) => e.type === 'cat_decor')) {
+    const zoneNum = Number(data.id.match(/^zone(\d)/)[1]);
+    CAT_DECOR_FRACS.forEach((_, i) => {
+      data.entities.push({ type: 'cat_decor', x: 0, y: 0, variant: (zoneNum + i) % CAT_DECOR_VARIANT_COUNT });
+    });
   }
 
   const { tiles, groundCols } = generateZone(profile);
@@ -414,7 +442,10 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
     const idx = typeCounters[entity.type] ?? 0;
     typeCounters[entity.type] = idx + 1;
     const key = idx === 0 ? `${entity.type}0` : `${entity.type}${idx}`;
-    const frac = entity.type === 'mob' ? MOB_FRACS[entity.tier - 1] : (profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5);
+    const frac = entity.type === 'mob' ? MOB_FRACS[entity.tier - 1]
+      : entity.type === 'captive' ? CAPTIVE_FRAC[data.id]
+      : entity.type === 'cat_decor' ? CAT_DECOR_FRACS[idx % CAT_DECOR_FRACS.length]
+      : (profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5);
     const pos = pickAt(groundCols, profile.cols, frac, used);
     return { ...entity, x: pos.x, y: pos.y };
   });

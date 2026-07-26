@@ -17,6 +17,9 @@ import {
   ZONE_IDS,
   BOSS_DEFS,
   TILE_SIZE,
+  MOB_TEX_BY_BG,
+  ANIM_KEYS,
+  getCatDecorVariant,
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -49,6 +52,8 @@ import {
 const INTERACT_RANGE = 52;
 // Assez large pour prévenir avant tout contact (dégâts) réel avec l'ennemi, cf. maybeShowCombatTutorial.
 const COMBAT_TUTO_RANGE = 200;
+// Distance (px) entre un mob vaincu et une créature piégée pour considérer qu'il la "gardait".
+const CAPTIVE_RESCUE_RADIUS = 140;
 // Contour épais plutôt qu'un pavé gris translucide derrière le texte du HUD : le contraste
 // tient quel que soit le fond (ciel clair, mur sombre...) sans jamais cacher le décor derrière.
 const HUD_STROKE = { stroke: '#000000', strokeThickness: 4 } as const;
@@ -63,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private built!: BuiltZone;
   private npcs: NPC[] = [];
   private enemies: Enemy[] = [];
+  private captives: { entity: Extract<ZoneEntity, { type: 'captive' }>; sprite: Phaser.GameObjects.Sprite; freed: boolean }[] = [];
   /** Rangée du sol par colonne (index tuile, pas pixel) — cf. entities/Enemy.ts, hasGroundAhead. */
   private groundTopByCol: (number | null)[] = [];
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
@@ -155,6 +161,7 @@ export class GameScene extends Phaser.Scene {
     this.npcs = [];
     this.enemies.forEach((e) => e.destroy());
     this.enemies = [];
+    this.captives = [];
     this.activeBoss = undefined;
     this.pendingBossFight = undefined;
 
@@ -190,6 +197,13 @@ export class GameScene extends Phaser.Scene {
 
     if (this.player) this.player.destroy();
     this.player = new Player(this, this.built.spawn.x, this.built.spawn.y, powerSystem);
+    // Checkpoint : "reprendre une partie" doit reprendre exactement là où le joueur s'est arrêté
+    // (dernier autel/boss/sortie de zone/sauvetage atteint), pas au point d'entrée de la zone —
+    // ne s'applique qu'au tout premier chargement suivant continueGame() (cf. GameState.ts).
+    if (gameState.resumePosition) {
+      this.player.setPosition(gameState.resumePosition.x, gameState.resumePosition.y);
+      gameState.resumePosition = null;
+    }
     this.player.setNoclip(powerSystem.isTestMode() && this.player.isNoclip());
     this.player.setFootstepSurface(zoneMap.act === 1 ? FOOTSTEP_VARIANTS.ACT_1 : FOOTSTEP_VARIANTS.ACT_2);
 
@@ -232,6 +246,23 @@ export class GameScene extends Phaser.Scene {
       if (entity.type === 'zone_exit' || entity.type === 'ending_trigger') {
         this.physics.add.overlap(this.player, sprite, () => this.handleAutoTrigger(entity));
       }
+      if (entity.type === 'captive') {
+        // Déjà libérée lors d'une session précédente (sauvegarde) : ne réapparaît pas.
+        if (gameState.rescuedCreatures.has(entity.id)) {
+          sprite.destroy();
+          return;
+        }
+        sprite.play(ANIM_KEYS.RESCUE_CAT_IDLE);
+        this.physics.add.collider(this.player, sprite);
+        this.captives.push({ entity, sprite, freed: false });
+      }
+      if (entity.type === 'cat_decor') {
+        // Purement décoratif (pas de dialogue/sauvetage), mais non-traversable : le corps statique
+        // vient du pipeline commun de LevelLoader.entityMarkers, encore faut-il l'opposer au joueur
+        // (ce pipeline crée le corps mais n'enregistre aucun collider, cf. 'captive' ci-dessus).
+        this.physics.add.collider(this.player, sprite);
+        sprite.play(getCatDecorVariant(entity.variant).animKey);
+      }
     });
 
     // Rangée du SOL (pas d'une plateforme flottante) par colonne, lue directement dans la grille
@@ -251,13 +282,21 @@ export class GameScene extends Phaser.Scene {
 
     // Mobs : 5 par zone, difficulté croissante avec le tier ET la zone (cf. entities/Enemy.ts) —
     // pas de marqueur statique (cf. LevelLoader qui les exclut d'entityMarkers), un vrai corps
-    // dynamique qui patrouille et inflige des dégâts de contact.
+    // dynamique qui patrouille et inflige des dégâts de contact. Le sprite suit le thème visuel
+    // de la zone (cf. Constants.MOB_TEX_BY_BG) plutôt qu'un mob unique partout.
     const zoneIndex = Number(zoneId.match(/^zone(\d)/)?.[1] ?? 1);
+    const bgTheme = ZONE_BACKGROUND[zoneId as keyof typeof ZONE_BACKGROUND];
+    const mobTexture = MOB_TEX_BY_BG[bgTheme ?? 'NONE'];
+    const mobAnimKey = mobTexture === TEX.MOB_BOAR ? ANIM_KEYS.BOAR_IDLE : undefined;
     zoneMap.entities.forEach((entity) => {
       if (entity.type !== 'mob') return;
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
-      const enemy = new Enemy(this, px, py, mobHp(zoneIndex, entity.tier), mobSpeed(zoneIndex, entity.tier), { groundTopByCol: this.groundTopByCol });
+      const enemy = new Enemy(this, px, py, mobHp(zoneIndex, entity.tier), mobSpeed(zoneIndex, entity.tier), {
+        groundTopByCol: this.groundTopByCol,
+        texture: mobTexture,
+        animKey: mobAnimKey,
+      });
       this.physics.add.collider(enemy, this.built.solidGroup);
       this.enemies.push(enemy);
     });
@@ -434,7 +473,13 @@ export class GameScene extends Phaser.Scene {
   /** Fait apparaître le boss (vrai combat : PV, pattern, cf. entities/Enemy.ts) et bascule sa musique. */
   private startBossFight(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
     const bossDef = BOSS_DEFS[entity.bossId];
-    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, { isBoss: true, bossDef, groundTopByCol: this.groundTopByCol });
+    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
+      isBoss: true,
+      bossDef,
+      groundTopByCol: this.groundTopByCol,
+      texture: bossDef?.texture,
+      animKey: bossDef?.animKey,
+    });
     this.physics.add.collider(boss, this.built.solidGroup);
     this.enemies.push(boss);
     this.activeBoss = { boss, entity, sprite };
@@ -518,6 +563,10 @@ export class GameScene extends Phaser.Scene {
       }
       this.isTransitioning = true;
       const ending = dialogSystem.resolveEnding(puzzleSystem.getCollectedShards().length);
+      if (!powerSystem.isTestMode()) {
+        gameState.reachedEndings.add(ending.id);
+        persistProgress(this.player.x, this.player.y);
+      }
       this.scene.start(SCENE_KEYS.END, { ending });
     }
   }
@@ -573,9 +622,37 @@ export class GameScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((e) => e !== enemy);
     const activeBoss = this.activeBoss;
     const boss = activeBoss && activeBoss.boss === enemy ? activeBoss : undefined;
+    const enemyX = enemy.x;
+    const enemyY = enemy.y;
     enemy.playDefeatedAnimation(() => {
       if (boss) this.resolveBossVictory(boss.entity, boss.sprite);
     });
+    // Une créature piégée à proximité du mob qui vient d'être vaincu est libérée — capturée
+    // "par des mobs" au sens propre, cf. le brief : garder Kiba à distance ne suffit pas, il
+    // faut vraiment abattre le gardien.
+    const captive = this.captives.find(
+      (c) => !c.freed && Phaser.Math.Distance.Between(enemyX, enemyY, c.sprite.x, c.sprite.y) <= CAPTIVE_RESCUE_RADIUS,
+    );
+    if (captive) this.rescueCaptive(captive);
+  }
+
+  /** Libère une créature piégée : petite animation, remerciement + lore, suivi persistant. */
+  private rescueCaptive(captive: { entity: Extract<ZoneEntity, { type: 'captive' }>; sprite: Phaser.GameObjects.Sprite; freed: boolean }): void {
+    captive.freed = true;
+    (captive.sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+    audioManager.play(this, SFX_KEYS.SHARD_COLLECT, { volume: 0.5 });
+    this.tweens.add({
+      targets: captive.sprite,
+      alpha: 0,
+      y: captive.sprite.y - 12,
+      duration: 500,
+      delay: 300,
+      onComplete: () => captive.sprite.destroy(),
+    });
+    gameState.rescuedCreatures.add(captive.entity.id);
+    persistProgress(this.player.x, this.player.y);
+    this.toast('Une créature piégée a été libérée !');
+    this.safeDelay(400, () => this.startDialog(`captive_${captive.entity.id}_thanks`));
   }
 
   /** Dégâts de contact d'un ennemi : coûte une vie (sans effet en Mode Admin), petit recul + i-frames via le cooldown de contact. */
@@ -1010,6 +1087,14 @@ export class GameScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.PAUSE_OPEN);
     const container = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
     const overlay = this.add.rectangle(GAME_WIDTH / 2, 360, GAME_WIDTH, 720, 0x0d0a16, 0.85);
+    // Panneau bois (UI Medieval, cf. ACKNOWLEDGEMENTS.md) derrière le titre + les boutons — la
+    // pancarte suspendue lit naturellement comme un panneau "Pause" affiché en jeu plutôt que le
+    // simple aplat sombre précédent.
+    const panelSrc = this.textures.get(TEX.UI_PANEL).source[0];
+    const panelH = 460;
+    const panelW = panelH * (panelSrc.width / panelSrc.height);
+    const panel = this.add.image(GAME_WIDTH / 2, 360, TEX.UI_PANEL).setDisplaySize(panelW, panelH);
+    const pauseIcon = this.add.image(GAME_WIDTH / 2 - 110, 240, TEX.UI_ICON_PAUSE).setDisplaySize(32, 32);
     const title = this.add.text(GAME_WIDTH / 2, 240, 'Pause', {
       fontFamily: 'monospace',
       fontSize: '32px',
@@ -1050,7 +1135,16 @@ export class GameScene extends Phaser.Scene {
         this.scene.start(SCENE_KEYS.MENU);
       },
     });
-    container.add([overlay, title, resumeBtn.container, optionsBtn.container, fullscreenBtn.container, quitBtn.container]);
+    container.add([
+      overlay,
+      panel,
+      pauseIcon,
+      title,
+      resumeBtn.container,
+      optionsBtn.container,
+      fullscreenBtn.container,
+      quitBtn.container,
+    ]);
     this.cameras.main.ignore(container);
     this.pauseMenu = container;
   }

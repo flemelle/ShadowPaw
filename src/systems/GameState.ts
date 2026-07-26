@@ -17,11 +17,40 @@ export const gameState = {
   currentZone: ZONE_IDS[0] as string,
   testMode: false,
   defeatedBosses: new Set<string>(),
+  /** Créatures piégées libérées (cf. entities/Captive.ts) — id de l'entité, persistant. */
+  rescuedCreatures: new Set<string>(),
+  /** Fins déjà découvertes (cf. dialogues.json endingConditions) — pour le panneau succès du menu. */
+  reachedEndings: new Set<string>(),
+  /**
+   * Position de checkpoint à restaurer au premier chargement de zone suivant un `continueGame()`
+   * (cf. GameScene.loadZone) — sinon "reprendre une partie" renvoyait toujours au point d'entrée
+   * de la zone plutôt qu'au dernier checkpoint (autel, boss, sortie de zone, sauvetage…) atteint.
+   * Consommée (mise à `null`) dès son premier usage : les transitions de zone normales doivent
+   * continuer à spawn au point d'entrée.
+   */
+  resumePosition: null as { x: number; y: number } | null,
 };
 
 export function isTestModeRequestedFromURL(): boolean {
   const params = new URLSearchParams(window.location.search);
   return params.get(TEST_MODE_QUERY_FLAG) === '1';
+}
+
+/**
+ * Un seul point de vérité pour les champs de progression de `gameState` — sans ça, chaque ajout
+ * de champ (rescuedCreatures, reachedEndings...) devait être recopié à la main dans les 3 fonctions
+ * ci-dessous, et `startTestMode` avait justement oublié de réinitialiser `resumePosition`.
+ */
+function resetProgressState(overrides?: {
+  defeatedBosses?: string[];
+  rescuedCreatures?: string[];
+  reachedEndings?: string[];
+  resumePosition?: { x: number; y: number } | null;
+}): void {
+  gameState.defeatedBosses = new Set(overrides?.defeatedBosses);
+  gameState.rescuedCreatures = new Set(overrides?.rescuedCreatures);
+  gameState.reachedEndings = new Set(overrides?.reachedEndings);
+  gameState.resumePosition = overrides?.resumePosition ?? null;
 }
 
 export function startNewGame(): void {
@@ -32,7 +61,7 @@ export function startNewGame(): void {
   puzzleSystem.loadState([], []);
   gameState.currentZone = ZONE_IDS[0];
   gameState.testMode = false;
-  gameState.defeatedBosses = new Set();
+  resetProgressState();
 }
 
 export function continueGame(): void {
@@ -43,7 +72,15 @@ export function continueGame(): void {
   puzzleSystem.loadState(save.solvedPuzzles, save.collectedShards);
   gameState.currentZone = save.currentZone;
   gameState.testMode = false;
-  gameState.defeatedBosses = new Set(save.defeatedBosses);
+  // Appelée uniquement depuis le bouton "Continuer" (n'existe que si SaveSystem.hasSave()), donc
+  // une sauvegarde réelle existe toujours ici — playerX/Y à restaurer sans condition, même si
+  // (0, 0) par pur hasard (un point de spawn n'est en pratique jamais là, mais rien ne le garantit).
+  resetProgressState({
+    defeatedBosses: save.defeatedBosses,
+    rescuedCreatures: save.rescuedCreatures,
+    reachedEndings: save.endingsReached,
+    resumePosition: { x: save.playerX, y: save.playerY },
+  });
 }
 
 /** Mode Admin : tous les pouvoirs, aucune contrainte de progression, sauvegarde inchangée. */
@@ -53,7 +90,7 @@ export function startTestMode(zoneId?: string): void {
   puzzleSystem.loadState([], []);
   gameState.currentZone = zoneId ?? ZONE_IDS[0];
   gameState.testMode = true;
-  gameState.defeatedBosses = new Set();
+  resetProgressState();
 }
 
 /** En Mode Admin, tous les gates de progression (boss, autels, combos) sont ignorés. */
@@ -70,6 +107,8 @@ export function persistProgress(playerX: number, playerY: number): void {
     solvedPuzzles: puzzleSystem.getSolved(),
     collectedShards: puzzleSystem.getCollectedShards(),
     defeatedBosses: [...gameState.defeatedBosses],
+    rescuedCreatures: [...gameState.rescuedCreatures],
+    endingsReached: [...gameState.reachedEndings],
     playerX,
     playerY,
   });
