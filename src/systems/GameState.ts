@@ -4,6 +4,7 @@ import { PuzzleSystem } from './PuzzleSystem';
 import { SaveSystem } from './SaveSystem';
 import { ZONE_IDS, TEST_MODE_QUERY_FLAG } from '@/utils/Constants';
 import type { PowerId } from '@/utils/Constants';
+import type { ZoneMap } from '@/utils/Types';
 
 /**
  * Instances partagées entre toutes les scènes (Phaser instancie les scènes
@@ -36,6 +37,14 @@ export const gameState = {
    * faire apparaître "Continuer" au menu — seul un vrai checkpoint doit l'activer.
    */
   hasCheckpoint: false,
+  /**
+   * Dispositions de zone déjà générées cette partie (IA ou repli procédural, cf.
+   * systems/ZoneGenerator.ts), une par zone visitée — un revisite réutilise ce cache plutôt que
+   * de régénérer une disposition différente (cf. SaveData.generatedZones : persisté pour que ça
+   * survive aussi à un rechargement de page, le checkpoint playerX/Y n'étant valide que contre
+   * la disposition exacte dans laquelle il a été pris).
+   */
+  generatedZones: new Map<string, ZoneMap>(),
 };
 
 export function isTestModeRequestedFromURL(): boolean {
@@ -54,12 +63,14 @@ function resetProgressState(overrides?: {
   reachedEndings?: string[];
   resumePosition?: { x: number; y: number } | null;
   hasCheckpoint?: boolean;
+  generatedZones?: Record<string, ZoneMap>;
 }): void {
   gameState.defeatedBosses = new Set(overrides?.defeatedBosses);
   gameState.rescuedCreatures = new Set(overrides?.rescuedCreatures);
   gameState.reachedEndings = new Set(overrides?.reachedEndings);
   gameState.resumePosition = overrides?.resumePosition ?? null;
   gameState.hasCheckpoint = overrides?.hasCheckpoint ?? false;
+  gameState.generatedZones = new Map(Object.entries(overrides?.generatedZones ?? {}));
 }
 
 export function startNewGame(): void {
@@ -90,6 +101,7 @@ export function continueGame(): void {
     reachedEndings: save.endingsReached,
     resumePosition: { x: save.playerX, y: save.playerY },
     hasCheckpoint: save.hasCheckpoint,
+    generatedZones: save.generatedZones,
   });
 }
 
@@ -126,6 +138,7 @@ export function persistProgress(playerX: number, playerY: number, isCheckpoint =
     rescuedCreatures: [...gameState.rescuedCreatures],
     endingsReached: [...gameState.reachedEndings],
     hasCheckpoint: gameState.hasCheckpoint,
+    generatedZones: Object.fromEntries(gameState.generatedZones),
     playerX,
     playerY,
   });

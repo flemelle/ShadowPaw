@@ -1,0 +1,3 @@
+# Copy to .dev.vars (gitignored) for local `wrangler pages dev` testing.
+# In production, set this with: wrangler pages secret put ANTHROPIC_API_KEY
+ANTHROPIC_API_KEY=sk-ant-...

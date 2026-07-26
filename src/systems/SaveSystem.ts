@@ -11,6 +11,7 @@ function defaultSave(): SaveData {
     rescuedCreatures: [],
     endingsReached: [],
     hasCheckpoint: false,
+    generatedZones: {},
     collectedShards: [],
     dialogFlags: {},
     solvedPuzzles: [],

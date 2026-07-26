@@ -124,6 +124,11 @@ export interface SaveData {
   rescuedCreatures?: string[];
   endingsReached?: string[];
   hasCheckpoint?: boolean;
+  /** Dispositions de zone déjà générées cette partie (IA ou repli procédural, cf.
+   * systems/ZoneGenerator.ts) — indispensable pour que le checkpoint (playerX/Y) reste valide
+   * après un rechargement : régénérer une disposition DIFFÉRENTE au même endroit pourrait
+   * emmurer ou faire tomber le joueur dans du vide qui n'existait pas la fois précédente. */
+  generatedZones?: Record<string, ZoneMap>;
   collectedShards: string[];
   dialogFlags: Record<string, boolean>;
   solvedPuzzles: string[];

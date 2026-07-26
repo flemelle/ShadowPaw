@@ -24,6 +24,7 @@ import {
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
+import { generateZoneLive } from '@/systems/ZoneGenerator';
 import { CameraSystem } from '@/systems/CameraSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
@@ -31,7 +32,7 @@ import { Player } from '@/entities/Player';
 import { NPC } from '@/entities/NPC';
 import { Enemy, mobHp, mobSpeed } from '@/entities/Enemy';
 import levelsData from '@/data/levels.json';
-import type { ZoneEntity } from '@/utils/Types';
+import type { ZoneEntity, ZoneMap } from '@/utils/Types';
 import type { ComboDef } from '@/systems/PowerSystem';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import { toggleFullscreen, isFullscreen } from '@/utils/Fullscreen';
@@ -102,6 +103,10 @@ export class GameScene extends Phaser.Scene {
   private lives = LIVES_START;
   private isDead = false;
   private isTransitioning = false;
+  /** false pendant la génération (IA ou repli) d'une zone — update() ne doit toucher ni
+   * this.built ni this.player avant que loadZone() (désormais async) les ait posés. */
+  private zoneReady = false;
+  private zoneLoadingText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SCENE_KEYS.GAME);
@@ -120,7 +125,24 @@ export class GameScene extends Phaser.Scene {
     this.hitImpactFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.hitImpactFx.setVisible(false));
     this.dashImpactFx = this.add.sprite(0, 0, TEX.DASH_IMPACT_FX).setVisible(false).setDepth(10);
     this.dashImpactFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.dashImpactFx.setVisible(false));
-    this.loadZone(gameState.currentZone);
+    // Créé avant le tout premier loadZone() (async, cf. resolveZoneMap) : la génération de la
+    // toute première zone peut prendre quelques secondes (appel IA) avant que le HUD n'existe.
+    this.zoneLoadingText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Génération de la zone…', {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#d8b34a',
+        ...HUD_STROKE,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(3000)
+      .setVisible(false);
+    // Créé avant this.hud/setupUICamera (cf. commentaire ci-dessus) : pas dans le conteneur HUD,
+    // donc pas automatiquement ignoré par la caméra principale — sans ce `main.ignore` explicite,
+    // ce texte fixe à l'écran se serait rendu deux fois (une fois par caméra), en double.
+    this.cameras.main.ignore(this.zoneLoadingText);
+    void this.loadZone(gameState.currentZone);
 
     // Tutoriel d'introduction : uniquement au tout début d'une vraie partie (pas en Mode
     // Admin), une seule fois — dialogSystem.hasFlag survit à la sauvegarde (cf. persistProgress).
@@ -165,7 +187,29 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private loadZone(zoneId: string): void {
+  /**
+   * Mode Admin : toujours la voie procédurale instantanée (jamais l'IA) — cf. plan, l'itération
+   * rapide entre chapitres prime sur la variété en exploration libre. Une vraie partie réutilise
+   * la disposition déjà générée cette partie si elle existe (cf. gameState.generatedZones),
+   * sinon appelle generateZoneLive (IA ou repli procédural, cf. ZoneGenerator.ts) et la met en
+   * cache — sans ce cache, revisiter une zone après un aller-retour regénérerait un layout
+   * différent sous les pieds du joueur (dangereux pour un checkpoint déjà pris dedans).
+   */
+  private async resolveZoneMap(zoneId: string): Promise<ZoneMap> {
+    if (powerSystem.isTestMode()) return getZoneMap(zoneId);
+    const cached = gameState.generatedZones.get(zoneId);
+    if (cached) return cached;
+    this.zoneLoadingText.setVisible(true);
+    const zoneMap = await generateZoneLive(zoneId);
+    gameState.generatedZones.set(zoneId, zoneMap);
+    this.zoneLoadingText.setVisible(false);
+    return zoneMap;
+  }
+
+  private async loadZone(zoneId: string): Promise<void> {
+    this.zoneReady = false;
+    const zoneMap = await this.resolveZoneMap(zoneId);
+
     this.npcs.forEach((n) => n.destroy());
     this.npcs = [];
     this.enemies.forEach((e) => e.destroy());
@@ -189,7 +233,6 @@ export class GameScene extends Phaser.Scene {
       this.built.decorSprites.forEach((img) => img.destroy());
     }
 
-    const zoneMap = getZoneMap(zoneId);
     gameState.currentZone = zoneId;
 
     this.background?.destroy();
@@ -324,6 +367,7 @@ export class GameScene extends Phaser.Scene {
     if (this.testBanner) this.testBanner.setVisible(powerSystem.isTestMode());
 
     this.syncCameraIgnoreLists();
+    this.zoneReady = true;
   }
 
   /**
@@ -368,6 +412,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number): void {
+    if (!this.zoneReady) return;
     this.cameraSystem?.update();
     if (this.inputLocked) {
       // Tant que l'overlay reste ouvert plusieurs frames, continue à drainer (cf.
@@ -609,8 +654,9 @@ export class GameScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.ZONE_TRANSITION);
     persistProgress(this.player.x, this.player.y, true);
     this.cameraSystem.fadeOutIn(300, () => {
-      this.loadZone(targetZone);
-      this.isTransitioning = false;
+      void this.loadZone(targetZone).then(() => {
+        this.isTransitioning = false;
+      });
     });
   }
 
@@ -1258,7 +1304,7 @@ export class GameScene extends Phaser.Scene {
           audioManager.play(this, SFX_KEYS.UI_CONFIRM);
           startTestMode(zoneId);
           this.toggleDebugZoneMenu();
-          this.loadZone(zoneId);
+          void this.loadZone(zoneId);
         },
       };
     });

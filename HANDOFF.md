@@ -116,6 +116,54 @@ musique de zone déjà en cours via `audioManager.setMusicRate()` pendant le
 combat, remise à 1 à la victoire. Une vraie piste dédiée par boss remplacerait
 directement cet appel si vous en ajoutez.
 
+## Génération de zone par IA (disposition interne, pas les chapitres)
+
+Chaque partie génère maintenant la disposition interne (tuiles + position des
+entités) de chaque zone via un appel IA (Claude, cf. `functions/generate-zone.ts`),
+avec repli automatique et silencieux sur l'ancien générateur procédural si l'appel
+échoue/expire — **rien à configurer pour que le jeu tourne** : sans endpoint
+configuré, il utilise systématiquement le repli (identique à l'ancien contenu
+statique, déjà vérifié octet pour octet). Les chapitres eux-mêmes (PNJ, boss,
+dialogues, pouvoirs, progression) ne changent pas — seuls le terrain et le
+placement des entités sur ce terrain sont régénérés.
+
+Fichiers clés :
+- `src/systems/zoneProfiles.ts` — profils structurels + constantes de saut (source
+  de vérité partagée, à tenir synchronisée avec `scripts/gen-zones.mjs`).
+- `src/systems/ProceduralZoneGenerator.ts` — repli local (port TS de
+  `gen-zones.mjs`), toujours disponible, zéro dépendance réseau.
+- `src/systems/ZoneValidator.ts` — rejette un layout IA infranchissable
+  (accessibilité par saut réel) avant qu'il n'atteigne le joueur.
+- `src/systems/ZoneGenerator.ts` — point d'entrée : tente l'IA, valide, sinon repli.
+- `functions/generate-zone.ts` — proxy Cloudflare Pages Function (clé API
+  serveur uniquement, jamais dans le bundle client).
+- `GameScene.loadZone()` (désormais `async`) + `gameState.generatedZones` /
+  `SaveData.generatedZones` — cache par partie (une zone déjà visitée garde sa
+  disposition, pour que le checkpoint sauvegardé reste valide après rechargement).
+
+### Activer la génération IA (optionnel)
+
+```bash
+npx wrangler login
+npx wrangler pages secret put ANTHROPIC_API_KEY   # colle ta clé Anthropic
+npm run pages:deploy                              # build + déploie site + fonction
+```
+
+Puis, dans `.env` (ou `.env.production`) à la racine :
+
+```
+VITE_ZONE_AI_ENDPOINT=https://<ton-projet>.pages.dev/generate-zone
+```
+
+Sans cette variable, `ZoneGenerator` saute directement le repli procédural —
+aucun appel réseau n'est jamais tenté. `.dev.vars.example` documente la
+variable pour un test local (`npm run pages:dev`, qui build puis sert via
+`wrangler pages dev`, en lisant `.dev.vars` — jamais commité, cf. `.gitignore`).
+
+Le modèle Anthropic utilisé (`ANTHROPIC_MODEL` dans `functions/generate-zone.ts`)
+est à vérifier/mettre à jour au moment du déploiement — la liste des modèles
+disponibles évolue.
+
 ## Autres fichiers utiles pour situer le contenu
 
 - `message.txt` — brief de conception d'origine (zones, pouvoirs, boss, fins).

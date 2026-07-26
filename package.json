@@ -8,13 +8,19 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "typecheck:functions": "tsc -p functions/tsconfig.json",
+    "pages:dev": "npm run build && wrangler pages dev dist",
+    "pages:deploy": "npm run build && wrangler pages deploy dist"
   },
   "dependencies": {
     "phaser": "^3.80.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260726.1",
+    "playwright": "^1.62.0",
     "typescript": "^5.5.4",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "wrangler": "^4.114.0"
   }
 }
