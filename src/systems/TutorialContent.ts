@@ -43,6 +43,20 @@ export function buildIntroTutorialSteps(): TutorialStep[] {
   ];
 }
 
+/** Tutoriel de combat, affiché une seule fois à la première approche d'un ennemi. */
+export function buildCombatTutorialSteps(): TutorialStep[] {
+  return [
+    {
+      icon: '⚔',
+      title: 'Une ombre approche',
+      lines: [
+        `${keyBindings.getKeyName('attack')} : donner un coup de griffe.`,
+        'Le contact avec un ennemi coûte une vie — attaque en premier ou reste à distance.',
+      ],
+    },
+  ];
+}
+
 /** Les pouvoirs "actifs" se déclenchent avec une touche ; les autres agissent au simple contact. */
 const POWER_KEY_ACTION: Partial<Record<PowerId, ControlAction>> = {
   dash_fantome: 'dash',

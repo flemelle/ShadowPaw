@@ -35,7 +35,7 @@ import { ScrollableList } from '@/utils/ScrollableList';
 import { Button } from '@/utils/Button';
 import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
 import { keyBindings } from '@/systems/KeyBindings';
-import { buildIntroTutorialSteps, buildPowerTutorialSteps } from '@/systems/TutorialContent';
+import { buildIntroTutorialSteps, buildPowerTutorialSteps, buildCombatTutorialSteps } from '@/systems/TutorialContent';
 import type { TutorialStep } from '@/systems/TutorialContent';
 import {
   powerSystem,
@@ -47,6 +47,8 @@ import {
 } from '@/systems/GameState';
 
 const INTERACT_RANGE = 52;
+// Assez large pour prévenir avant tout contact (dégâts) réel avec l'ennemi, cf. maybeShowCombatTutorial.
+const COMBAT_TUTO_RANGE = 200;
 // Contour épais plutôt qu'un pavé gris translucide derrière le texte du HUD : le contraste
 // tient quel que soit le fond (ciel clair, mur sombre...) sans jamais cacher le décor derrière.
 const HUD_STROKE = { stroke: '#000000', strokeThickness: 4 } as const;
@@ -338,6 +340,7 @@ export class GameScene extends Phaser.Scene {
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
     this.enemies.forEach((e) => e.updateAI(this.player.x));
+    this.maybeShowCombatTutorial();
     this.resolveCombat(time);
 
     this.updateInteractPrompt();
@@ -824,6 +827,17 @@ export class GameScene extends Phaser.Scene {
     if (dialogSystem.hasFlag(flag)) return;
     dialogSystem.setFlag(flag);
     this.startTutorial(buildPowerTutorialSteps(power));
+  }
+
+  /** Affiche le mini tutoriel de combat la première fois qu'un ennemi vivant s'approche du joueur. */
+  private maybeShowCombatTutorial(): void {
+    if (this.tutorialActive || powerSystem.isTestMode() || dialogSystem.hasFlag('tuto_combat_seen')) return;
+    const nearEnemy = this.enemies.some(
+      (e) => !e.isDefeated && Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y) <= COMBAT_TUTO_RANGE,
+    );
+    if (!nearEnemy) return;
+    dialogSystem.setFlag('tuto_combat_seen');
+    this.startTutorial(buildCombatTutorialSteps());
   }
 
   // ---------- Puzzle ----------
