@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS, ZONE_MUSIC } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS, ZONE_MUSIC, TEX, ANIM_KEYS } from '@/utils/Constants';
 import type { EndingCondition } from '@/systems/DialogSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
+import { gameState } from '@/systems/GameState';
 
 interface EndSceneData {
   ending: EndingCondition & { id: string };
@@ -45,6 +46,26 @@ export class EndScene extends Phaser.Scene {
         lineSpacing: 8,
       })
       .setOrigin(0.5);
+
+    // Retrouvailles : seule la Fin A (positive) célèbre les créatures sauvées en cours de route —
+    // la Fin B (Kiba cède à l'ombre) n'a pas le ton pour ça, et rien ne s'affiche si aucune n'a
+    // été secourue plutôt que de célébrer un chiffre à zéro.
+    const rescuedCount = gameState.rescuedCreatures.size;
+    if (isEndingA && rescuedCount > 0) {
+      this.add
+        .text(GAME_WIDTH / 2, GAME_HEIGHT - 210, `${rescuedCount} compagnon${rescuedCount > 1 ? 's' : ''} retrouvé${rescuedCount > 1 ? 's' : ''} à ses côtés`, {
+          fontFamily: 'monospace',
+          fontSize: '16px',
+          color: '#ffe27a',
+        })
+        .setOrigin(0.5);
+
+      const spacing = 40;
+      const startX = GAME_WIDTH / 2 - ((rescuedCount - 1) * spacing) / 2;
+      for (let i = 0; i < rescuedCount; i++) {
+        this.add.sprite(startX + i * spacing, GAME_HEIGHT - 170, TEX.RESCUE_CAT).play(ANIM_KEYS.RESCUE_CAT_IDLE);
+      }
+    }
 
     const btn = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 100, 'Retour au menu', {

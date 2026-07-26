@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS, BOSS_DEFS, TEX } from '@/utils/Constants';
 import { SaveSystem } from '@/systems/SaveSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
@@ -8,11 +8,14 @@ import { ScrollableList } from '@/utils/ScrollableList';
 import { Button } from '@/utils/Button';
 import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
 import levelsData from '@/data/levels.json';
+import puzzlesData from '@/data/puzzles.json';
+import { listZoneIds, getZoneMap } from '@/systems/LevelLoader';
 import {
   startNewGame,
   continueGame,
   startTestMode,
   isTestModeRequestedFromURL,
+  dialogSystem,
 } from '@/systems/GameState';
 
 const PANEL_BG = 0x0d0a16;
@@ -29,6 +32,7 @@ export class MenuScene extends Phaser.Scene {
   private keyDown!: Phaser.Input.Keyboard.Key;
   private creditsBox?: Phaser.GameObjects.Container;
   private optionsBox?: Phaser.GameObjects.Container;
+  private achievementsBox?: Phaser.GameObjects.Container;
 
   constructor() {
     super(SCENE_KEYS.MENU);
@@ -44,9 +48,10 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // Le ciel du set FOREST est peint en 3 bandes de couleur plates (cf. layer_11.png) — très
-    // visible et peu flatteur en fond fixe de menu. GRAVEYARD (déjà utilisé pour le prologue)
-    // a un ciel nuageux continu, plus cohérent avec la première impression du jeu.
-    this.background = new ParallaxBackground(this, 'GRAVEYARD', GAME_WIDTH, false);
+    // visible et peu flatteur en fond fixe de menu. STRINGSTAR (ciel nuageux continu, zones
+    // Seikūji/Miroirs) se tient bien immobile et distingue le titre du reste du jeu (GRAVEYARD
+    // domine déjà les 3/8 zones jouées en premier).
+    this.background = new ParallaxBackground(this, 'STRINGSTAR', GAME_WIDTH, false);
     audioManager.playMusic(this, MUSIC_KEYS.MENU);
     this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyUp = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
@@ -74,6 +79,7 @@ export class MenuScene extends Phaser.Scene {
 
     const hasSave = SaveSystem.hasSave();
     let y = 320;
+    this.add.image(GAME_WIDTH / 2 - 194, y, TEX.UI_ICON_PLAY).setDisplaySize(26, 26);
     this.makeButton(y, 'Nouvelle partie', () => {
       audioManager.play(this, SFX_KEYS.UI_CONFIRM);
       startNewGame();
@@ -82,6 +88,7 @@ export class MenuScene extends Phaser.Scene {
     y += 60;
 
     if (hasSave) {
+      this.add.image(GAME_WIDTH / 2 - 194, y, TEX.UI_ICON_PLAY).setDisplaySize(26, 26);
       this.makeButton(y, 'Continuer', () => {
         audioManager.play(this, SFX_KEYS.UI_CONFIRM);
         continueGame();
@@ -89,6 +96,12 @@ export class MenuScene extends Phaser.Scene {
       });
       y += 60;
     }
+
+    this.makeButton(y, 'Succès', () => {
+      audioManager.play(this, SFX_KEYS.UI_SELECT);
+      this.showAchievements();
+    });
+    y += 60;
 
     this.makeButton(y, 'Mode Admin — explorer librement', () => {
       audioManager.play(this, SFX_KEYS.UI_SELECT);
@@ -124,6 +137,7 @@ export class MenuScene extends Phaser.Scene {
       if (this.zoneListContainer) this.closeZoneSelect();
       else if (this.optionsBox) this.closeOptions();
       else if (this.creditsBox) this.closeCredits();
+      else if (this.achievementsBox) this.closeAchievements();
     }
     if (this.zoneList) {
       if (this.keyUp.isDown) this.zoneList.scrollBy(-12);
@@ -295,5 +309,76 @@ export class MenuScene extends Phaser.Scene {
     audioManager.play(this, SFX_KEYS.UI_CANCEL);
     this.creditsBox?.destroy();
     this.creditsBox = undefined;
+  }
+
+  /**
+   * Totaux dérivés des données de zones/dialogues plutôt que codés en dur, pour rester exacts
+   * si de nouvelles zones/créatures/éclats/fins sont ajoutés par la suite.
+   */
+  private showAchievements(): void {
+    const box = this.add.container(0, 0);
+    this.achievementsBox = box;
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, PANEL_BG, 0.95);
+    overlay.setInteractive();
+    overlay.on('pointerdown', () => this.closeAchievements());
+    box.add(overlay);
+
+    const allEntities = listZoneIds().flatMap((id) => getZoneMap(id).entities);
+    const totalCaptives = allEntities.filter((e) => e.type === 'captive').length;
+    const totalShards = puzzlesData.puzzles.filter((p) => p.reward.type === 'reveal_shard').length;
+    const totalBosses = Object.keys(BOSS_DEFS).length;
+    const totalEndings = Object.keys(dialogSystem.endingConditions).length;
+
+    const save = SaveSystem.load();
+    const rows: [string, number, number][] = [
+      ['Gardiens vaincus', save.defeatedBosses.length, totalBosses],
+      ['Créatures sauvées', save.rescuedCreatures?.length ?? 0, totalCaptives],
+      ['Éclats de lumière recueillis', save.collectedShards.length, totalShards],
+      ['Fins découvertes', save.endingsReached?.length ?? 0, totalEndings],
+    ];
+
+    const title = this.add
+      .text(GAME_WIDTH / 2, 130, 'Succès', { fontFamily: 'monospace', fontSize: '26px', color: ACCENT })
+      .setOrigin(0.5);
+    box.add(title);
+
+    rows.forEach(([label, done, total], i) => {
+      const rowY = 220 + i * 56;
+      const complete = total > 0 && done >= total;
+      const text = this.add
+        .text(GAME_WIDTH / 2, rowY, `${complete ? '★' : '☆'} ${label} — ${done} / ${total}`, {
+          fontFamily: 'monospace',
+          fontSize: '20px',
+          color: complete ? ACCENT : TEXT_COLOR,
+        })
+        .setOrigin(0.5);
+      box.add(text);
+    });
+
+    if (!SaveSystem.hasSave()) {
+      const hint = this.add
+        .text(GAME_WIDTH / 2, 220 + rows.length * 56 + 20, 'Aucune partie sauvegardée pour l’instant.', {
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          color: '#8a7fa0',
+        })
+        .setOrigin(0.5);
+      box.add(hint);
+    }
+
+    const hintText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 40, 'Clic ou Échap : fermer', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#8a7fa0',
+      })
+      .setOrigin(0.5);
+    box.add(hintText);
+  }
+
+  private closeAchievements(): void {
+    audioManager.play(this, SFX_KEYS.UI_CANCEL);
+    this.achievementsBox?.destroy();
+    this.achievementsBox = undefined;
   }
 }
