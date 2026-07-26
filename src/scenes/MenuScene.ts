@@ -77,7 +77,11 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const hasSave = SaveSystem.hasSave();
+    // "Continuer" ne doit apparaître qu'après un vrai checkpoint (autel, boss, sortie de zone,
+    // puzzle, sauvetage) — pas simplement parce qu'une sauvegarde existe : quitter ou mourir sans
+    // jamais avoir atteint de checkpoint sauvegarde quand même la position (cf. persistProgress),
+    // mais ne doit pas à lui seul faire apparaître le bouton.
+    const hasSave = SaveSystem.hasCheckpoint();
     let y = 320;
     this.add.image(GAME_WIDTH / 2 - 194, y, TEX.UI_ICON_PLAY).setDisplaySize(26, 26);
     this.makeButton(y, 'Nouvelle partie', () => {

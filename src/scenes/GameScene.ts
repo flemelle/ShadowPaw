@@ -20,6 +20,7 @@ import {
   MOB_TEX_BY_BG,
   ANIM_KEYS,
   getCatDecorVariant,
+  getNpcSkin,
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -69,6 +70,8 @@ export class GameScene extends Phaser.Scene {
   private npcs: NPC[] = [];
   private enemies: Enemy[] = [];
   private captives: { entity: Extract<ZoneEntity, { type: 'captive' }>; sprite: Phaser.GameObjects.Sprite; freed: boolean }[] = [];
+  /** Chats sauvages décoratifs — purs éléments de fond (cf. loadZone), traversables, sans corps physique. */
+  private catDecorSprites: Phaser.GameObjects.Sprite[] = [];
   /** Rangée du sol par colonne (index tuile, pas pixel) — cf. entities/Enemy.ts, hasGroundAhead. */
   private groundTopByCol: (number | null)[] = [];
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
@@ -162,6 +165,8 @@ export class GameScene extends Phaser.Scene {
     this.enemies.forEach((e) => e.destroy());
     this.enemies = [];
     this.captives = [];
+    this.catDecorSprites.forEach((s) => s.destroy());
+    this.catDecorSprites = [];
     this.activeBoss = undefined;
     this.pendingBossFight = undefined;
 
@@ -240,6 +245,8 @@ export class GameScene extends Phaser.Scene {
 
     this.built.entityMarkers.forEach(({ entity, sprite }) => {
       if (entity.type === 'npc') {
+        const skin = getNpcSkin(entity.dialogTree);
+        if (skin) sprite.play(skin.animKey);
         this.npcs.push(new NPC(this, sprite, entity, powerSystem));
         return;
       }
@@ -256,13 +263,19 @@ export class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.player, sprite);
         this.captives.push({ entity, sprite, freed: false });
       }
-      if (entity.type === 'cat_decor') {
-        // Purement décoratif (pas de dialogue/sauvetage), mais non-traversable : le corps statique
-        // vient du pipeline commun de LevelLoader.entityMarkers, encore faut-il l'opposer au joueur
-        // (ce pipeline crée le corps mais n'enregistre aucun collider, cf. 'captive' ci-dessus).
-        this.physics.add.collider(this.player, sprite);
-        sprite.play(getCatDecorVariant(entity.variant).animKey);
-      }
+    });
+
+    // Chats sauvages décoratifs : purs éléments de fond (comme les arbres/buissons de
+    // LevelLoader.scatterDecor) — traversables et derrière le gameplay, pas de corps physique,
+    // donc gérés à part plutôt que via le pipeline entityMarkers (corps statique systématique).
+    zoneMap.entities.forEach((entity) => {
+      if (entity.type !== 'cat_decor') return;
+      const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
+      const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
+      const variant = getCatDecorVariant(entity.variant);
+      const sprite = this.add.sprite(px, py, variant.texture).setDepth(-5);
+      sprite.play(variant.animKey);
+      this.catDecorSprites.push(sprite);
     });
 
     // Rangée du SOL (pas d'une plateforme flottante) par colonne, lue directement dans la grille
@@ -329,7 +342,9 @@ export class GameScene extends Phaser.Scene {
       ...this.built.lightObstacleGroup.getChildren(),
       ...this.built.entityMarkers.map((m) => m.sprite),
       ...this.built.decorSprites,
+      ...this.catDecorSprites,
       this.player,
+      this.player.attackEffect,
       this.promptText,
     ];
     if (this.playerGlow) worldObjects.push(this.playerGlow);
@@ -507,7 +522,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.toast('Gardien vaincu.');
     }
-    persistProgress(this.player.x, this.player.y);
+    persistProgress(this.player.x, this.player.y, true);
   }
 
   private handlePowerAltar(entity: Extract<ZoneEntity, { type: 'power_altar' }>, sprite: Phaser.GameObjects.Sprite): void {
@@ -533,7 +548,7 @@ export class GameScene extends Phaser.Scene {
       this.toast('Énergie absorbée.');
     }
     sprite.setTint(0xffe27a);
-    persistProgress(this.player.x, this.player.y);
+    persistProgress(this.player.x, this.player.y, true);
   }
 
   private handleAutoTrigger(entity: ZoneEntity): void {
@@ -565,7 +580,7 @@ export class GameScene extends Phaser.Scene {
       const ending = dialogSystem.resolveEnding(puzzleSystem.getCollectedShards().length);
       if (!powerSystem.isTestMode()) {
         gameState.reachedEndings.add(ending.id);
-        persistProgress(this.player.x, this.player.y);
+        persistProgress(this.player.x, this.player.y, true);
       }
       this.scene.start(SCENE_KEYS.END, { ending });
     }
@@ -579,7 +594,7 @@ export class GameScene extends Phaser.Scene {
   private transitionToZone(targetZone: string): void {
     this.isTransitioning = true;
     audioManager.play(this, SFX_KEYS.ZONE_TRANSITION);
-    persistProgress(this.player.x, this.player.y);
+    persistProgress(this.player.x, this.player.y, true);
     this.cameraSystem.fadeOutIn(300, () => {
       this.loadZone(targetZone);
       this.isTransitioning = false;
@@ -650,7 +665,7 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => captive.sprite.destroy(),
     });
     gameState.rescuedCreatures.add(captive.entity.id);
-    persistProgress(this.player.x, this.player.y);
+    persistProgress(this.player.x, this.player.y, true);
     this.toast('Une créature piégée a été libérée !');
     this.safeDelay(400, () => this.startDialog(`captive_${captive.entity.id}_thanks`));
   }
@@ -926,7 +941,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPuzzleSolved(): void {
-    persistProgress(this.player.x, this.player.y);
+    persistProgress(this.player.x, this.player.y, true);
   }
 
   private onPuzzleExit(): void {

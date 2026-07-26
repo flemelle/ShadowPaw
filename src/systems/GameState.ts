@@ -29,6 +29,13 @@ export const gameState = {
    * continuer à spawn au point d'entrée.
    */
   resumePosition: null as { x: number; y: number } | null,
+  /**
+   * Un vrai checkpoint (autel, boss, sortie de zone, puzzle, sauvetage) a-t-il déjà été atteint
+   * cette partie ? Distinct de "une sauvegarde existe" : quitter ou mourir persiste toujours la
+   * position courante (cf. persistProgress) pour ne rien perdre, mais ça ne doit pas à soi seul
+   * faire apparaître "Continuer" au menu — seul un vrai checkpoint doit l'activer.
+   */
+  hasCheckpoint: false,
 };
 
 export function isTestModeRequestedFromURL(): boolean {
@@ -46,11 +53,13 @@ function resetProgressState(overrides?: {
   rescuedCreatures?: string[];
   reachedEndings?: string[];
   resumePosition?: { x: number; y: number } | null;
+  hasCheckpoint?: boolean;
 }): void {
   gameState.defeatedBosses = new Set(overrides?.defeatedBosses);
   gameState.rescuedCreatures = new Set(overrides?.rescuedCreatures);
   gameState.reachedEndings = new Set(overrides?.reachedEndings);
   gameState.resumePosition = overrides?.resumePosition ?? null;
+  gameState.hasCheckpoint = overrides?.hasCheckpoint ?? false;
 }
 
 export function startNewGame(): void {
@@ -80,6 +89,7 @@ export function continueGame(): void {
     rescuedCreatures: save.rescuedCreatures,
     reachedEndings: save.endingsReached,
     resumePosition: { x: save.playerX, y: save.playerY },
+    hasCheckpoint: save.hasCheckpoint,
   });
 }
 
@@ -98,8 +108,14 @@ export function isGateOpen(): boolean {
   return gameState.testMode;
 }
 
-export function persistProgress(playerX: number, playerY: number): void {
+/**
+ * `isCheckpoint` : uniquement pour un vrai point de sauvegarde en jeu (autel, boss, sortie de
+ * zone, puzzle, sauvetage) — pas pour un quitter/mourir, qui persiste l'état courant sans faire
+ * apparaître "Continuer" si aucun vrai checkpoint n'a encore été atteint (cf. gameState.hasCheckpoint).
+ */
+export function persistProgress(playerX: number, playerY: number, isCheckpoint = false): void {
   if (gameState.testMode) return;
+  if (isCheckpoint) gameState.hasCheckpoint = true;
   SaveSystem.save({
     currentZone: gameState.currentZone,
     unlockedPowers: powerSystem.getUnlocked(),
@@ -109,6 +125,7 @@ export function persistProgress(playerX: number, playerY: number): void {
     defeatedBosses: [...gameState.defeatedBosses],
     rescuedCreatures: [...gameState.rescuedCreatures],
     endingsReached: [...gameState.reachedEndings],
+    hasCheckpoint: gameState.hasCheckpoint,
     playerX,
     playerY,
   });

@@ -102,7 +102,11 @@ intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédu
 - **AllCats** (pack multi-variantes de chats "Idle") — `ThreeColorFree/IdleCatt.png`
   pour la créature piégée à sauver (`images/creatures/rescue_cat_idle.png`) ;
   `BlackCat`, `Brown`, `White` pour les chats sauvages décoratifs dispersés sur
-  la carte (`images/decor/cat_wild_*.png`, non-traversables mais sans interaction).
+  la carte (`images/decor/cat_wild_*.png`, purement visuels : traversables, en
+  arrière-plan derrière le gameplay) ; `Classical`, `Siamese`, `EgyptCatFree`,
+  `TigerCatFree`, `BatmanCatFree`, `DemonicFree` pour les 6 PNJ nommés (Tozen,
+  l'Esprit de Ryo, le Veilleur de Seikūji, l'Écho de Hikari, le Reflet, Malakar —
+  cf. `Constants.NPC_SKINS`, résolu par préfixe d'arbre de dialogue) (`images/creatures/npc_*.png`).
 - **SedentaryCats** (`.aseprite`, rastérisé par un script maison faute d'outil
   Aseprite disponible) — chat-ombre assis, mob des zones au décor STRINGSTAR
   (`images/creatures/mob_cat.png`).
@@ -113,7 +117,10 @@ intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédu
 - **MediavelFree.png / Idle.png** — chatte-ninja, boss "L'Ombre Jumelle"
   (`images/bosses/catgirl_idle.png`).
 - **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
-  de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`).
+  de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`) ;
+  quelques frames de `BLUEMeleeAttackStrip.png` réutilisées, teintées dans la
+  palette gris/violet de Kiba, comme éclair d'attaque du joueur plutôt qu'un
+  nouveau personnage (`images/creatures/player_attack_fx.png`).
 - **Pixel Art Tiles and Backgrounds - Woods** — deux touffes d'herbe ajoutées au
   pool de décor de la zone Forêt (`images/decor/forest_grass_*.png`).
 

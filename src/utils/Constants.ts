@@ -116,6 +116,13 @@ export const TEX = {
   CAT_DECOR_WHITE: 'tex_cat_decor_white',
   GHOST_CAT_BLUE: 'tex_ghost_cat_blue',
   GHOST_CAT_RED: 'tex_ghost_cat_red',
+  PLAYER_ATTACK_FX: 'tex_player_attack_fx',
+  NPC_TOZEN: 'tex_npc_tozen',
+  NPC_RYO_SPIRIT: 'tex_npc_ryo_spirit',
+  NPC_VEILLEUR: 'tex_npc_veilleur',
+  NPC_ECHO_HIKARI: 'tex_npc_echo_hikari',
+  NPC_REFLET: 'tex_npc_reflet',
+  NPC_MALAKAR: 'tex_npc_malakar',
 } as const;
 
 /**
@@ -144,12 +151,19 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.CAT_DECOR_WHITE]: `${ASSET_BASE}/images/decor/cat_wild_white.png`,
   [TEX.GHOST_CAT_BLUE]: `${ASSET_BASE}/images/bosses/ghost_cat_blue_idle.png`,
   [TEX.GHOST_CAT_RED]: `${ASSET_BASE}/images/bosses/ghost_cat_red_idle.png`,
+  [TEX.PLAYER_ATTACK_FX]: `${ASSET_BASE}/images/creatures/player_attack_fx.png`,
+  [TEX.NPC_TOZEN]: `${ASSET_BASE}/images/creatures/npc_tozen.png`,
+  [TEX.NPC_RYO_SPIRIT]: `${ASSET_BASE}/images/creatures/npc_ryo_spirit.png`,
+  [TEX.NPC_VEILLEUR]: `${ASSET_BASE}/images/creatures/npc_veilleur.png`,
+  [TEX.NPC_ECHO_HIKARI]: `${ASSET_BASE}/images/creatures/npc_echo_hikari.png`,
+  [TEX.NPC_REFLET]: `${ASSET_BASE}/images/creatures/npc_reflet.png`,
+  [TEX.NPC_MALAKAR]: `${ASSET_BASE}/images/creatures/npc_malakar.png`,
 };
 
 /**
  * Chats sauvages décoratifs (pack "Free"/AllCats, cf. ACKNOWLEDGEMENTS.md) dispersés un peu
- * partout sur la carte — non-traversables (corps statique via LevelLoader.entityMarkers, comme
- * toute entité hors 'spawn'/'mob') mais purement décoratifs, sans dialogue ni interaction.
+ * partout sur la carte — purement décoratifs (traversables, en arrière-plan derrière le
+ * gameplay, cf. GameScene.loadZone), sans dialogue ni interaction.
  */
 export const CAT_DECOR_VARIANTS = [
   { texture: TEX.CAT_DECOR_BLACK, animKey: 'anim_cat_decor_black_idle' },
@@ -160,6 +174,25 @@ export const CAT_DECOR_VARIANTS = [
 /** Résout un `EntityCatDecor.variant` (index libre, cf. gen-zones.mjs) sur son texture+animKey. */
 export function getCatDecorVariant(variant: number): (typeof CAT_DECOR_VARIANTS)[number] {
   return CAT_DECOR_VARIANTS[variant % CAT_DECOR_VARIANTS.length];
+}
+
+/**
+ * Habillage des PNJ (AllCats, cf. ACKNOWLEDGEMENTS.md) selon le préfixe de leur arbre de
+ * dialogue (cf. dialogues.json, stable à travers les zones où le même personnage réapparaît —
+ * "tozen_zone1_intro"/"tozen_zone2_hint"/"tozen_zone3_hint" sont tous Tozen). Un PNJ dont aucun
+ * préfixe ne correspond garde le marqueur générique (cercle cyan).
+ */
+export const NPC_SKINS: { prefix: string; texture: string; animKey: string }[] = [
+  { prefix: 'tozen', texture: TEX.NPC_TOZEN, animKey: 'anim_npc_tozen_idle' },
+  { prefix: 'ryo_spirit', texture: TEX.NPC_RYO_SPIRIT, animKey: 'anim_npc_ryo_spirit_idle' },
+  { prefix: 'veilleur', texture: TEX.NPC_VEILLEUR, animKey: 'anim_npc_veilleur_idle' },
+  { prefix: 'echo_hikari', texture: TEX.NPC_ECHO_HIKARI, animKey: 'anim_npc_echo_hikari_idle' },
+  { prefix: 'reflet', texture: TEX.NPC_REFLET, animKey: 'anim_npc_reflet_idle' },
+  { prefix: 'malakar', texture: TEX.NPC_MALAKAR, animKey: 'anim_npc_malakar_idle' },
+];
+
+export function getNpcSkin(dialogTree: string): { texture: string; animKey: string } | null {
+  return NPC_SKINS.find((s) => dialogTree.startsWith(s.prefix)) ?? null;
 }
 
 // Réassigné après vérification visuelle en jeu (screenshots) : un crâne flottant contre le ciel
@@ -181,6 +214,7 @@ export const ANIM_KEYS = {
   CATGIRL_IDLE: 'anim_catgirl_idle',
   GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
   GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
+  PLAYER_ATTACK_SWIPE: 'anim_player_attack_swipe',
 } as const;
 
 export const MUSIC_KEYS = {

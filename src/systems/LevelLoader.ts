@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getCatDecorVariant } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -94,7 +94,7 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
   const markerTexFor = (e: ZoneEntity): string => {
     switch (e.type) {
       case 'npc':
-        return TEX.NPC;
+        return getNpcSkin(e.dialogTree)?.texture ?? TEX.NPC;
       case 'boss_arena':
         return TEX.BOSS_ARENA;
       case 'zone_exit':
@@ -108,8 +108,6 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
         return TEX.SHARD;
       case 'captive':
         return TEX.RESCUE_CAT;
-      case 'cat_decor':
-        return getCatDecorVariant(e.variant).texture;
       default:
         return TEX.NPC;
     }
@@ -117,8 +115,10 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
 
   const entityMarkers = zoneMap.entities
     // 'mob' a besoin d'un corps dynamique (patrouille) : construit à part par GameScene (cf.
-    // entities/Enemy.ts), pas ici où toutes les autres entités reçoivent un corps statique.
-    .filter((e) => e.type !== 'spawn' && e.type !== 'mob')
+    // entities/Enemy.ts). 'cat_decor' est un pur élément de fond, traversable, géré directement
+    // par GameScene sans corps physique du tout (cf. loadZone) — ni l'un ni l'autre ici, où
+    // toutes les autres entités reçoivent systématiquement un corps statique.
+    .filter((e) => e.type !== 'spawn' && e.type !== 'mob' && e.type !== 'cat_decor')
     .map((entity) => {
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
@@ -185,7 +185,12 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
       while (runStart > 0 && groundTopRow[runStart - 1] === floorRow) runStart -= 1;
       let runEnd = gx;
       while (runEnd < cols - 1 && groundTopRow[runEnd + 1] === floorRow) runEnd += 1;
-      const availableWidthPx = (runEnd - runStart + 1) * TILE_SIZE;
+      // Le sprite est centré en gx (origin 0.5), pas au milieu du replat — la largeur disponible
+      // doit donc être bornée par la distance de gx au bord le PLUS PROCHE (doublée), pas par la
+      // largeur totale du replat : sinon un gx proche d'un bord laissait déborder un décor dont
+      // la largeur totale tenait pourtant dans le replat, juste pas centré dessus.
+      const distToEdge = Math.min(gx - runStart, runEnd - gx);
+      const availableWidthPx = distToEdge * 2 * TILE_SIZE;
 
       // Dégagement le plus restrictif sur quelques colonnes voisines (pas seulement gx) : la
       // cime d'un arbre déborde de son point d'ancrage, une plateforme juste à côté (pas

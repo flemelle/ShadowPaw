@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEX, SFX_KEYS, FOOTSTEP_VARIANTS } from '@/utils/Constants';
+import { TEX, SFX_KEYS, FOOTSTEP_VARIANTS, ANIM_KEYS } from '@/utils/Constants';
 import type { PowerSystem } from '@/systems/PowerSystem';
 import { audioManager } from '@/systems/AudioManager';
 import { keyBindings } from '@/systems/KeyBindings';
@@ -21,8 +21,10 @@ const ATTACK_HEIGHT = 26;
 /**
  * Kiba — mouvement de plateforme, traversée liée aux pouvoirs, et attaque de griffes de base
  * (cf. GameScene pour l'application des dégâts aux ennemis — Player expose juste la fenêtre
- * d'attaque active et son montant de dégâts). Aucune animation de personnage : hors scope
- * (cf. message.txt — "à part les mobs, les dynamiques de combats et les personnages").
+ * d'attaque active et son montant de dégâts). Le corps du joueur reste procédural (cf.
+ * BootScene), mais l'attaque affiche un bref éclair de griffure (BLUE Aseprite pack, cf.
+ * ACKNOWLEDGEMENTS.md) teinté dans la palette gris/violet de Kiba plutôt qu'un sprite bleu
+ * détonnant, comme un accès ponctuel à sa "forme d'ombre" plutôt qu'un nouveau personnage.
  * Les touches (gauche/droite/saut/dash/forme ombre/attaque) sont remappables via
  * l'écran Options — cf. systems/KeyBindings.
  */
@@ -41,6 +43,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private lastAttackAt = -Infinity;
   private attackActiveUntil = -Infinity;
   private knockbackUntil = -Infinity;
+  private readonly attackFx: Phaser.GameObjects.Sprite;
 
   constructor(scene: Phaser.Scene, x: number, y: number, private readonly powers: PowerSystem) {
     super(scene, x, y, TEX.PLAYER);
@@ -56,6 +59,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Espace saute toujours, en plus de la touche "Sauter" remappable (défaut ↑) : convention
     // universelle de plateformer, pénible à casser pour qui la tape par réflexe (cf. retours).
     this.spaceKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.attackFx = scene.add.sprite(x, y, TEX.PLAYER_ATTACK_FX).setVisible(false).setTint(0xb8a0e0);
+    this.attackFx.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.attackFx.setVisible(false));
   }
 
   setFootstepSurface(variants: readonly string[]): void {
@@ -103,6 +109,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const x = dir > 0 ? this.x + this.width / 2 : this.x - this.width / 2 - w;
     const y = this.y - h / 2;
     return new Phaser.Geom.Rectangle(x, y, w, h);
+  }
+
+  /** Exposé pour GameScene.syncCameraIgnoreLists (cf. playerGlow, le même besoin). */
+  get attackEffect(): Phaser.GameObjects.Sprite {
+    return this.attackFx;
+  }
+
+  private playAttackFx(dir: 1 | -1): void {
+    this.attackFx.setFlipX(dir < 0);
+    this.attackFx.setPosition(this.x + dir * 18, this.y - 2);
+    this.attackFx.setVisible(true);
+    this.attackFx.play(ANIM_KEYS.PLAYER_ATTACK_SWIPE);
   }
 
   /**
@@ -178,10 +196,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.lastAttackAt = time;
       this.attackActiveUntil = time + ATTACK_DURATION_MS;
       audioManager.play(this.scene, SFX_KEYS.ATTACK_SWING, { volume: 0.5 });
+      // Direction calculée depuis l'appui de CETTE frame (pas this.flipX, pas encore mis à jour
+      // plus bas) : sinon une attaque lancée en changeant de sens la même frame partait à l'envers.
+      this.playAttackFx(left && !right ? -1 : 1);
     }
 
-    this.setFlipX(left && !right);
+    // Ne change l'orientation que sur une vraie intention de direction : sans ça, relâcher les
+    // deux touches (left && !right devient false) faisait retomber le sprite face à droite par
+    // défaut au lieu de rester tourné dans la dernière direction de déplacement.
+    if (left && !right) this.setFlipX(true);
+    else if (right && !left) this.setFlipX(false);
     this.setAlpha(this.isShadowForm ? 0.45 : 1);
+    if (this.attackFx.visible) {
+      const dir = this.flipX ? -1 : 1;
+      this.attackFx.setPosition(this.x + dir * 18, this.y - 2);
+    }
 
     const grounded = (this.body as Phaser.Physics.Arcade.Body).blocked.down;
     const moving = (left || right) && !this.noclip;
@@ -209,5 +238,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     audioManager.play(this.scene, SFX_KEYS.SHADOW_FORM, { volume: 0.4 });
     this.powers.setActive('forme_ombre', true);
     this.scene.time.delayedCall(SHADOW_FORM_DURATION_MS, () => this.powers.setActive('forme_ombre', false));
+  }
+
+  destroy(fromScene?: boolean): void {
+    this.attackFx.destroy();
+    super.destroy(fromScene);
   }
 }

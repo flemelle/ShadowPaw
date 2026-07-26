@@ -14,6 +14,7 @@ import {
   REAL_TEX_PATHS,
   ANIM_KEYS,
   CAT_DECOR_VARIANTS,
+  NPC_SKINS,
 } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
 import { isTestModeRequestedFromURL } from '@/systems/GameState';
@@ -111,7 +112,11 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
     this.load.spritesheet(TEX.GHOST_CAT_BLUE, REAL_TEX_PATHS[TEX.GHOST_CAT_BLUE], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.GHOST_CAT_RED, REAL_TEX_PATHS[TEX.GHOST_CAT_RED], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.PLAYER_ATTACK_FX, REAL_TEX_PATHS[TEX.PLAYER_ATTACK_FX], { frameWidth: 48, frameHeight: 48 });
     for (const { texture } of CAT_DECOR_VARIANTS) {
+      this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
+    }
+    for (const { texture } of NPC_SKINS) {
       this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
     }
   }
@@ -177,7 +182,25 @@ export class BootScene extends Phaser.Scene {
       frameRate: 10,
       repeat: -1,
     });
+    // Éclair d'attaque de Kiba (BLUE Aseprite pack, cf. ACKNOWLEDGEMENTS.md) — juste les frames du
+    // coup de griffe (14-19 sur les 30 de la feuille, le reste est l'élan/la retombée), teinté à la
+    // volée (cf. Player.ts) pour rester dans la palette gris/violet du joueur plutôt que d'importer
+    // une nouvelle identité visuelle bleue en plein combat.
+    this.anims.create({
+      key: ANIM_KEYS.PLAYER_ATTACK_SWIPE,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_ATTACK_FX, { start: 14, end: 19 }),
+      frameRate: 30,
+      repeat: 0,
+    });
     for (const { texture, animKey } of CAT_DECOR_VARIANTS) {
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(texture, { start: 0, end: 6 }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+    for (const { texture, animKey } of NPC_SKINS) {
       this.anims.create({
         key: animKey,
         frames: this.anims.generateFrameNumbers(texture, { start: 0, end: 6 }),

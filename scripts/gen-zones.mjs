@@ -198,8 +198,11 @@ function generateZone(profile) {
     // (même formule de clearance/écart horizontal) : une tour n'est donc jamais qu'un escalier
     // classique poursuivi plus longtemps, ce qui garantit par construction qu'aucune marche
     // n'est jamais à plus d'un saut de la précédente, même en haut d'une tour de 6 marches.
+    // Désactivée sur les tout premiers niveaux (profile.allowTowers === false) : la verticalité
+    // marquée doit s'introduire plus tard, pas dès la découverte des contrôles de base.
+    const allowTowers = profile.allowTowers ?? true;
     const chainRoll = rand();
-    const chainLen = chainRoll < 0.15 ? 4 + Math.floor(rand() * 3) : chainRoll < 0.45 ? 2 + Math.floor(rand() * 2) : 1;
+    const chainLen = allowTowers && chainRoll < 0.15 ? 4 + Math.floor(rand() * 3) : chainRoll < 0.45 ? 2 + Math.floor(rand() * 2) : 1;
     let px = 6 + Math.floor(rand() * (cols - 16));
     let refY = floorTopByCol[Math.min(cols - 1, Math.max(0, px))] ?? rows - 2;
     const dir = rand() < 0.5 ? -1 : 1;
@@ -277,19 +280,30 @@ function generateZone(profile) {
   return { tiles, safeCols, groundCols, floorTopByCol };
 }
 
-/** Choisit la colonne sûre la plus proche d'une fraction donnée de la largeur totale. */
-function pickAt(safeCols, cols, frac, used) {
+/**
+ * Choisit la colonne sûre la plus proche d'une fraction donnée de la largeur totale.
+ * `avoid`/`minDist` : écarte les colonnes trop proches d'une liste de positions déjà posées
+ * (ex. un mob hostile ne doit pas apparaître juste à côté d'un PNJ ami).
+ */
+function pickAt(safeCols, cols, frac, used, avoid = [], minDist = 0) {
   const targetX = Math.floor(cols * frac);
-  let best = null;
-  let bestDist = Infinity;
-  for (const c of safeCols) {
-    if (used.has(c.x)) continue;
-    const d = Math.abs(c.x - targetX);
-    if (d < bestDist) {
-      best = c;
-      bestDist = d;
+  const scan = (respectAvoid) => {
+    let best = null;
+    let bestDist = Infinity;
+    for (const c of safeCols) {
+      if (used.has(c.x)) continue;
+      if (respectAvoid && avoid.some((ax) => Math.abs(ax - c.x) < minDist)) continue;
+      const d = Math.abs(c.x - targetX);
+      if (d < bestDist) {
+        best = c;
+        bestDist = d;
+      }
     }
-  }
+    return best;
+  };
+  // Repli sans contrainte de distance si aucune colonne libre ne la respecte (zone trop étroite) :
+  // mieux vaut un mob un peu proche d'un PNJ qu'un crash faute de colonne disponible.
+  const best = scan(true) ?? scan(false);
   used.add(best.x);
   return best;
 }
@@ -308,6 +322,9 @@ const ZONE_PROFILES = {
     // Un léger relief plutôt qu'un sol parfaitement plat sur 130 colonnes : reste calme
     // (amplitude ±1 tuile, 12% des colonnes), juste moins monotone à traverser.
     undulate: true,
+    // Premier niveau du jeu : pas de tour de plateformes en hauteur, la verticalité marquée
+    // arrive plus tard une fois les bases acquises.
+    allowTowers: false,
     entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   // Dojo souterrain, chaînes — plafond bas et dense : plateformes étroites et rapprochées,
@@ -320,6 +337,8 @@ const ZONE_PROFILES = {
     // Sol de caverne irrégulier plutôt que plat : cohérent avec l'ambiance "grotte" et casse
     // la linéarité du couloir.
     undulate: true,
+    // Encore un des tout premiers niveaux : même restriction que la zone 1.
+    allowTowers: false,
     entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   // Cœur du sanctuaire, énergie sombre pulsante — verticalité marquée, sol qui monte et
@@ -438,6 +457,10 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
   // la fraction prévue pour son "slot" (spawn, npc0, npc1, ...) — toujours au sol (groundCols),
   // jamais sur une plateforme flottante potentiellement hors de portée de saut.
   const typeCounters = {};
+  // PNJ déjà positionnés (toujours plus tôt dans data.entities que les mobs ajoutés en fin de
+  // tableau, cf. plus haut) — sert à écarter les mobs hostiles d'un PNJ ami tout proche.
+  const MIN_MOB_NPC_DIST = 8;
+  const npcXs = [];
   const newEntities = data.entities.map((entity) => {
     const idx = typeCounters[entity.type] ?? 0;
     typeCounters[entity.type] = idx + 1;
@@ -446,7 +469,10 @@ for (const file of fs.readdirSync(MAPS_DIR)) {
       : entity.type === 'captive' ? CAPTIVE_FRAC[data.id]
       : entity.type === 'cat_decor' ? CAT_DECOR_FRACS[idx % CAT_DECOR_FRACS.length]
       : (profile.entityFracs[entity.type === 'spawn' ? 'spawn' : key] ?? 0.5);
-    const pos = pickAt(groundCols, profile.cols, frac, used);
+    const pos = entity.type === 'mob'
+      ? pickAt(groundCols, profile.cols, frac, used, npcXs, MIN_MOB_NPC_DIST)
+      : pickAt(groundCols, profile.cols, frac, used);
+    if (entity.type === 'npc') npcXs.push(pos.x);
     return { ...entity, x: pos.x, y: pos.y };
   });
 

@@ -10,6 +10,7 @@ function defaultSave(): SaveData {
     defeatedBosses: [],
     rescuedCreatures: [],
     endingsReached: [],
+    hasCheckpoint: false,
     collectedShards: [],
     dialogFlags: {},
     solvedPuzzles: [],
@@ -49,6 +50,16 @@ export class SaveSystem {
 
   static hasSave(): boolean {
     return localStorage.getItem(SAVE_KEY) !== null;
+  }
+
+  /**
+   * Un vrai checkpoint (autel, boss, sortie de zone, puzzle, sauvetage) a-t-il été atteint dans
+   * cette sauvegarde ? Distinct de `hasSave()` : quitter ou mourir sans jamais avoir atteint de
+   * checkpoint crée quand même une sauvegarde (pour ne rien perdre), mais ne doit pas à lui seul
+   * faire apparaître "Continuer" au menu (cf. GameState.persistProgress).
+   */
+  static hasCheckpoint(): boolean {
+    return this.hasSave() && this.load().hasCheckpoint === true;
   }
 
   static reset(): SaveData {

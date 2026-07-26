@@ -123,6 +123,7 @@ export interface SaveData {
   defeatedBosses: string[];
   rescuedCreatures?: string[];
   endingsReached?: string[];
+  hasCheckpoint?: boolean;
   collectedShards: string[];
   dialogFlags: Record<string, boolean>;
   solvedPuzzles: string[];
