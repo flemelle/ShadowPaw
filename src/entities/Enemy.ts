@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TEX, SFX_KEYS, TILE_SIZE } from '@/utils/Constants';
+import { TEX, SFX_KEYS, TILE_SIZE, ANIM_KEYS } from '@/utils/Constants';
 import type { BossDef } from '@/utils/Constants';
 import { audioManager } from '@/systems/AudioManager';
 
@@ -10,6 +10,31 @@ const HIT_INVULN_MS = 400; // > durée de la fenêtre d'attaque du joueur (cf. P
 const MIRROR_HISTORY_FRAMES = 60; // ~1s à 60fps, cf. bossDef.pattern === 'mirror'
 const KNOCKBACK_MS = 160;
 const KNOCKBACK_SPEED = 240;
+
+/**
+ * IA de combat du boss final (pattern 'phases3' — cf. updateBossCombatAI) : machine à états
+ * approche/avant-coup/attaque/récupération, inspirée des conventions de boss de metroidvania
+ * (phases liées aux PV, attaques variées et TÉLÉGRAPHIÉES avant de frapper pour rester lisibles/
+ * justes, fenêtre de récupération qui punit un boss trop agressif). Trois attaques distinctes
+ * débloquées progressivement selon les PV restants plutôt que toutes disponibles d'emblée.
+ */
+type BossState = 'approach' | 'telegraph' | 'attack' | 'recover';
+type BossAttack = 'dash' | 'orb' | 'shockwave';
+
+const BOSS_INITIAL_DELAY_MS = 1200; // grâce avant le tout premier avant-coup, le temps que le joueur s'oriente
+const BOSS_TELEGRAPH_MS = 550; // cf. recherche "telegraphing" : lisible, pas juste un flash d'un quart de seconde
+const BOSS_DASH_MS = 450;
+const BOSS_DASH_SPEED_MULT = 3.2;
+const BOSS_RECOVER_MS = 700; // fenêtre de punition : le boss est lent, prévisible, juste après avoir attaqué
+const BOSS_RECOVER_SPEED_MULT = 0.35;
+const BOSS_ORB_SPEED = 220;
+const BOSS_ORB_MAX_TRAVEL = 480; // px avant auto-extinction (évite qu'une orbe rate voyage indéfiniment)
+const BOSS_SHOCKWAVE_RADIUS = 100;
+const BOSS_SHOCKWAVE_ACTIVE_MS = 300;
+const BOSS_SHOCKWAVE_MELEE_RANGE = 150; // choisie seulement si le joueur est déjà à portée de corps-à-corps
+// Cooldown avant le prochain avant-coup, par palier de PV (index 0 = >66%, 1 = 33-66%, 2 = <33%) —
+// s'accélère à mesure que le combat avance, cf. "escalating difficulty" dans la recherche.
+const BOSS_DECISION_COOLDOWN_BY_PHASE = [1800, 1300, 900];
 
 /** PV/vitesse d'un mob "normal" : croît avec la zone (1-8) ET le tier au sein de la zone (1-5). */
 export function mobHp(zoneIndex: number, tier: number): number {
@@ -43,6 +68,20 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly isBoss: boolean;
   readonly bossDef?: BossDef;
 
+  // ---- IA de combat du boss final (pattern 'phases3' uniquement, cf. updateBossCombatAI) ----
+  private bossState: BossState = 'approach';
+  private bossStateUntil = -Infinity;
+  private bossFightStarted = false;
+  private nextDecisionAt = -Infinity;
+  private chosenAttack: BossAttack = 'dash';
+  private dashDir: 1 | -1 = 1;
+  private telegraphFx?: Phaser.GameObjects.Sprite;
+  private shockwaveFx?: Phaser.GameObjects.Sprite;
+  private orbSprite?: Phaser.Physics.Arcade.Sprite;
+  private orbActive = false;
+  private orbTraveled = 0;
+  private pendingShockwave?: { x: number; y: number; activeUntil: number; consumed: boolean };
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -75,6 +114,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     if (opts?.animKey) this.play(opts.animKey);
     scene.physics.add.existing(this);
+    // Le boss final ('phases3') flotte sans gravité ni collider contre le sol (cf.
+    // GameScene.startBossFight) — esprit-chat spectral, cohérent avec sa fiction, et ça évite un
+    // vrai problème rencontré en le testant au sol : son corps (plus large qu'une tuile à l'échelle
+    // 1.7) se faisait bloquer en continu par les coutures internes entre tuiles adjacentes du sol
+    // (fait de nombreux sprites 32x32 individuels, pas d'un vrai Tilemap avec retrait des arêtes).
+    // Dimensions resserrées sur le contenu opaque réel de ghost_cat_red_idle.png (frame 64x64,
+    // union des bbox sur les 20 frames d'idle) plutôt que la frame entière, pour une griffure fidèle.
+    if (this.isBoss && opts?.bossDef?.pattern === 'phases3') {
+      const b = this.body as Phaser.Physics.Arcade.Body;
+      b.setAllowGravity(false);
+      b.setSize(49, 59).setOffset(10, 1);
+    }
     // Pas de vélocité initiale ici : au chargement d'une zone, le premier pas de physique peut
     // s'exécuter plusieurs fois d'affilée (rattrapage du pas fixe de Phaser après le hoquet de
     // chargement des assets) avant même le premier appel à updateAI() — une vélocité posée à
@@ -83,6 +134,32 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // plateforme étroite avant que la logique de demi-tour n'ait la moindre chance de tourner.
     // Rester à vélocité nulle jusqu'au premier updateAI() (qui vérifie AVANT de bouger) garantit
     // qu'aucun déplacement, même le tout premier, ne saute ce contrôle.
+
+    // FX du boss final créés ici, une seule fois, cachés — plutôt qu'à la demande lors du premier
+    // avant-coup : GameScene.syncCameraIgnoreLists() (cf. bossFxSprites) tourne juste après la
+    // création du boss (startBossFight), donc tout sprite créé PLUS TARD raterait cette passe et
+    // se rendrait en double sur les deux caméras (le bug déjà rencontré avec les ennemis eux-mêmes).
+    if (this.isBoss && this.bossDef?.pattern === 'phases3') {
+      this.telegraphFx = scene.add.sprite(x, y, TEX.BOSS_TELEGRAPH_FX).setVisible(false).setDepth(15);
+      this.shockwaveFx = scene.add.sprite(x, y, TEX.BOSS_SHOCKWAVE_FX).setVisible(false).setDepth(14);
+      this.orbSprite = scene.add.sprite(x, y, TEX.BOSS_SHADOW_ORB_FX) as Phaser.Physics.Arcade.Sprite;
+      this.orbSprite.setVisible(false).setDepth(15);
+      scene.physics.add.existing(this.orbSprite);
+      const orbBody = this.orbSprite.body as Phaser.Physics.Arcade.Body;
+      orbBody.setAllowGravity(false);
+      // Un corps Arcade actif (même invisible, même jamais tiré) reste physiquement solide et
+      // bloquait le boss lui-même dès sa création (les deux partagent la même position de départ)
+      // — désactivé au repos, réactivé seulement pendant le vol effectif (cf. fireOrb/updateOrb).
+      orbBody.enable = false;
+    }
+  }
+
+  /** Sprites annexes du boss (télégraphe, orbe, onde de choc) — cf. GameScene.syncCameraIgnoreLists,
+   * qui doit aussi les ignorer sur la caméra HUD sans quoi ils se rendraient en double. */
+  get bossFxSprites(): Phaser.GameObjects.GameObject[] {
+    return [this.telegraphFx, this.shockwaveFx, this.orbSprite].filter(
+      (s): s is Phaser.GameObjects.Sprite => s != null,
+    );
   }
 
   get currentHp(): number {
@@ -97,15 +174,24 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.defeated;
   }
 
-  /** À appeler chaque frame par GameScene avec la position X courante du joueur (pattern 'mirror'). */
-  updateAI(playerX: number, time: number): void {
+  /** À appeler chaque frame par GameScene avec la position du joueur (pattern 'mirror'/boss) et `delta`
+   * (avancement des attaques du boss indépendant du framerate). */
+  updateAI(playerX: number, playerY: number, time: number, delta: number): void {
     if (this.defeated) return;
+    // L'orbe continue son vol même pendant le recul (knockback) du boss : un tir déjà lâché ne
+    // doit pas se figer en l'air simplement parce que le corps du boss encaisse un coup.
+    this.updateOrb(delta);
     // Laisse le recul (cf. takeDamage) porter l'ennemi sans que l'IA n'écrase sa vélocité au
     // frame suivant : sans cette fenêtre, setVelocityX ci-dessous (patrouille/mirror) annulerait
     // l'impulsion de recul dès la frame suivante, la rendant invisible en jeu.
     if (time < this.knockbackUntil) return;
     const body = this.body as Phaser.Physics.Arcade.Body;
     const pattern = this.bossDef?.pattern;
+
+    if (pattern === 'phases3' && this.isBoss) {
+      this.updateBossCombatAI(playerX, playerY, time, body);
+      return;
+    }
 
     if (pattern === 'mirror') {
       this.mirrorHistory.push(playerX);
@@ -130,6 +216,185 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     body.setVelocityX(this.currentSpeed() * this.dir);
     this.setFlipX(this.dir < 0);
+  }
+
+  /** Palier de PV courant (0 = >66%, 1 = 33-66%, 2 = <33%) — determine la vitesse ET le pool d'attaques. */
+  private phaseIndex(): number {
+    const ratio = this.hp / this.maxHp;
+    if (ratio <= 0.33) return 2;
+    if (ratio <= 0.66) return 1;
+    return 0;
+  }
+
+  /**
+   * Machine à états du boss final : approche (chasse le joueur au sol) -> avant-coup (immobile,
+   * FX de télégraphe lisible) -> attaque (exécute le pattern choisi) -> récupération (lent,
+   * fenêtre de punition) -> retour à l'approche. Le pool d'attaques s'élargit avec les PV qui
+   * baissent (cf. pickAttack) : le combat ne devient réellement complet qu'en phase 3.
+   */
+  private updateBossCombatAI(playerX: number, playerY: number, time: number, body: Phaser.Physics.Arcade.Body): void {
+    if (!this.bossFightStarted) {
+      this.bossFightStarted = true;
+      this.nextDecisionAt = time + BOSS_INITIAL_DELAY_MS;
+    }
+
+    switch (this.bossState) {
+      case 'approach': {
+        const dir: 1 | -1 = playerX >= this.x ? 1 : -1;
+        body.setVelocityX(this.currentSpeed() * dir);
+        this.setFlipX(dir < 0);
+        if (time >= this.nextDecisionAt) this.startTelegraph(playerX, time);
+        break;
+      }
+      case 'telegraph': {
+        body.setVelocityX(0);
+        if (time >= this.bossStateUntil) this.executeAttack(playerX, playerY, time);
+        break;
+      }
+      case 'attack': {
+        if (this.chosenAttack === 'dash') {
+          body.setVelocityX(this.currentSpeed() * BOSS_DASH_SPEED_MULT * this.dashDir);
+          this.setFlipX(this.dashDir < 0);
+        } else {
+          body.setVelocityX(0);
+        }
+        if (time >= this.bossStateUntil) this.enterRecover(time);
+        break;
+      }
+      case 'recover': {
+        const dir: 1 | -1 = playerX >= this.x ? 1 : -1;
+        body.setVelocityX(this.currentSpeed() * BOSS_RECOVER_SPEED_MULT * dir);
+        this.setFlipX(dir < 0);
+        if (time >= this.bossStateUntil) this.bossState = 'approach';
+        break;
+      }
+    }
+
+    if (this.pendingShockwave && !this.pendingShockwave.consumed && time >= this.pendingShockwave.activeUntil) {
+      this.pendingShockwave = undefined;
+    }
+  }
+
+  /** Choisit la prochaine attaque : pool élargi par palier de PV, corps-à-corps réservé aux cas où
+   * le joueur est déjà à portée (sinon un joueur à distance ne verrait jamais dash/orbe). */
+  private pickAttack(playerX: number): BossAttack {
+    const phase = this.phaseIndex();
+    const dist = Math.abs(playerX - this.x);
+    const pool: BossAttack[] = phase === 0 ? ['dash'] : phase === 1 ? ['dash', 'orb'] : ['dash', 'orb', 'shockwave'];
+    const usable = pool.filter((a) => a !== 'shockwave' || dist <= BOSS_SHOCKWAVE_MELEE_RANGE);
+    return usable[Math.floor(Math.random() * usable.length)];
+  }
+
+  private startTelegraph(playerX: number, time: number): void {
+    this.chosenAttack = this.pickAttack(playerX);
+    this.dashDir = playerX >= this.x ? 1 : -1;
+    this.bossState = 'telegraph';
+    this.bossStateUntil = time + BOSS_TELEGRAPH_MS;
+    audioManager.play(this.scene, SFX_KEYS.SHADOW_FORM, { volume: 0.5 });
+    if (this.telegraphFx) {
+      this.telegraphFx.setPosition(this.x, this.y - 10).setVisible(true).play(ANIM_KEYS.BOSS_TELEGRAPH);
+    }
+    // Pulsation physique du boss lui-même (en plus du FX dédié) : deux signaux redondants pour
+    // qu'un joueur qui regarderait le boss plutôt que le FX au-dessus voie quand même venir le coup.
+    this.scene.tweens.add({ targets: this, scale: this.scaleX * 1.12, yoyo: true, duration: BOSS_TELEGRAPH_MS / 2 });
+  }
+
+  private executeAttack(playerX: number, playerY: number, time: number): void {
+    this.bossState = 'attack';
+    if (this.chosenAttack === 'orb') {
+      this.fireOrb(playerX, playerY);
+      this.bossStateUntil = time + 150;
+    } else if (this.chosenAttack === 'shockwave') {
+      this.triggerShockwave(time);
+      this.bossStateUntil = time + 150;
+    } else {
+      audioManager.play(this.scene, SFX_KEYS.DASH, { volume: 0.6 });
+      this.bossStateUntil = time + BOSS_DASH_MS;
+    }
+  }
+
+  private enterRecover(time: number): void {
+    this.bossState = 'recover';
+    this.bossStateUntil = time + BOSS_RECOVER_MS;
+    this.nextDecisionAt = this.bossStateUntil + BOSS_DECISION_COOLDOWN_BY_PHASE[this.phaseIndex()];
+  }
+
+  /** Lance l'orbe d'ombre visée sur la position DU JOUEUR AU MOMENT DU TIR (x ET y — un joueur
+   * réfugié sur une plateforme en hauteur n'est pas à l'abri pour autant), sans tracking ensuite :
+   * cf. recherche, une attaque téléguidée en continu retire toute possibilité d'esquive juste. */
+  private fireOrb(playerX: number, playerY: number): void {
+    if (!this.orbSprite) return;
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY);
+    this.orbActive = true;
+    this.orbTraveled = 0;
+    const orbBody = this.orbSprite.body as Phaser.Physics.Arcade.Body;
+    orbBody.enable = true;
+    this.orbSprite
+      .setPosition(this.x, this.y)
+      .setVisible(true)
+      .setFlipX(Math.cos(angle) < 0)
+      .play(ANIM_KEYS.BOSS_SHADOW_ORB);
+    orbBody.setVelocity(Math.cos(angle) * BOSS_ORB_SPEED, Math.sin(angle) * BOSS_ORB_SPEED);
+    audioManager.play(this.scene, SFX_KEYS.ATTACK_SWING, { volume: 0.5 });
+  }
+
+  /** Avance l'orbe et l'éteint après sa portée max (cf. BOSS_ORB_MAX_TRAVEL) — indépendant de
+   * l'état courant du boss : une orbe déjà lâchée continue son vol pendant l'avant-coup suivant. */
+  private updateOrb(delta: number): void {
+    if (!this.orbActive || !this.orbSprite) return;
+    this.orbTraveled += BOSS_ORB_SPEED * (delta / 1000);
+    if (this.orbTraveled >= BOSS_ORB_MAX_TRAVEL) {
+      this.deactivateOrb();
+    }
+  }
+
+  /** Éteint l'orbe et désactive son corps physique — un corps actif, même invisible et immobile,
+   * reste solide et bloquait le boss lui-même (les deux partagent la position de départ au repos). */
+  private deactivateOrb(): void {
+    if (!this.orbSprite) return;
+    this.orbActive = false;
+    this.orbSprite.setVisible(false);
+    const orbBody = this.orbSprite.body as Phaser.Physics.Arcade.Body;
+    orbBody.setVelocity(0, 0);
+    orbBody.enable = false;
+  }
+
+  private triggerShockwave(time: number): void {
+    this.pendingShockwave = { x: this.x, y: this.y, activeUntil: time + BOSS_SHOCKWAVE_ACTIVE_MS, consumed: false };
+    if (this.shockwaveFx) {
+      this.shockwaveFx.setPosition(this.x, this.y).setVisible(true).play(ANIM_KEYS.BOSS_SHOCKWAVE);
+    }
+    audioManager.play(this.scene, SFX_KEYS.PUZZLE_FAIL, { volume: 0.6 });
+  }
+
+  /**
+   * Le boss inflige-t-il un dégât de zone/à distance ce tour (orbe ou onde de choc) ? Appelé par
+   * GameScene.resolveCombat() en plus du contact de corps déjà géré ailleurs (le dash EST le corps
+   * du boss, donc déjà couvert par la collision normale joueur/ennemi). Consomme le hasard
+   * touché (une orbe/onde ne peut toucher qu'une fois).
+   */
+  checkBossHazards(playerBounds: Phaser.Geom.Rectangle, time: number): boolean {
+    if (this.orbActive && this.orbSprite && Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, this.orbSprite.getBounds())) {
+      this.deactivateOrb();
+      return true;
+    }
+    // `time <= activeUntil` en plus de `!consumed` : le nettoyage de pendingShockwave (cf.
+    // updateBossCombatAI) peut être retardé de quelques frames par un recul (knockback) qui gèle
+    // la machine à états, sans quoi la fenêtre resterait "vivante" et touchable plus longtemps
+    // que BOSS_SHOCKWAVE_ACTIVE_MS ne le prévoit.
+    if (this.pendingShockwave && !this.pendingShockwave.consumed && time <= this.pendingShockwave.activeUntil) {
+      const dist = Phaser.Math.Distance.Between(
+        playerBounds.centerX,
+        playerBounds.centerY,
+        this.pendingShockwave.x,
+        this.pendingShockwave.y,
+      );
+      if (dist <= BOSS_SHOCKWAVE_RADIUS) {
+        this.pendingShockwave.consumed = true;
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -159,10 +424,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** Paliers de vitesse sous certains seuils de PV, pour les patterns 'phases'/'phases3'. */
   private currentSpeed(): number {
     if (!this.bossDef || (this.bossDef.pattern !== 'phases' && this.bossDef.pattern !== 'phases3')) return this.baseSpeed;
+    if (this.bossDef.pattern === 'phases3') return this.baseSpeed * (1 + this.phaseIndex() * 0.5);
     const ratio = this.hp / this.maxHp;
-    const thresholds = this.bossDef.pattern === 'phases3' ? [0.66, 0.33] : [0.5];
-    const stepsPassed = thresholds.filter((t) => ratio <= t).length;
-    return this.baseSpeed * (1 + stepsPassed * 0.5);
+    return this.baseSpeed * (1 + (ratio <= 0.5 ? 1 : 0) * 0.5);
   }
 
   /**
@@ -216,5 +480,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         onComplete();
       },
     });
+  }
+
+  destroy(fromScene?: boolean): void {
+    this.telegraphFx?.destroy();
+    this.shockwaveFx?.destroy();
+    this.orbSprite?.destroy();
+    super.destroy(fromScene);
   }
 }

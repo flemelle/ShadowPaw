@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""One-off generator: bakes 8 per-zone floor/platform textures from a ground texture
-SOURCED FROM THE SAME PACK AS EACH ZONE'S PAINTED BACKGROUND (cf. ZONE_SRC below) —
-Stringstar Fields' own ground for its zones, "Pixel Art Woods Tileset" for the forest
-zone. The graveyard pack (Anokolisa) has no plain repeatable ground tile — only scenic
-silhouette props (cf. graveyard_tileset.png) — so graveyard zones still fall back to the
-Stringstar ground rather than an unrelated look; cf. ACKNOWLEDGEMENTS.md for all sources.
+"""One-off generator: bakes 8 per-zone floor/platform textures from a ground crop SOURCED FROM
+THE SAME PACK AS EACH ZONE'S PAINTED BACKGROUND (cf. ZONE_SRC below) — Stringstar Fields' own
+ground for its zones (4,5,7,8) and for the forest zone (zone6, which also scatters
+tree_big/tree_small decor from that SAME Stringstar Fields pack, cf. DECOR_SETS.FOREST in
+Constants.ts — the floor must match those trees' pack), and a dirt/path patch cropped from the
+graveyard pack's own tileset.png (cf. graveyard_tileset.png) for the graveyard zones (1,2,3) —
+that pack has no dedicated "ground tile" swatch (mostly scenic silhouette props), but its
+tileset does include a usable dirt path strip once cropped away from the stone/pillar props
+around it, closer to those zones' own pack than the previous Stringstar fallback.
 
 Each zone's tint is derived from the *actual painted background it uses* rather than
 a hand-picked accent color: the dominant color of that background's farthest (sky)
@@ -19,14 +22,14 @@ BG_DIR = 'public/assets/images/backgrounds'
 OUT_DIR = 'public/assets/images/tiles'
 TILE = 32
 
-# Source ground crop per zone — cf. module docstring for why graveyard falls back to Stringstar.
+# Source ground crop per zone — cf. module docstring.
 ZONE_SRC = {
-    'zone1': f'{OUT_DIR}/ground_stringstar.png',
-    'zone2': f'{OUT_DIR}/ground_stringstar.png',
-    'zone3': f'{OUT_DIR}/ground_stringstar.png',
+    'zone1': f'{OUT_DIR}/ground_graveyard.png',
+    'zone2': f'{OUT_DIR}/ground_graveyard.png',
+    'zone3': f'{OUT_DIR}/ground_graveyard.png',
     'zone4': f'{OUT_DIR}/ground_stringstar.png',
     'zone5': f'{OUT_DIR}/ground_stringstar.png',
-    'zone6': f'{OUT_DIR}/ground_forest.png',
+    'zone6': f'{OUT_DIR}/ground_stringstar.png',
     'zone7': f'{OUT_DIR}/ground_stringstar.png',
     'zone8': f'{OUT_DIR}/ground_stringstar.png',
 }
@@ -122,15 +125,22 @@ def tint(im: Image.Image, rgb: tuple[int, int, int]) -> Image.Image:
 
 
 def load_base(src_path: str) -> Image.Image:
-    """Prépare le crop source en tuile 32x32 prête à teinter. Le crop Stringstar est une bande
-    fine (128x18) très sombre, recadrée/étirée puis boostée pour restituer une vraie plage de
-    luminance (mortier sombre / pierre claire) ; les autres sources sont déjà des tuiles 32x32
-    correctement contrastées (vrai tileset), pas besoin du même traitement correctif."""
+    """Prépare le crop source en tuile 32x32 prête à teinter. Le crop Stringstar (bande du sol
+    prise sur toute la largeur du VRAI tileset.png du pack, cf. ACKNOWLEDGEMENTS.md — pas juste
+    un coin arbitraire comme avant) reste une bande fine et très sombre, recadrée/étirée puis
+    boostée pour restituer une vraie plage de luminance (mortier sombre / pierre claire). Le crop
+    graveyard (chemin de terre du tileset, loin des props pierre/pilier autour) est déjà assez
+    contrasté mais reste sombre, un boost plus léger suffit. Les autres sources sont déjà des
+    tuiles 32x32 correctement contrastées, pas besoin de traitement correctif."""
     src = Image.open(src_path).convert('RGBA')
     if src_path.endswith('ground_stringstar.png'):
-        base = src.crop((0, 0, TILE, 18)).resize((TILE, TILE), Image.NEAREST)
+        base = src.crop((0, 0, TILE, src.height)).resize((TILE, TILE), Image.NEAREST)
         base = ImageEnhance.Contrast(base).enhance(1.3)
         return ImageEnhance.Brightness(base).enhance(4.2)
+    if src_path.endswith('ground_graveyard.png'):
+        base = src.crop((0, 0, TILE, src.height)).resize((TILE, TILE), Image.NEAREST)
+        base = ImageEnhance.Contrast(base).enhance(1.15)
+        return ImageEnhance.Brightness(base).enhance(1.8)
     return src.resize((TILE, TILE), Image.NEAREST) if src.size != (TILE, TILE) else src
 
 

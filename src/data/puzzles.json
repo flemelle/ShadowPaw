@@ -12,9 +12,9 @@
       "mirrors": [
         { "id": "m1", "x": 2, "y": 2, "rotation": 45, "rotatable": true },
         { "id": "m2", "x": 2, "y": 4, "rotation": 135, "rotatable": true },
-        { "id": "m3", "x": 5, "y": 4, "rotation": 45, "rotatable": true }
+        { "id": "m3", "x": 6, "y": 4, "rotation": 45, "rotatable": true }
       ],
-      "solutionRotations": { "m1": 135, "m2": 45, "m3": 135 },
+      "solutionRotations": { "m1": 135, "m2": 135, "m3": 45 },
       "reward": { "type": "unlock_gate", "gateId": "gate_zone6_garden_door" }
     },
     {

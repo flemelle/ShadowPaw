@@ -57,6 +57,23 @@ export function buildCombatTutorialSteps(): TutorialStep[] {
   ];
 }
 
+/** Tutoriel affiché une seule fois à l'entrée du combat contre Malakar (pattern 'phases3',
+ * cf. Enemy.updateBossCombatAI) — ses trois attaques (ruée, orbe, onde de choc) sont nouvelles,
+ * d'où le rappel explicite de la touche d'attaque du joueur pour riposter pendant sa récupération. */
+export function buildBossTutorialSteps(): TutorialStep[] {
+  return [
+    {
+      icon: '👻',
+      title: 'Malakar, Sensei de l\'Ombre',
+      lines: [
+        'Trois attaques à surveiller : une ruée fulgurante, une orbe d\'ombre à distance, une onde de choc au sol.',
+        'Chaque attaque est précédée d\'un bref avant-coup — esquive dès qu\'il apparaît.',
+        `${keyBindings.getKeyName('attack')} : riposte d'un coup de griffe pendant sa récupération, juste après une attaque.`,
+      ],
+    },
+  ];
+}
+
 /** Les pouvoirs "actifs" se déclenchent avec une touche ; les autres agissent au simple contact. */
 const POWER_KEY_ACTION: Partial<Record<PowerId, ControlAction>> = {
   dash_fantome: 'dash',

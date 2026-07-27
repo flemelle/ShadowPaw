@@ -67,6 +67,11 @@ export class ParallaxBackground {
     zoneWidthPx: number,
     withCorruptionOverlay: boolean,
     ambiance?: ZoneAmbiance,
+    // Zoom de LA CAMÉRA QUI AFFICHE ce fond — GAMEPLAY_ZOOM (1.4) par défaut pour GameScene,
+    // mais 1 pour un usage hors gameplay (ex. MenuScene, dont la caméra n'est pas dézoomée) :
+    // sans ce paramètre, le calcul supposait TOUJOURS une caméra à GAMEPLAY_ZOOM et affichait
+    // les calques ~30% plus petits que l'écran partout ailleurs, laissant un vide en bas.
+    cameraZoom: number = GAMEPLAY_ZOOM,
   ) {
     if (set) {
       const specs = BACKGROUND_SETS[set];
@@ -82,11 +87,11 @@ export class ParallaxBackground {
         // rééchantillonnage recentré fait apparaître une tranche différente = bandes de couleur
         // qui jurent. Le suivi vertical de la caméra (scrollFactorY ci-dessous) suffit à éviter
         // le vide en haut/bas sur nos zones, plus courtes que GAME_HEIGHT en pixels monde.
-        // Divisé par GAMEPLAY_ZOOM : la caméra grossit tout ce qu'elle affiche (elle-même
-        // dézoomée à 1.4x), donc sans cette compensation l'image rendait 1.4x plus grande que
-        // "exactement un écran" — assez pour pousser le premier plan (branches, etc.) hors du
-        // cadre en bas plutôt que de rester à sa place conçue.
-        const scale = GAME_HEIGHT / srcH / GAMEPLAY_ZOOM;
+        // Divisé par cameraZoom : la caméra grossit tout ce qu'elle affiche, donc sans cette
+        // compensation l'image rendait `cameraZoom`x plus grande (ou plus petite) que
+        // "exactement un écran" — assez pour pousser le premier plan hors du cadre (zoom>1) ou
+        // laisser un vide en bas (zoom=1, cf. Menu) plutôt que de tenir exactement à l'écran.
+        const scale = GAME_HEIGHT / srcH / cameraZoom;
         const tileW = (GAME_WIDTH + 2 * margin) / scale;
 
         const layer = scene.add.tileSprite(-margin, 0, tileW, srcH, spec.key).setOrigin(0, 0);

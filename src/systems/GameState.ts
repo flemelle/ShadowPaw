@@ -105,11 +105,19 @@ export function continueGame(): void {
   });
 }
 
-/** Mode Admin : tous les pouvoirs, aucune contrainte de progression, sauvegarde inchangée. */
+/**
+ * Mode Admin : tous les pouvoirs, aucune contrainte de progression, sauvegarde inchangée.
+ * Puzzles déjà résolus et éclats déjà recueillis pour la même raison que les pouvoirs : sans ça,
+ * tout contenu conditionné par un puzzle résolu ou un nombre d'éclats (autels, dialogues, la fin
+ * elle-même) restait inaccessible tant qu'on ne rejouait pas chaque puzzle à la main zone par zone.
+ */
 export function startTestMode(zoneId?: string): void {
   powerSystem.setTestMode(true);
   dialogSystem.loadFlags({});
-  puzzleSystem.loadState([], []);
+  puzzleSystem.loadState(
+    puzzleSystem.puzzles.map((p) => p.id),
+    puzzleSystem.shards.map((s) => s.id),
+  );
   gameState.currentZone = zoneId ?? ZONE_IDS[0];
   gameState.testMode = true;
   resetProgressState();

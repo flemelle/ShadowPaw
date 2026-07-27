@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS, TEX } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS, TEX, getNpcSkin } from '@/utils/Constants';
 import { dialogSystem } from '@/systems/GameState';
 import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
@@ -35,7 +35,7 @@ export class DialogScene extends Phaser.Scene {
   private continueHint!: Phaser.GameObjects.Text;
   private scrollHint!: Phaser.GameObjects.Text;
   private playerPortrait!: Phaser.GameObjects.Image;
-  private npcPortrait!: Phaser.GameObjects.Image;
+  private npcPortrait!: Phaser.GameObjects.Sprite;
   private treeId!: string;
   private keySpace!: Phaser.Input.Keyboard.Key;
   private keyUp!: Phaser.Input.Keyboard.Key;
@@ -62,7 +62,27 @@ export class DialogScene extends Phaser.Scene {
     // droite — ajoutées avant le fond de la case pour rester visuellement "derrière" elle.
     // Une seule visible à la fois (cf. renderNode/showOwnLine) : celle qui parle réellement.
     this.playerPortrait = this.add.image(10, BOX_BOTTOM, TEX.PLAYER_PORTRAIT).setOrigin(0, 1).setAlpha(0.92);
-    this.npcPortrait = this.add.image(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);
+    // PNJ dont le préfixe d'arbre de dialogue a un skin réel (cf. NPC_SKINS, même identifiant que
+    // celui affiché dans le monde, cf. LevelLoader.markerTexFor) : sa skin apparaît ici agrandie,
+    // au lieu de la silhouette générique de moine encapuchonné qui servait jusqu'ici pour tous les
+    // PNJ sans distinction.
+    const skin = getNpcSkin(this.treeId);
+    if (skin) {
+      // La silhouette générique (220x360, ancrée en bas de case) dépasse la case par le haut d'une
+      // hauteur qui ne montre que sa capuche — proportionné pour ELLE. Une frame réelle (32x32) n'a
+      // pas la même répartition verticale (le contenu utile est TOUTE la frame, pas juste un
+      // sommet) : ancrée pareil, elle resterait presque entièrement cachée derrière la case et ne
+      // laisserait dépasser que le sommet des oreilles. Ancrée plus haut à la place (juste sous le
+      // bord haut de la case) pour que le skin reste presque entièrement visible au-dessus d'elle.
+      this.npcPortrait = this.add
+        .sprite(GAME_WIDTH - 10, BOX_TOP + 40, skin.texture)
+        .setOrigin(1, 1)
+        .setAlpha(0.92)
+        .setScale(6)
+        .play(skin.animKey);
+    } else {
+      this.npcPortrait = this.add.sprite(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);
+    }
 
     const boxBg = this.add.graphics();
     boxBg.fillStyle(0x0d0a16, 0.95);

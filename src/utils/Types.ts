@@ -14,6 +14,9 @@ export interface EntityNPC {
   dialogTree: string;
   requiresPower?: PowerId;
   optional?: boolean;
+  /** Pouvoir transmis à la fin du dialogue (une seule fois) — remplace l'ancien octroi par
+   * combat de boss dans les zones qui n'ont plus de boss (cf. GameScene.onDialogEnd). */
+  grantsPower?: PowerId;
 }
 
 export interface EntityBossArena {
@@ -57,6 +60,9 @@ export interface EntityZoneExit {
   targetZone: ZoneId | string;
   requiresBossDefeated?: string;
   requiresAltar?: string;
+  /** Remplace requiresBossDefeated dans les zones sans boss : le pouvoir transmis par le PNJ
+   * de la zone (cf. EntityNPC.grantsPower) fait office de jalon de progression à la place. */
+  requiresPower?: PowerId;
 }
 
 export interface EntityShardPickup {

@@ -91,7 +91,8 @@ export const TEX = {
   DASH_GATE: 'tex_dash_gate',
   SHADOW_WALL: 'tex_shadow_wall',
   LIGHT_OBSTACLE: 'tex_light_obstacle',
-  PLAYER: 'tex_player',
+  PLAYER_IDLE: 'tex_player_idle',
+  PLAYER_WALK: 'tex_player_walk',
   PLAYER_GLOW: 'tex_player_glow',
   PLAYER_PORTRAIT: 'tex_player_portrait',
   NPC: 'tex_npc',
@@ -107,10 +108,16 @@ export const TEX = {
   MOB_SKULL: 'tex_mob_skull',
   MOB_BOAR: 'tex_mob_boar',
   RESCUE_CAT: 'tex_rescue_cat',
+  RESCUE_CAT_RUN: 'tex_rescue_cat_run',
   CATGIRL_BOSS: 'tex_catgirl_boss',
   UI_PANEL: 'tex_ui_panel',
   UI_ICON_PLAY: 'tex_ui_icon_play',
   UI_ICON_PAUSE: 'tex_ui_icon_pause',
+  POWER_ICON_CLAWS: 'tex_power_icon_claws',
+  POWER_ICON_VISION: 'tex_power_icon_vision',
+  POWER_ICON_DASH: 'tex_power_icon_dash',
+  POWER_ICON_SHADOW: 'tex_power_icon_shadow',
+  POWER_ICON_LIGHT: 'tex_power_icon_light',
   CAT_DECOR_BLACK: 'tex_cat_decor_black',
   CAT_DECOR_BROWN: 'tex_cat_decor_brown',
   CAT_DECOR_WHITE: 'tex_cat_decor_white',
@@ -119,6 +126,9 @@ export const TEX = {
   PLAYER_ATTACK_FX: 'tex_player_attack_fx',
   HIT_IMPACT_FX: 'tex_hit_impact_fx',
   DASH_IMPACT_FX: 'tex_dash_impact_fx',
+  BOSS_TELEGRAPH_FX: 'tex_boss_telegraph_fx',
+  BOSS_SHADOW_ORB_FX: 'tex_boss_shadow_orb_fx',
+  BOSS_SHOCKWAVE_FX: 'tex_boss_shockwave_fx',
   NPC_TOZEN: 'tex_npc_tozen',
   NPC_RYO_SPIRIT: 'tex_npc_ryo_spirit',
   NPC_VEILLEUR: 'tex_npc_veilleur',
@@ -140,14 +150,22 @@ export const ASSET_BASE = 'assets';
  * sanglier dans la forêt.
  */
 export const REAL_TEX_PATHS: Record<string, string> = {
+  [TEX.PLAYER_IDLE]: `${ASSET_BASE}/images/creatures/player_idle.png`,
+  [TEX.PLAYER_WALK]: `${ASSET_BASE}/images/creatures/player_walk.png`,
   [TEX.MOB_CAT]: `${ASSET_BASE}/images/creatures/mob_cat.png`,
   [TEX.MOB_SKULL]: `${ASSET_BASE}/images/creatures/skull_enemy.png`,
   [TEX.MOB_BOAR]: `${ASSET_BASE}/images/creatures/boar_idle.png`,
   [TEX.RESCUE_CAT]: `${ASSET_BASE}/images/creatures/rescue_cat_idle.png`,
+  [TEX.RESCUE_CAT_RUN]: `${ASSET_BASE}/images/creatures/rescue_cat_run.png`,
   [TEX.CATGIRL_BOSS]: `${ASSET_BASE}/images/bosses/catgirl_idle.png`,
   [TEX.UI_PANEL]: `${ASSET_BASE}/images/ui/panel_wood.png`,
   [TEX.UI_ICON_PLAY]: `${ASSET_BASE}/images/ui/btn_play_light.png`,
   [TEX.UI_ICON_PAUSE]: `${ASSET_BASE}/images/ui/btn_pause_light.png`,
+  [TEX.POWER_ICON_CLAWS]: `${ASSET_BASE}/images/ui/power_icon_claws.png`,
+  [TEX.POWER_ICON_VISION]: `${ASSET_BASE}/images/ui/power_icon_vision.png`,
+  [TEX.POWER_ICON_DASH]: `${ASSET_BASE}/images/ui/power_icon_dash.png`,
+  [TEX.POWER_ICON_SHADOW]: `${ASSET_BASE}/images/ui/power_icon_shadow.png`,
+  [TEX.POWER_ICON_LIGHT]: `${ASSET_BASE}/images/ui/power_icon_light.png`,
   [TEX.CAT_DECOR_BLACK]: `${ASSET_BASE}/images/decor/cat_wild_black.png`,
   [TEX.CAT_DECOR_BROWN]: `${ASSET_BASE}/images/decor/cat_wild_brown.png`,
   [TEX.CAT_DECOR_WHITE]: `${ASSET_BASE}/images/decor/cat_wild_white.png`,
@@ -156,6 +174,9 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.PLAYER_ATTACK_FX]: `${ASSET_BASE}/images/creatures/player_attack_fx.png`,
   [TEX.HIT_IMPACT_FX]: `${ASSET_BASE}/images/creatures/hit_impact_fx.png`,
   [TEX.DASH_IMPACT_FX]: `${ASSET_BASE}/images/creatures/dash_impact_fx.png`,
+  [TEX.BOSS_TELEGRAPH_FX]: `${ASSET_BASE}/images/creatures/boss_telegraph_fx.png`,
+  [TEX.BOSS_SHADOW_ORB_FX]: `${ASSET_BASE}/images/creatures/boss_shadow_orb_fx.png`,
+  [TEX.BOSS_SHOCKWAVE_FX]: `${ASSET_BASE}/images/creatures/boss_shockwave_fx.png`,
   [TEX.NPC_TOZEN]: `${ASSET_BASE}/images/creatures/npc_tozen.png`,
   [TEX.NPC_RYO_SPIRIT]: `${ASSET_BASE}/images/creatures/npc_ryo_spirit.png`,
   [TEX.NPC_VEILLEUR]: `${ASSET_BASE}/images/creatures/npc_veilleur.png`,
@@ -199,6 +220,20 @@ export function getNpcSkin(dialogTree: string): { texture: string; animKey: stri
   return NPC_SKINS.find((s) => dialogTree.startsWith(s.prefix)) ?? null;
 }
 
+/**
+ * Icônes réelles (RPG Effect All Free, teintes encore inutilisées de `Part 16/766.png` — cf.
+ * ACKNOWLEDGEMENTS.md) pour la barre de pouvoirs du HUD, à la place de l'émoji générique utilisé
+ * jusqu'ici (`PowerDef.icon`, resté tel quel pour le mini-tutoriel d'un pouvoir, cf.
+ * TutorialContent.ts, hors scope ici).
+ */
+export const POWER_ICON_TEX: Record<string, string> = {
+  griffes_renforcees: TEX.POWER_ICON_CLAWS,
+  vision_feline: TEX.POWER_ICON_VISION,
+  dash_fantome: TEX.POWER_ICON_DASH,
+  forme_ombre: TEX.POWER_ICON_SHADOW,
+  eclat_lumiere: TEX.POWER_ICON_LIGHT,
+};
+
 // Réassigné après vérification visuelle en jeu (screenshots) : un crâne flottant contre le ciel
 // bleu/doré serein des zones STRINGSTAR (temple de la Quiétude, Salle des Miroirs) lisait comme
 // une erreur de thème (mort/charogne dans un décor apaisé), alors qu'un crâne au milieu des
@@ -213,14 +248,22 @@ export const MOB_TEX_BY_BG: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'NONE
 
 /** Clés des animations d'idle enregistrées au Boot (cf. BootScene.ts) pour les textures ci-dessus. */
 export const ANIM_KEYS = {
+  PLAYER_IDLE: 'anim_player_idle',
+  PLAYER_WALK: 'anim_player_walk',
+  PLAYER_JUMP: 'anim_player_jump',
+  PLAYER_DASH: 'anim_player_dash',
   BOAR_IDLE: 'anim_boar_idle',
   RESCUE_CAT_IDLE: 'anim_rescue_cat_idle',
+  RESCUE_CAT_RUN: 'anim_rescue_cat_run',
   CATGIRL_IDLE: 'anim_catgirl_idle',
   GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
   GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
   PLAYER_ATTACK_SWIPE: 'anim_player_attack_swipe',
   HIT_IMPACT: 'anim_hit_impact',
   DASH_IMPACT: 'anim_dash_impact',
+  BOSS_TELEGRAPH: 'anim_boss_telegraph',
+  BOSS_SHADOW_ORB: 'anim_boss_shadow_orb',
+  BOSS_SHOCKWAVE: 'anim_boss_shockwave',
 } as const;
 
 export const MUSIC_KEYS = {
@@ -464,17 +507,11 @@ export interface BossDef {
   animKey?: string;
 }
 
+// Un seul vrai combat de boss désormais : le boss final de zone8 (cf. message utilisateur — les
+// zones intermédiaires transmettent leur pouvoir via un PNJ, cf. EntityNPC.grantsPower, plutôt
+// que par un combat de boss dédié).
 export const BOSS_DEFS: Record<string, BossDef> = {
-  boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight' },
-  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight' },
-  // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
-  boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
-  boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
-  boss_jardinier_corrompu: { name: 'Le Jardinier Corrompu', hp: 11, speed: 35, pattern: 'slow_slam', musicRate: 1.02, dialogTree: 'boss_jardinier_corrompu_pre_fight' },
-  // Esprit-chat spectral bleu (BLUE/RED Aseprite pack, cf. ACKNOWLEDGEMENTS.md) plutôt que le
-  // losange générique : la teinte froide/éthérée se lit bien comme un double "de lumière".
-  boss_double_de_lumiere: { name: 'Le Double de Lumière', hp: 12, speed: 75, pattern: 'mirror', musicRate: 1.18, dialogTree: 'boss_double_de_lumiere_pre_fight', texture: TEX.GHOST_CAT_BLUE, animKey: ANIM_KEYS.GHOST_CAT_BLUE_IDLE },
-  // Boss final : variante rouge du même esprit-chat, la plus menaçante — cohérente avec Malakar
-  // comme source de la corruption dont les doubles/esprits des autres boss ne sont que des échos.
+  // Boss final : esprit-chat spectral rouge (BLUE/RED Aseprite pack, cf. ACKNOWLEDGEMENTS.md),
+  // cohérent avec Malakar comme source de la corruption.
   boss_malakar_final: { name: 'Malakar, Sensei de l\'Ombre', hp: 18, speed: 60, pattern: 'phases3', musicRate: 0.85, dialogTree: 'malakar_zone8_pre_boss', texture: TEX.GHOST_CAT_RED, animKey: ANIM_KEYS.GHOST_CAT_RED_IDLE },
 };

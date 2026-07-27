@@ -51,7 +51,9 @@ export class MenuScene extends Phaser.Scene {
     // visible et peu flatteur en fond fixe de menu. STRINGSTAR (ciel nuageux continu, zones
     // Seikūji/Miroirs) se tient bien immobile et distingue le titre du reste du jeu (GRAVEYARD
     // domine déjà les 3/8 zones jouées en premier).
-    this.background = new ParallaxBackground(this, 'STRINGSTAR', GAME_WIDTH, false);
+    // Caméra du menu à zoom 1 (pas de dézoom gameplay) : cf. ParallaxBackground, sans quoi les
+    // calques rendaient ~30% plus petits que l'écran, laissant un vide en bas.
+    this.background = new ParallaxBackground(this, 'STRINGSTAR', GAME_WIDTH, false, undefined, 1);
     audioManager.playMusic(this, MUSIC_KEYS.MENU);
     this.keyEsc = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.keyUp = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);

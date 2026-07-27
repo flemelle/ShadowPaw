@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin, POWER_ICON_TEX } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -87,8 +87,12 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
   });
 
   const spawnEntity = zoneMap.entities.find((e) => e.type === 'spawn');
+  // -TILE_SIZE/2 : marge de sécurité au-dessus du sol — le sprite du joueur (cf. entities/Player,
+  // corps plus grand que l'ancien placeholder procédural) ne laissait quasiment plus de jeu entre
+  // ses pieds et le sol au spawn, au point qu'un léger chevauchement pouvait le faire retomber
+  // aussitôt à travers un sol désormais fin d'une seule tuile (cf. handleFallDeath, réutilise `spawn`).
   const spawn = spawnEntity
-    ? { x: spawnEntity.x * TILE_SIZE + TILE_SIZE / 2, y: spawnEntity.y * TILE_SIZE }
+    ? { x: spawnEntity.x * TILE_SIZE + TILE_SIZE / 2, y: spawnEntity.y * TILE_SIZE - TILE_SIZE / 2 }
     : { x: TILE_SIZE, y: TILE_SIZE };
 
   const markerTexFor = (e: ZoneEntity): string => {
@@ -103,7 +107,10 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       case 'puzzle_trigger':
         return TEX.PUZZLE_TRIGGER;
       case 'power_altar':
-        return TEX.POWER_ALTAR;
+        // Icône réelle du pouvoir accordé plutôt que l'autel générique — on voit directement,
+        // sur la carte, CE que cet autel donne (cf. POWER_ICON_TEX, mêmes icônes que la
+        // description des pouvoirs).
+        return (e.grantsPower && POWER_ICON_TEX[e.grantsPower]) || TEX.POWER_ALTAR;
       case 'shard_pickup':
         return TEX.SHARD;
       case 'captive':
@@ -159,14 +166,17 @@ function scatterDecor(scene: Phaser.Scene, zoneMap: ZoneMap): Phaser.GameObjects
   const sprites: Phaser.GameObjects.Image[] = [];
   const { cols, rows, tiles } = zoneMap;
 
-  // groundTopRow[x] = rangée la plus haute du sol continu (connecté jusqu'en bas), ou
-  // null si la colonne est une fosse. Sert à distinguer "sol" de "plateforme flottante".
+  // groundTopRow[x] = rangée du sol (le premier solide rencontré du bas vers le haut), ou null si
+  // la colonne est une fosse. Ne suppose plus que ce sol touche la dernière rangée de la grille
+  // (cf. ProceduralZoneGenerator : le sol n'est plus qu'une seule rangée solide "flottante").
   const groundTopRow: (number | null)[] = new Array(cols).fill(null);
   for (let x = 0; x < cols; x++) {
-    if (tiles[rows - 1][x] !== '#') continue;
-    let y = rows - 1;
-    while (y > 0 && tiles[y - 1][x] === '#') y -= 1;
-    groundTopRow[x] = y;
+    for (let y = rows - 1; y >= 0; y--) {
+      if (tiles[y][x] === '#') {
+        groundTopRow[x] = y;
+        break;
+      }
+    }
   }
 
   // --- Décor au sol (grands décors, jamais sur une plateforme isolée) ---

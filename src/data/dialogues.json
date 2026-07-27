@@ -18,16 +18,23 @@
         },
         "who_are_you": {
           "lines": ["Un gardien. Rien de plus... pour l'instant. Continue ta route, petit chat."],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "griffes_transmises" }]
         },
         "about_velkhar": {
           "lines": [
             "Velkhar n'est pas une ruine. C'est une blessure qui ne cicatrise pas.",
             "Ce que ton Clan y pratique n'a pas de nom dans la langue des vivants."
           ],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "griffes_transmises" }]
         },
-        "end": { "lines": [], "end": true }
+        "end": { "lines": [], "end": true },
+        "griffes_transmises": {
+          "lines": [
+            "Attends. Le Clan t'a enseigné à frapper... laisse-moi t'enseigner à frapper plus fort.",
+            "(Tozen pose une patte sur la tienne. Une chaleur ancienne parcourt tes griffes — tu as reçu les Griffes Renforcées.)"
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        }
       }
     },
     "tozen_zone2_hint": {
@@ -49,15 +56,22 @@
           "lines": [
             "Ceux qui résistaient au rituel... n'ont pas survécu. Les autres sont devenus ce que tu affronteras bientôt : des ombres parfaites, vidées de tout sauf de l'obéissance."
           ],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "vision_transmise" }]
         },
         "who_commands": {
           "lines": [
             "Un maître aveugle, à ce qu'on raconte. Il ne voit rien... et pourtant rien ne lui échappe. Ne fais aucun bruit inutile."
           ],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "vision_transmise" }]
         },
-        "end": { "lines": [], "end": true }
+        "end": { "lines": [], "end": true },
+        "vision_transmise": {
+          "lines": [
+            "Une dernière chose, avant que tu n'ailles plus loin. Ce dojo cache un vieux secret des yeux du Clan.",
+            "(Tozen effleure ton front. Le monde s'éclaircit dans l'obscurité — tu as reçu la Vision Féline.)"
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        }
       }
     },
     "tozen_zone3_hint": {
@@ -74,9 +88,16 @@
         },
         "how_to_reach": {
           "lines": ["Suis la lumière la plus faible. Elle te mènera là où l'obscurité n'ose pas régner."],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "dash_transmis" }]
         },
-        "end": { "lines": [], "end": true }
+        "end": { "lines": [], "end": true },
+        "dash_transmis": {
+          "lines": [
+            "Une dernière offrande, avant que tu ne partes. Le Clan appelait ceci le Pas de l'Ombre.",
+            "(Tozen s'efface dans l'air un instant — et toi avec lui. Tu as reçu le Dash Fantôme.)"
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        }
       }
     },
     "ryo_spirit_zone3": {
@@ -124,15 +145,22 @@
             "Une lumière aussi pure attire toujours une ombre égale. Nous l'avons appris trop tard, et trop cher.",
             "Malakar rôdait déjà à cette époque. Nous avons choisi de cacher la Source plutôt que de risquer sa chute."
           ],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "forme_transmise" }]
         },
         "what_to_do": {
           "lines": [
             "Traverse ce temple. Au sommet, la Source t'attend. Mais prends garde : l'atteindre pourrait bien attirer ce que nous avons toujours redouté."
           ],
-          "choices": [{ "text": "(Partir)", "next": "end" }]
+          "choices": [{ "text": "(Partir)", "next": "forme_transmise" }]
         },
-        "end": { "lines": [], "end": true }
+        "end": { "lines": [], "end": true },
+        "forme_transmise": {
+          "lines": [
+            "Avant que tu ne montes plus haut... prends ceci. Les bâtisseurs de Seikūji savaient devenir ombre eux-mêmes, pour approcher la Source sans la corrompre.",
+            "(Le Veilleur s'incline. Ta silhouette vacille un instant entre chair et pénombre — tu as reçu la Forme d'Ombre.)"
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        }
       }
     },
     "echo_hikari_zone5_intro": {
@@ -201,103 +229,6 @@
             "Ce que tu refuses de voir. Le Double de Lumière qui t'attend plus loin n'est pas ton ennemi — c'est ta question, posée à voix haute."
           ],
           "choices": [{ "text": "(Partir)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_gardien_de_pierre_pre_fight": {
-      "npc": "gardien_de_pierre",
-      "displayName": "Le Gardien de Pierre",
-      "startNode": "start",
-      "description": "Courte tirade avant le premier combat de boss du jeu.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "...",
-            "Un chat de plus, envoyé se briser sur mes pierres.",
-            "Le Clan n'apprend donc jamais."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_maitre_aveugle_pre_fight": {
-      "npc": "maitre_aveugle",
-      "displayName": "Maître Aveugle",
-      "startNode": "start",
-      "description": "Courte tirade avant le combat — le boss se repère au bruit, pas à la vue.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "J'entends ton cœur battre, petit chat. Plus vite qu'il ne le devrait.",
-            "Bouge, et je te trouverai. Reste immobile, et peut-être vivras-tu un peu plus longtemps."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_ombre_jumelle_pre_fight": {
-      "npc": "ombre_jumelle",
-      "displayName": "L'Ombre Jumelle",
-      "startNode": "start",
-      "description": "Courte tirade avant le combat — un clone sombre de Kiba lui-même.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "Tu te bats contre toi-même, Kiba. Tu l'as toujours fait.",
-            "Regarde. Je bouge comme toi. Je frappe comme toi. Je ne suis qu'un instant en retard sur ce que tu es déjà devenu."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_velkhar_ancien_pre_fight": {
-      "npc": "velkhar_ancien",
-      "displayName": "Velkhar l'Ancien",
-      "startNode": "start",
-      "description": "Courte tirade avant le combat de fin d'Acte 1 — deux phases, invocateur d'ombres.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "Je garde ce lieu depuis avant la naissance de ton Clan.",
-            "Seikūji ne se donne pas à qui frappe à sa porte. Il se mérite, ombre après ombre."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_jardinier_corrompu_pre_fight": {
-      "npc": "jardinier_corrompu",
-      "displayName": "Le Jardinier Corrompu",
-      "startNode": "start",
-      "description": "Courte tirade avant le combat, zone 6 — introducteur des combos lumière/ombre.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "J'ai fait pousser ces jardins pendant mille ans. Malakar les a fait pourrir en un jour.",
-            "Si tu portes vraiment la Lumière et l'Ombre toutes les deux... montre-moi qu'elles savent encore travailler ensemble."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
-        },
-        "end": { "lines": [], "end": true }
-      }
-    },
-    "boss_double_de_lumiere_pre_fight": {
-      "npc": "double_de_lumiere",
-      "displayName": "Le Double de Lumière",
-      "startNode": "start",
-      "description": "Courte tirade avant le combat, zone 7 — miroir lumineux de Kiba, immunisé à l'ombre seule.",
-      "nodes": {
-        "start": {
-          "lines": [
-            "Le reflet t'a prévenu, non ? Me voici.",
-            "L'ombre seule glisse sur moi sans laisser de marque. Il te faudra les deux lames, Kiba — ou aucune ne suffira."
-          ],
-          "choices": [{ "text": "(Combat)", "next": "end" }]
         },
         "end": { "lines": [], "end": true }
       }

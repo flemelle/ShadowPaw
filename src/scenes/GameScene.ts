@@ -21,6 +21,7 @@ import {
   ANIM_KEYS,
   getCatDecorVariant,
   getNpcSkin,
+  POWER_ICON_TEX,
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
@@ -40,7 +41,7 @@ import { ScrollableList } from '@/utils/ScrollableList';
 import { Button } from '@/utils/Button';
 import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
 import { keyBindings } from '@/systems/KeyBindings';
-import { buildIntroTutorialSteps, buildPowerTutorialSteps, buildCombatTutorialSteps } from '@/systems/TutorialContent';
+import { buildIntroTutorialSteps, buildPowerTutorialSteps, buildCombatTutorialSteps, buildBossTutorialSteps } from '@/systems/TutorialContent';
 import type { TutorialStep } from '@/systems/TutorialContent';
 import {
   powerSystem,
@@ -77,6 +78,9 @@ export class GameScene extends Phaser.Scene {
   private groundTopByCol: (number | null)[] = [];
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private pendingBossFight?: { entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
+  /** Pouvoir à accorder à la fermeture du dialogue en cours (cf. EntityNPC.grantsPower) — remplace
+   * l'octroi par combat de boss dans les zones qui n'ont plus de boss. */
+  private pendingNpcPowerGrant?: PowerId;
   private hud!: Phaser.GameObjects.Container;
   private hitImpactFx!: Phaser.GameObjects.Sprite;
   private dashImpactFx!: Phaser.GameObjects.Sprite;
@@ -184,6 +188,13 @@ export class GameScene extends Phaser.Scene {
       EventBus.off(GameEvents.COMBO_TRIGGERED, this.onComboTriggered, this);
       EventBus.off(GameEvents.SHARD_COLLECTED, this.onShardCollected, this);
       EventBus.off(GameEvents.TUTORIAL_END, this.onTutorialEnd, this);
+      // Le shutdown de la scène détruit le monde physique (donc les groupes de this.built
+      // deviennent des coquilles mortes) mais ne vide jamais la référence elle-même — sans ce
+      // reset, un retour sur GameScene (ex: Mode Admin après "Quitter vers le menu") relance
+      // create() avec this.built encore "vérité" (non-null) pendant que loadZone() (async)
+      // n'a pas encore reconstruit la zone, et setupUICamera()/syncCameraIgnoreLists() plantait
+      // en lisant getChildren() sur un groupe déjà détruit.
+      this.built = undefined as unknown as BuiltZone;
     });
   }
 
@@ -334,12 +345,18 @@ export class GameScene extends Phaser.Scene {
     // c'est-à-dire souvent une tour/plateforme flottante ajoutée par-dessus le sol réel plutôt que
     // le sol lui-même — deux colonnes avec des plateformes à des hauteurs proches auraient alors pu
     // sembler "au même niveau" alors que le vrai sol, en dessous, avait une fosse entre les deux.
+    // Ne suppose plus que le sol touche la dernière rangée (cf. ProceduralZoneGenerator : le sol
+    // n'est plus qu'une seule rangée solide "flottante") — le premier solide rencontré du bas vers
+    // le haut reste la bonne surface, qu'il touche le bord ou non ; une colonne sans aucun solide
+    // reste correctement une fosse (y ne descend jamais en dessous de 0 sans avoir rien trouvé).
     this.groundTopByCol = new Array(zoneMap.cols).fill(null);
     for (let x = 0; x < zoneMap.cols; x++) {
-      if (zoneMap.tiles[zoneMap.rows - 1][x] !== '#') continue; // colonne = fosse, pas de sol du tout
-      let y = zoneMap.rows - 1;
-      while (y > 0 && zoneMap.tiles[y - 1][x] === '#') y -= 1;
-      this.groundTopByCol[x] = y;
+      for (let y = zoneMap.rows - 1; y >= 0; y--) {
+        if (zoneMap.tiles[y][x] === '#') {
+          this.groundTopByCol[x] = y;
+          break;
+        }
+      }
     }
 
     // Mobs : 5 par zone, difficulté croissante avec le tier ET la zone (cf. entities/Enemy.ts) —
@@ -394,6 +411,7 @@ export class GameScene extends Phaser.Scene {
       ...this.built.decorSprites,
       ...this.catDecorSprites,
       ...this.enemies,
+      ...this.enemies.flatMap((e) => e.bossFxSprites),
       this.player,
       this.player.attackEffect,
       this.hitImpactFx,
@@ -411,7 +429,7 @@ export class GameScene extends Phaser.Scene {
     return this.dialogActive || this.puzzleActive || this.tutorialActive || this.celebratingPower;
   }
 
-  update(time: number): void {
+  update(time: number, delta: number): void {
     if (!this.zoneReady) return;
     this.cameraSystem?.update();
     if (this.inputLocked) {
@@ -426,7 +444,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.player.update(time);
+    this.player.update(time, delta);
     this.playerGlow?.setPosition(this.player.x, this.player.y);
 
     if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyN)) {
@@ -447,7 +465,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
-    this.enemies.forEach((e) => e.updateAI(this.player.x, time));
+    this.enemies.forEach((e) => e.updateAI(this.player.x, this.player.y, time, delta));
     this.maybeShowCombatTutorial();
     this.resolveCombat(time);
 
@@ -461,11 +479,15 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- Interactions ----------
 
+  // Types dont l'interaction (E) ne fait absolument rien : 'zone_exit'/'ending_trigger' se
+  // déclenchent par simple contact (overlap), pas par E — le prompt "E : Interagir" ne doit pas
+  // non plus apparaître pour eux, une invite trompeuse vers une action qui se produit déjà seule.
+  private static readonly NON_INTERACTIVE_TYPES: ZoneEntity['type'][] = ['npc', 'zone_exit', 'ending_trigger'];
+
   private nearestInteractable(): { entity: ZoneEntity; sprite: Phaser.GameObjects.Sprite } | null {
     let best: { entity: ZoneEntity; sprite: Phaser.GameObjects.Sprite; dist: number } | null = null;
     for (const marker of this.built.entityMarkers) {
-      if (marker.entity.type === 'npc') continue;
-      if (marker.entity.type === 'zone_exit' || marker.entity.type === 'ending_trigger') continue;
+      if (GameScene.NON_INTERACTIVE_TYPES.includes(marker.entity.type)) continue;
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, marker.sprite.x, marker.sprite.y);
       if (dist <= INTERACT_RANGE && (!best || dist < best.dist)) {
         best = { ...marker, dist };
@@ -492,6 +514,14 @@ export class GameScene extends Phaser.Scene {
   private tryInteract(): void {
     const npc = this.nearestNPC();
     if (npc) {
+      if (npc.data.grantsPower && !powerSystem.has(npc.data.grantsPower)) {
+        this.pendingNpcPowerGrant = npc.data.grantsPower;
+      }
+      // Un PNJ du monde (ex. la "vision" de Malakar en zone8) peut partager le même arbre de
+      // dialogue que l'intro d'un boss pas encore affronté (cf. handleBossArena) : sans marquer
+      // ici son flag d'intro, l'approche du boss la rejouait une seconde fois à l'identique.
+      const bossWithSameIntro = Object.entries(BOSS_DEFS).find(([, def]) => def.dialogTree === npc.data.dialogTree);
+      if (bossWithSameIntro) dialogSystem.setFlag(`boss_intro_seen_${bossWithSameIntro[0]}`);
       this.startDialog(npc.data.dialogTree);
       return;
     }
@@ -508,6 +538,14 @@ export class GameScene extends Phaser.Scene {
       case 'power_altar':
         this.handlePowerAltar(target.entity, target.sprite);
         break;
+      case 'captive': {
+        // Libération directe à l'appui de E, en plus du déclenchement existant par défaite d'un
+        // mob proche (cf. onEnemyDefeated) — les deux mènent au même rescueCaptive().
+        const captiveId = target.entity.id;
+        const captive = this.captives.find((c) => !c.freed && c.entity.id === captiveId);
+        if (captive) this.rescueCaptive(captive);
+        break;
+      }
       default:
         break;
     }
@@ -549,7 +587,15 @@ export class GameScene extends Phaser.Scene {
       texture: bossDef?.texture,
       animKey: bossDef?.animKey,
     });
-    this.physics.add.collider(boss, this.built.solidGroup);
+    // Le boss final ('phases3', cf. Enemy.updateBossCombatAI) flotte plutôt que de marcher au sol
+    // (esprit-chat spectral, cohérent avec sa fiction) — délibérément SANS collider contre le sol :
+    // son corps, dimensionné sur le contenu réel du sprite pour rester fidèle à l'attaque de griffe,
+    // reste plus large qu'une tuile, et le sol (fait de nombreux sprites de tuile 32x32 individuels
+    // plutôt qu'un vrai Tilemap avec retrait des arêtes internes) bloquait faussement tout
+    // déplacement horizontal sur les coutures entre tuiles adjacentes dès qu'un corps aussi large
+    // s'y enfonçait, même légèrement. Les mobs normaux (32x32, une seule colonne) n'y sont jamais
+    // exposés.
+    if (bossDef?.pattern !== 'phases3') this.physics.add.collider(boss, this.built.solidGroup);
     this.enemies.push(boss);
     // Sans ça, le boss (ajouté après le calcul initial de la liste des objets ignorés par la
     // caméra HUD, cf. loadZone) restait rendu par LES DEUX caméras : un doublon visuel exact du
@@ -559,6 +605,14 @@ export class GameScene extends Phaser.Scene {
     sprite.setVisible(false);
     if (bossDef) audioManager.setMusicRate(bossDef.musicRate);
     this.toast(`Le combat commence : ${bossDef?.name ?? entity.bossId} !`);
+    if (bossDef?.pattern === 'phases3') this.maybeShowBossTutorial();
+  }
+
+  /** Affiche le mini tutoriel des nouvelles attaques de Malakar la première fois que son combat démarre. */
+  private maybeShowBossTutorial(): void {
+    if (dialogSystem.hasFlag('tuto_boss_seen')) return;
+    dialogSystem.setFlag('tuto_boss_seen');
+    this.safeDelay(400, () => this.startTutorial(buildBossTutorialSteps()));
   }
 
   /** Boss vaincu (PV à 0, cf. onEnemyDefeated) : reprend exactement l'ancien flux de victoire. */
@@ -619,12 +673,17 @@ export class GameScene extends Phaser.Scene {
         gameState.defeatedBosses.has(entity.requiresBossDefeated) ||
         this.defeatedThisZone.has(entity.requiresBossDefeated);
       const altarOk = !entity.requiresAltar || powerSystem.isTestMode() || powerSystem.has('eclat_lumiere');
+      const powerOk = !entity.requiresPower || powerSystem.isTestMode() || powerSystem.has(entity.requiresPower);
       if (!bossOk) {
         this.toast('Le passage reste bloqué — le gardien de cette zone est toujours debout.');
         return;
       }
       if (!altarOk) {
         this.toast("Il reste quelque chose à faire ici avant de partir.");
+        return;
+      }
+      if (!powerOk) {
+        this.toast('Il reste quelque chose à faire ici avant de partir.');
         return;
       }
       this.transitionToZone(entity.targetZone);
@@ -684,6 +743,13 @@ export class GameScene extends Phaser.Scene {
       if (enemy.isDefeated) return;
       const enemyBounds = enemy.getBounds();
 
+      // Dégâts à distance/de zone du boss (orbe, onde de choc) — le dash EST le corps du boss,
+      // donc déjà couvert par le contact classique plus bas ; ceci couvre les deux autres.
+      if (enemy.isBoss && !this.player.isInShadowForm() && enemy.checkBossHazards(playerBounds, time)) {
+        this.handlePlayerHurt(enemy);
+        return;
+      }
+
       if (hitbox && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, enemyBounds)) {
         this.playHitImpactFx(enemy.x, enemy.y);
         if (enemy.takeDamage(this.player.attackDamage(), time, this.player.x)) this.onEnemyDefeated(enemy);
@@ -727,12 +793,17 @@ export class GameScene extends Phaser.Scene {
     captive.freed = true;
     (captive.sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
     audioManager.play(this, SFX_KEYS.SHARD_COLLECT, { volume: 0.5 });
+    // Détale à l'opposé du joueur plutôt que de simplement s'estomper sur place — le skin
+    // (cf. rescue_cat_run.png/ANIM_KEYS.RESCUE_CAT_RUN) a justement été choisi pour avoir un
+    // cycle de course/bond, contrairement à l'ancien skin idle-seulement.
+    const dir: 1 | -1 = captive.sprite.x >= this.player.x ? 1 : -1;
+    captive.sprite.setFlipX(dir < 0);
+    captive.sprite.play(ANIM_KEYS.RESCUE_CAT_RUN);
     this.tweens.add({
       targets: captive.sprite,
-      alpha: 0,
-      y: captive.sprite.y - 12,
-      duration: 500,
-      delay: 300,
+      x: captive.sprite.x + dir * 500,
+      duration: 900,
+      ease: 'Cubic.easeIn',
       onComplete: () => captive.sprite.destroy(),
     });
     gameState.rescuedCreatures.add(captive.entity.id);
@@ -859,6 +930,19 @@ export class GameScene extends Phaser.Scene {
       const { entity, sprite } = this.pendingBossFight;
       this.pendingBossFight = undefined;
       this.startBossFight(entity, sprite);
+      return;
+    }
+    // Pouvoir transmis par un PNJ (cf. EntityNPC.grantsPower) : remplace l'octroi par combat de
+    // boss dans les zones qui n'en ont plus. Accordé à la fermeture du dialogue plutôt qu'au
+    // choix précis qui y mène, pour qu'il survienne quel que soit le chemin de branches emprunté.
+    if (this.pendingNpcPowerGrant) {
+      const power = this.pendingNpcPowerGrant;
+      this.pendingNpcPowerGrant = undefined;
+      powerSystem.unlock(power);
+      audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
+      this.grantPowerCelebration(power);
+      this.toast(`Pouvoir obtenu : ${powerSystem.getDef(power)?.name}`);
+      persistProgress(this.player.x, this.player.y, true);
     }
   }
 
@@ -866,14 +950,12 @@ export class GameScene extends Phaser.Scene {
 
   private startTutorial(steps: TutorialStep[]): void {
     if (steps.length === 0) return;
-    // Attend l'atterrissage plutôt que d'ouvrir en plein saut : `setVelocity(0, 0)` juste en
-    // dessous couperait net l'élan vertical, un arrêt en plein vol visuellement/sensiblement
-    // brutal. Le déclencheur (combat/pouvoir) a déjà posé son flag "vu" avant d'appeler ceci,
-    // donc reprogrammer cet appel jusqu'à l'atterrissage ne le redéclenche jamais en double.
-    if (!this.player.isGrounded()) {
-      this.safeDelay(120, () => this.startTutorial(steps));
-      return;
-    }
+    // Gèle IMMÉDIATEMENT, même en plein saut — un essai précédent attendait l'atterrissage avant
+    // de figer quoi que ce soit (pour ne pas couper l'élan vertical brutalement), mais laissait
+    // alors le joueur retomber normalement, non protégé, pendant toute l'attente : un
+    // déclenchement en plein saut au-dessus d'une fosse pouvait le faire tomber dans le vide
+    // avant même que le tutoriel n'ait eu la moindre chance de s'afficher. Un arrêt net en plein
+    // vol (petit défaut visuel) est un bien moindre mal qu'une mort par chute imméritée.
     this.tutorialActive = true;
     this.player.setVelocity(0, 0);
     // GameScene.update() skipping enemy.updateAI()/resolveCombat() only stops NEW AI decisions —
@@ -918,7 +1000,7 @@ export class GameScene extends Phaser.Scene {
    * sans qu'une touche pressée entre-temps ne l'interrompe visuellement ; `onComplete` (le
    * mini tutoriel du pouvoir, typiquement) n'est appelé qu'une fois le joueur libéré.
    */
-  private celebratePowerUnlock(onComplete?: () => void): void {
+  private celebratePowerUnlock(power: PowerId, onComplete?: () => void): void {
     const px = this.player.x;
     const py = this.player.y;
     this.celebratingPower = true;
@@ -932,6 +1014,7 @@ export class GameScene extends Phaser.Scene {
 
     let burstAlive = true;
     let beamAlive = true;
+    let iconAlive = true;
 
     this.tweens.add({
       targets: this.player,
@@ -940,17 +1023,43 @@ export class GameScene extends Phaser.Scene {
       ease: 'sine.out',
       yoyo: true,
       hold: 1200,
-      // Le halo/rayon suivent le perso pendant qu'il monte : sans ça ils restent plantés à sa
-      // position de départ pendant que le tween ne bouge que sa propriété `y` à lui.
+      // Le halo/rayon/icône suivent le perso pendant qu'il monte : sans ça ils restent plantés à
+      // sa position de départ pendant que le tween ne bouge que sa propriété `y` à lui.
       onUpdate: () => {
         if (burstAlive) burst.setPosition(this.player.x, this.player.y);
         if (beamAlive) beam.setPosition(this.player.x, this.player.y);
+        if (iconAlive) icon.setPosition(this.player.x, this.player.y - 40);
       },
       onComplete: () => {
         body.enable = true;
         this.celebratingPower = false;
         this.drainEdgeInputs();
         onComplete?.();
+      },
+    });
+
+    // Icône du pouvoir précisément acquis (cf. POWER_ICON_TEX, mêmes icônes que la description
+    // des pouvoirs) — se lit "voici CE que tu viens de trouver", que ce soit via un autel ou un
+    // PNJ, plutôt qu'un halo doré générique qui ne dit pas lequel des 5 pouvoirs vient d'arriver.
+    const iconTex = POWER_ICON_TEX[power];
+    const icon = this.add
+      .image(px, py - 40, iconTex ?? TEX.PLAYER_GLOW)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(51)
+      .setAlpha(0)
+      .setScale(0.5);
+    this.uiCamera?.ignore(icon);
+    this.tweens.add({
+      targets: icon,
+      alpha: { from: 0, to: 1 },
+      scale: { from: 0.5, to: 1.6 },
+      duration: 1400,
+      ease: 'sine.out',
+      yoyo: true,
+      hold: 1000,
+      onComplete: () => {
+        iconAlive = false;
+        icon.destroy();
       },
     });
 
@@ -998,7 +1107,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Célèbre un pouvoir tout juste accordé, puis enchaîne sur son mini tutoriel une fois fini. */
   private grantPowerCelebration(power: PowerId): void {
-    this.celebratePowerUnlock(() => this.maybeShowPowerTutorial(power));
+    this.celebratePowerUnlock(power, () => this.maybeShowPowerTutorial(power));
   }
 
   /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
@@ -1197,28 +1306,38 @@ export class GameScene extends Phaser.Scene {
     const panelH = 500;
     const panelW = panelH * (panelSrc.width / panelSrc.height);
     const panel = this.add.image(GAME_WIDTH / 2, 360, TEX.UI_PANEL).setDisplaySize(panelW, panelH);
-    const pauseIcon = this.add.image(GAME_WIDTH / 2 - 110, 240, TEX.UI_ICON_PAUSE).setDisplaySize(32, 32);
-    const title = this.add.text(GAME_WIDTH / 2, 240, 'Pause', {
+    // Le panneau (panel_wood.png) a une accroche/chaîne décorative sur son quart supérieur, PAS
+    // encore la planche elle-même (cf. mesure pixel par pixel de l'asset : la bordure haute de la
+    // planche ne commence réellement qu'à ~34% de sa hauteur) — le titre à y=240 tombait dans cette
+    // zone d'accroche plutôt que sur la planche, chevauchant son rivet décoratif. Redescendu ici
+    // dans la planche, avec les boutons décalés d'autant pour garder le même espacement entre eux.
+    const pauseIcon = this.add.image(GAME_WIDTH / 2 - 110, 292, TEX.UI_ICON_PAUSE).setDisplaySize(32, 32);
+    // Blanc + contour noir plutôt que le doré utilisé ailleurs pour ce genre de titre : ce doré
+    // se distingue mal du bois orangé du panneau (deux teintes trop proches), contrairement aux
+    // autres endroits où ce doré se détache d'un fond sombre.
+    const title = this.add.text(GAME_WIDTH / 2, 292, 'Pause', {
       fontFamily: 'monospace',
       fontSize: '32px',
-      color: '#d8b34a',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
     }).setOrigin(0.5);
 
     const hoverSfx = () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
-    const resumeBtn = new Button(this, GAME_WIDTH / 2, 310, 'Reprendre (ESC)', {
+    const resumeBtn = new Button(this, GAME_WIDTH / 2, 352, 'Reprendre (ESC)', {
       minWidth: 220,
       fontSize: '16px',
       onHover: hoverSfx,
       onClick: () => this.togglePauseMenu(),
     });
-    const optionsBtn = new Button(this, GAME_WIDTH / 2, 366, 'Options', {
+    const optionsBtn = new Button(this, GAME_WIDTH / 2, 408, 'Options', {
       minWidth: 220,
       fontSize: '16px',
       onHover: hoverSfx,
       onClick: () => this.openOptions(),
     });
     const fullscreenLabel = () => (isFullscreen(this) ? 'Quitter le plein écran' : '⛶ Plein écran');
-    const fullscreenBtn = new Button(this, GAME_WIDTH / 2, 422, fullscreenLabel(), {
+    const fullscreenBtn = new Button(this, GAME_WIDTH / 2, 464, fullscreenLabel(), {
       minWidth: 220,
       fontSize: '16px',
       onHover: hoverSfx,
@@ -1227,7 +1346,7 @@ export class GameScene extends Phaser.Scene {
         fullscreenBtn.setLabel(fullscreenLabel());
       },
     });
-    const quitBtn = new Button(this, GAME_WIDTH / 2, 478, 'Quitter vers le menu', {
+    const quitBtn = new Button(this, GAME_WIDTH / 2, 520, 'Quitter vers le menu', {
       minWidth: 220,
       fontSize: '16px',
       textColor: '#c56b6b',

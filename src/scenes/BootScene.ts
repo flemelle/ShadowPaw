@@ -104,17 +104,34 @@ export class BootScene extends Phaser.Scene {
 
     // --- Mobs/boss/PNJ réels (cf. Constants.REAL_TEX_PATHS) : statiques ou feuilles de sprites
     // pour celles avec une animation d'idle (32x32 pour les chats/sanglier, 48x48/64x64 pour les boss).
-    [TEX.MOB_CAT, TEX.MOB_SKULL, TEX.UI_PANEL, TEX.UI_ICON_PLAY, TEX.UI_ICON_PAUSE].forEach((key) => {
+    [
+      TEX.MOB_CAT,
+      TEX.MOB_SKULL,
+      TEX.UI_PANEL,
+      TEX.UI_ICON_PLAY,
+      TEX.UI_ICON_PAUSE,
+      TEX.POWER_ICON_CLAWS,
+      TEX.POWER_ICON_VISION,
+      TEX.POWER_ICON_DASH,
+      TEX.POWER_ICON_SHADOW,
+      TEX.POWER_ICON_LIGHT,
+    ].forEach((key) => {
       this.load.image(key, REAL_TEX_PATHS[key]);
     });
+    this.load.spritesheet(TEX.PLAYER_IDLE, REAL_TEX_PATHS[TEX.PLAYER_IDLE], { frameWidth: 46, frameHeight: 58 });
+    this.load.spritesheet(TEX.PLAYER_WALK, REAL_TEX_PATHS[TEX.PLAYER_WALK], { frameWidth: 46, frameHeight: 58 });
     this.load.spritesheet(TEX.MOB_BOAR, REAL_TEX_PATHS[TEX.MOB_BOAR], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.RESCUE_CAT, REAL_TEX_PATHS[TEX.RESCUE_CAT], { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet(TEX.RESCUE_CAT_RUN, REAL_TEX_PATHS[TEX.RESCUE_CAT_RUN], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
     this.load.spritesheet(TEX.GHOST_CAT_BLUE, REAL_TEX_PATHS[TEX.GHOST_CAT_BLUE], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.GHOST_CAT_RED, REAL_TEX_PATHS[TEX.GHOST_CAT_RED], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.PLAYER_ATTACK_FX, REAL_TEX_PATHS[TEX.PLAYER_ATTACK_FX], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.HIT_IMPACT_FX, REAL_TEX_PATHS[TEX.HIT_IMPACT_FX], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.DASH_IMPACT_FX, REAL_TEX_PATHS[TEX.DASH_IMPACT_FX], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.BOSS_TELEGRAPH_FX, REAL_TEX_PATHS[TEX.BOSS_TELEGRAPH_FX], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.BOSS_SHADOW_ORB_FX, REAL_TEX_PATHS[TEX.BOSS_SHADOW_ORB_FX], { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(TEX.BOSS_SHOCKWAVE_FX, REAL_TEX_PATHS[TEX.BOSS_SHOCKWAVE_FX], { frameWidth: 64, frameHeight: 64 });
     for (const { texture } of CAT_DECOR_VARIANTS) {
       this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
     }
@@ -136,7 +153,6 @@ export class BootScene extends Phaser.Scene {
     this.generateTileTexture(TEX.SHADOW_WALL, 0x5a2e8a, false, 0.55);
     this.generateTileTexture(TEX.LIGHT_OBSTACLE, 0xd8b34a, true);
 
-    this.generatePlayerTexture();
     this.generateGlowTexture();
     this.generatePortraitTextures();
     this.generateMarkerTexture(TEX.NPC, 0x4ac9e0, 'circle');
@@ -155,6 +171,33 @@ export class BootScene extends Phaser.Scene {
 
     // --- Animations d'idle pour les mobs/PNJ/boss en vrais sprites ---
     this.anims.create({
+      key: ANIM_KEYS.PLAYER_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_IDLE, { start: 0, end: 9 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.PLAYER_WALK,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_WALK, { start: 0, end: 23 }),
+      frameRate: 18,
+      repeat: -1,
+    });
+    // Pas de pose dédiée dans le pack "sample" (idle/walk uniquement) : on réutilise deux poses
+    // dynamiques déjà présentes dans le cycle de marche — jambes repliées (saut) et grande
+    // foulée (dash) — plutôt que de figer l'idle/la marche pendant ces actions.
+    this.anims.create({
+      key: ANIM_KEYS.PLAYER_JUMP,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_WALK, { start: 9, end: 9 }),
+      frameRate: 1,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.PLAYER_DASH,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_WALK, { start: 4, end: 4 }),
+      frameRate: 1,
+      repeat: -1,
+    });
+    this.anims.create({
       key: ANIM_KEYS.BOAR_IDLE,
       frames: this.anims.generateFrameNumbers(TEX.MOB_BOAR, { start: 0, end: 5 }),
       frameRate: 6,
@@ -164,6 +207,15 @@ export class BootScene extends Phaser.Scene {
       key: ANIM_KEYS.RESCUE_CAT_IDLE,
       frames: this.anims.generateFrameNumbers(TEX.RESCUE_CAT, { start: 0, end: 6 }),
       frameRate: 6,
+      repeat: -1,
+    });
+    // Cycle de saut (le pack n'offre pas de course à proprement parler, cf. ACKNOWLEDGEMENTS.md)
+    // utilisé comme fuite une fois le chat libéré — une suite de bonds reste lisible comme "il
+    // détale" pour un petit chat en pixel art, cf. GameScene.rescueCaptive.
+    this.anims.create({
+      key: ANIM_KEYS.RESCUE_CAT_RUN,
+      frames: this.anims.generateFrameNumbers(TEX.RESCUE_CAT_RUN, { start: 0, end: 12 }),
+      frameRate: 14,
       repeat: -1,
     });
     this.anims.create({
@@ -206,6 +258,28 @@ export class BootScene extends Phaser.Scene {
       key: ANIM_KEYS.DASH_IMPACT,
       frames: this.anims.generateFrameNumbers(TEX.DASH_IMPACT_FX, { start: 0, end: 7 }),
       frameRate: 24,
+      repeat: 0,
+    });
+    // IA de combat de Malakar (cf. entities/BossController.ts) — même pack RPG Effect All Free,
+    // teintes encore inutilisées jusqu'ici (cramoisi ligne 8, indigo ligne 9 de leurs feuilles
+    // respectives). frameRate plus lent que les impacts joueur : un avant-coup de boss doit être
+    // lisible (cf. recherche sur le "telegraphing"), pas juste un flash d'un quart de seconde.
+    this.anims.create({
+      key: ANIM_KEYS.BOSS_TELEGRAPH,
+      frames: this.anims.generateFrameNumbers(TEX.BOSS_TELEGRAPH_FX, { start: 0, end: 7 }),
+      frameRate: 14,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.BOSS_SHADOW_ORB,
+      frames: this.anims.generateFrameNumbers(TEX.BOSS_SHADOW_ORB_FX, { start: 0, end: 7 }),
+      frameRate: 16,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.BOSS_SHOCKWAVE,
+      frames: this.anims.generateFrameNumbers(TEX.BOSS_SHOCKWAVE_FX, { start: 0, end: 7 }),
+      frameRate: 20,
       repeat: 0,
     });
     for (const { texture, animKey } of CAT_DECOR_VARIANTS) {
@@ -270,21 +344,6 @@ export class BootScene extends Phaser.Scene {
       g.lineBetween(TILE_SIZE / 2, TILE_SIZE, TILE_SIZE, TILE_SIZE / 2);
     }
     g.generateTexture(key, TILE_SIZE, TILE_SIZE);
-    g.destroy();
-  }
-
-  private generatePlayerTexture(): void {
-    const w = 22;
-    const h = 30;
-    const g = this.make.graphics({ x: 0, y: 0 });
-    // Moitié gauche : chat gris. Moitié droite : ombre violette. (dualité de Kiba)
-    g.fillStyle(0x9a9aa5, 1);
-    g.fillRoundedRect(0, 0, w / 2, h, 4);
-    g.fillStyle(0x5a2e8a, 1);
-    g.fillRoundedRect(w / 2, 0, w / 2, h, 4);
-    g.fillStyle(0xdedede, 1);
-    g.fillCircle(w / 2, 6, 3);
-    g.generateTexture(TEX.PLAYER, w, h);
     g.destroy();
   }
 

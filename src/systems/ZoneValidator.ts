@@ -25,8 +25,11 @@ interface SurfaceNode {
   row: number;
 }
 
+/** Portes de pouvoir (C/V/D/S/L) : solides par défaut tant que le pouvoir requis n'est pas
+ * acquis (cf. LevelLoader.buildZone) — donc praticables comme du sol pour l'accessibilité,
+ * même si un joueur avec le pouvoir pourra ensuite les traverser. */
 function isSolid(ch: string): boolean {
-  return ch === '#';
+  return ch === '#' || ch === 'C' || ch === 'V' || ch === 'D' || ch === 'S' || ch === 'L';
 }
 
 /**
@@ -41,10 +44,14 @@ function isSolid(ch: string): boolean {
  * `groundCols`), jamais sur une plateforme flottante — c'est donc le bon réseau à valider.
  */
 function surfaceRowOf(tiles: string[], x: number, rows: number): number | null {
-  if (!isSolid(tiles[rows - 1][x])) return null;
-  let y = rows - 1;
-  while (y > 0 && isSolid(tiles[y - 1][x])) y -= 1;
-  return y;
+  // Ne suppose plus que le sol touche la dernière rangée de la grille (cf. ProceduralZoneGenerator :
+  // le sol n'est plus qu'une seule rangée solide "flottante", pas un socle plein jusqu'en bas) —
+  // le premier solide rencontré en balayant du bas vers le haut reste toujours la bonne surface
+  // (celle sur laquelle on atterrirait en tombant dans cette colonne), qu'il touche le bord ou non.
+  for (let y = rows - 1; y >= 0; y--) {
+    if (isSolid(tiles[y][x])) return y;
+  }
+  return null;
 }
 
 function validateShape(map: ZoneMap): ValidationResult {

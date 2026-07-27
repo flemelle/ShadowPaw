@@ -21,8 +21,8 @@ function mulberry32(seed) {
  * Génère une grille (rows de chars) + la liste des colonnes "sûres" (sol présent,
  * plafond dégagé) utilisables pour poser des entités, en fonction d'un profil.
  */
-// Portée maximale d'un saut en course (cf. entities/Player.ts : MOVE_SPEED=200, JUMP_SPEED=560,
-// gravité=900) : temps de vol 2*560/900 ≈ 1.244s à 200px/s ≈ 249px ≈ 7.78 tuiles de 32px. Une
+// Portée maximale d'un saut en course (cf. entities/Player.ts : MOVE_SPEED=200, JUMP_SPEED=480,
+// gravité=900) : temps de vol 2*480/900 ≈ 1.067s à 200px/s ≈ 213px ≈ 6.67 tuiles de 32px. Une
 // fosse plus large que ça est mathématiquement infranchissable au jugé, quel que soit le doigté
 // du joueur ; on plafonne donc à 4 tuiles pour garder une marge confortable pour un élan
 // imparfait, un saut débuté un peu en retard, etc. — plutôt que de coller au maximum théorique.
@@ -52,7 +52,9 @@ function clearBossArena(grid, floorTopByCol, cols, rows, bossFrac) {
   if (refFloor == null) refFloor = rows - 3;
 
   for (let x = lo; x <= hi; x++) {
-    for (let y = 0; y < rows; y++) grid[y][x] = y >= refFloor ? '#' : '.';
+    // Une seule rangée solide, cf. generateZone — le sol de l'arène du boss doit rester aussi
+    // fin/flottant que le reste de la zone plutôt qu'un bloc plein.
+    for (let y = 0; y < rows; y++) grid[y][x] = y === refFloor ? '#' : '.';
     floorTopByCol[x] = refFloor;
   }
 }
@@ -142,8 +144,10 @@ function generateZone(profile) {
     solidRunSincePit = inPit ? 0 : solidRunSincePit + width;
     for (let i = 0; i < width && x < cols; i++, x++) {
       floorTopByCol[x] = inPit ? null : floorTop;
+      // Une seule rangée solide (pas floorTop..rows-1) : le sol lit comme une plateforme fine
+      // qui flotte au-dessus du vide plutôt qu'un bloc de terre plein jusqu'au bas de l'écran.
       if (!inPit) {
-        for (let y = floorTop; y < rows; y++) grid[y][x] = '#';
+        grid[floorTop][x] = '#';
       }
     }
   }
@@ -312,7 +316,7 @@ const ZONE_PROFILES = {
   // Ruines extérieures, nuit — zone d'intro : calme, peu de fosses, plateformes larges.
   zone1_portes_velkhar: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
-    pitChance: 0.06, pitWidth: [2, 4],
+    pitChance: 0.06, pitWidth: [3, 4],
     plat: { count: 18, width: [4, 6], heightAbove: [2, 2] },
     // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
     // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
@@ -325,13 +329,13 @@ const ZONE_PROFILES = {
     // Premier niveau du jeu : pas de tour de plateformes en hauteur, la verticalité marquée
     // arrive plus tard une fois les bases acquises.
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.15, boss_arena0: 0.85, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.15, zone_exit0: 0.97 },
   },
   // Dojo souterrain, chaînes — plafond bas et dense : plateformes étroites et rapprochées,
   // moins de dégagement vertical, pour une sensation d'enfermement distincte du plein air.
   zone2_antre_velours_noir: {
     cols: 145, rows: 15, ceilingGap: 5, seed: 202,
-    pitChance: 0.11, pitWidth: [2, 4],
+    pitChance: 0.11, pitWidth: [3, 4],
     plat: { count: 34, width: [2, 3], heightAbove: [2, 2] },
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     // Sol de caverne irrégulier plutôt que plat : cohérent avec l'ambiance "grotte" et casse
@@ -339,35 +343,35 @@ const ZONE_PROFILES = {
     undulate: true,
     // Encore un des tout premiers niveaux : même restriction que la zone 1.
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.2, boss_arena0: 0.87, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.2, zone_exit0: 0.97 },
   },
   // Cœur du sanctuaire, énergie sombre pulsante — verticalité marquée, sol qui monte et
   // descend sans cesse (undulate) : une traversée en dents de scie plutôt qu'un sol plat.
   zone3_velkhar_foyer_ombres: {
     cols: 145, rows: 19, ceilingGap: 3, seed: 303,
-    pitChance: 0.1, pitWidth: [2, 4],
+    pitChance: 0.1, pitWidth: [3, 4],
     plat: { count: 30, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: true,
-    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, boss_arena0: 0.87, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, zone_exit0: 0.97 },
   },
   // Temple au sommet, silence absolu — sobre et ordonné : fosses rares, plateformes larges
   // et régulièrement espacées, aucune ondulation. L'antithèse du chaos qui suivra en Acte 2.
   zone4_seikuji_quietude: {
     cols: 160, rows: 16, ceilingGap: 3, seed: 404,
-    pitChance: 0.05, pitWidth: [2, 3],
+    pitChance: 0.05, pitWidth: [3, 4],
     plat: { count: 26, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
     // Le boss reste toujours juste avant la sortie (comme les 7 autres zones), pas au milieu du
     // parcours : seul l'autel de pouvoir vient s'intercaler entre le combat et la sortie elle-même.
-    entityFracs: { spawn: 0.03, npc0: 0.1, boss_arena0: 0.85, power_altar0: 0.92, zone_exit0: 0.98 },
+    entityFracs: { spawn: 0.03, npc0: 0.1, power_altar0: 0.92, zone_exit0: 0.98 },
   },
   // Le même temple, corrompu — l'ordre de la zone 4 se fissure : plus de fosses, sol
   // irrégulier (undulate), plateformes de tailles très inégales.
   zone5_seikuji_corrompu: {
     cols: 160, rows: 15, ceilingGap: 3, seed: 505,
-    pitChance: 0.12, pitWidth: [2, 4],
+    pitChance: 0.12, pitWidth: [3, 4],
     plat: { count: 34, width: [2, 6], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: true,
@@ -377,29 +381,29 @@ const ZONE_PROFILES = {
   // plus fréquente que partout ailleurs, plateformes larges façon frondaisons.
   zone6_jardins_oublies: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 606,
-    pitChance: 0.08, pitWidth: [2, 4],
+    pitChance: 0.08, pitWidth: [3, 4],
     plat: { count: 30, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
-    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, boss_arena0: 0.85, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, zone_exit0: 0.97 },
   },
   // Salle des Miroirs — vraie symétrie structurelle (cf. generateMirroredZone) plutôt qu'un
   // simple réglage de paramètres : la moitié gauche est reflétée à l'identique à droite.
   zone7_salle_miroirs: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 707,
-    pitChance: 0.08, pitWidth: [2, 4],
+    pitChance: 0.08, pitWidth: [3, 4],
     plat: { count: 17, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [0.35, 0.7],
     undulate: false,
     mirror: true,
-    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, boss_arena0: 0.85, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, zone_exit0: 0.97 },
   },
   // Le vide entre lumière et ombre, décor abstrait — le moins de sol possible : de rares
   // îlots flottants largement espacés au-dessus d'un vide quasi continu, jamais un long
   // couloir de terrain plein comme les sept autres zones.
   zone8_vide_entre_deux: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 808,
-    pitChance: 0.2, pitWidth: [2, 4],
+    pitChance: 0.2, pitWidth: [3, 4],
     plat: { count: 20, width: [2, 4], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [],
     undulate: false,

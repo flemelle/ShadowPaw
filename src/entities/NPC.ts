@@ -46,6 +46,10 @@ export class NPC {
         return;
       }
     }
+    // Les skins (AllCats) font toutes face à droite par défaut — sans ce flip, un PNJ abordé par
+    // la gauche (le sens de parcours habituel d'une zone) tournait le dos au joueur plutôt que de
+    // lui faire face.
+    this.marker.setFlipX(playerX < this.marker.x);
     const dist = Phaser.Math.Distance.Between(playerX, playerY, this.marker.x, this.marker.y);
     this.prompt.setVisible(dist <= INTERACT_RANGE);
   }

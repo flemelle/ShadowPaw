@@ -55,9 +55,9 @@ d'une CC BY 4.0 sans droit de revente.
 été découpé (`scripts/gen-zones.mjs` / analyse manuelle) en 5 sprites de décor
 (`public/assets/images/decor/`, sans collision, dispersés dans les zones ayant
 un décor peint — cf. `LevelLoader.scatterDecor`) : `tree_big`, `tree_small`,
-`bush_round`, `rock`, `platform_plank`. Une bande de sol (`tiles/ground_stringstar.png`)
-en a aussi été extraite comme base des textures de sol/plateformes par zone
-(`tiles/floor_zone1..8.png`, générées hors-ligne et teintées par
+`bush_round`, `rock`, `platform_plank`. La bande de sol sur toute la largeur du tileset
+(`tiles/ground_stringstar.png`) en a aussi été extraite comme base des textures de
+sol/plateformes par zone (`tiles/floor_zone1..8.png`, générées hors-ligne et teintées par
 `scripts/gen-floor-textures.py`), remplaçant les aplats de couleur générés
 précédemment.
 
@@ -73,8 +73,10 @@ d'église et cimetière, buissons/pierres tombales) utilisés en zones 1, 2 et 3
 packs précédents, remplaçant l'accord Forest/vide utilisé jusque-là pour ces
 zones. Deux sprites de décor en ont aussi été extraits
 (`images/decor/graveyard_statue.png`, `graveyard_brush.png`) et un tileset
-pierre/fer forgé (`images/tiles/graveyard_tileset.png`, non encore exploité en
-tuiles de gameplay).
+pierre/fer forgé (`images/tiles/graveyard_tileset.png`). Une bande de chemin de
+terre y a aussi été recadrée, à l'écart des props pierre/pilier autour
+(`images/tiles/ground_graveyard.png`), comme base des textures de sol/plateformes
+des zones 1-3 (`tiles/floor_zone1..3.png`, cf. `scripts/gen-floor-textures.py`).
 
 **Licence (`Social/Autor_note.txt` du pack)** : usage commercial et non
 commercial libre, crédit apprécié mais non obligatoire — sauf recolorisation/
@@ -95,12 +97,18 @@ recadrés mais pas recolorés.
 ## Mobs/PNJ/créatures réels et UI — ajouts ultérieurs
 
 Contrairement à la note ci-dessus, quelques sprites réels ont finalement été
-intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédural) :
+intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
 
+- **sample (idle & walk)** — Kiba, personnage principal : cycles idle (10 frames) et marche
+  (24 frames), recadrés bas-alignés sur un même cadre 46x58 pour rester cohérents entre les
+  deux animations (`images/creatures/player_idle.png`, `images/creatures/player_walk.png`).
 - **UI Medieval** (`images/ui/`) — panneau bois suspendu (fond du menu Pause) et
   icônes play/pause (`panel_wood.png`, `btn_play_light.png`, `btn_pause_light.png`).
 - **AllCats** (pack multi-variantes de chats "Idle") — `ThreeColorFree/IdleCatt.png`
-  pour la créature piégée à sauver (`images/creatures/rescue_cat_idle.png`) ;
+  pour la créature piégée à sauver (`images/creatures/rescue_cat_idle.png`), et son cycle
+  `JumpCattt.png` réutilisé comme fuite une fois libérée (le pack n'offre pas de course à
+  proprement parler — une suite de bonds reste lisible comme "il détale" pour un petit chat
+  en pixel art, cf. GameScene.rescueCaptive) (`images/creatures/rescue_cat_run.png`) ;
   `BlackCat`, `Brown`, `White` pour les chats sauvages décoratifs dispersés sur
   la carte (`images/decor/cat_wild_*.png`, purement visuels : traversables, en
   arrière-plan derrière le gameplay) ; `Classical`, `Siamese`, `EgyptCatFree`,
@@ -124,11 +132,22 @@ intégrés pour les mobs, boss et créatures à sauver (le joueur reste procédu
   orange pour l'impact d'une griffure réussie sur un ennemi
   (`images/creatures/hit_impact_fx.png`), cyan pour l'impact du dash fantôme, distinct
   d'une simple griffure (`images/creatures/dash_impact_fx.png`).
-- **Pixel Art Tiles and Backgrounds - Woods** — tuile de sol herbe/terre du vrai tileset
-  (`Tiles/Tilesheet - WOODS.png`) pour le sol de la zone Forêt, à la place du sol
-  Stringstar recoloré utilisé ailleurs (`images/tiles/ground_forest.png`, cf.
-  `scripts/gen-floor-textures.py`) ; deux touffes d'herbe ajoutées au pool de décor de
-  la même zone (`images/decor/forest_grass_*.png`).
+- **RPG Effect All Free** — IA de combat de Malakar (cf. entities/Enemy.ts,
+  updateBossCombatAI) : orbe d'ombre, teinte cramoisie inutilisée du même `Part 16/766.png`
+  (`images/creatures/boss_shadow_orb_fx.png`) ; télégraphe et onde de choc, tourbillon
+  `Part 26/1250.png` en indigo (avant-coup) et cramoisi terreux inversé (onde qui grandit)
+  (`images/creatures/boss_telegraph_fx.png`, `images/creatures/boss_shockwave_fx.png`).
+- **RPG Effect All Free** — icônes de la barre de pouvoirs du HUD, 5 teintes encore
+  inutilisées du même `Part 16/766.png` (une par pouvoir, à la place de l'émoji générique
+  utilisé jusqu'ici) : vert (Vision féline), indigo (Dash fantôme), gris argenté (Forme
+  ombre), or (Éclat de Lumière), brun-rouge (Griffes renforcées)
+  (`images/ui/power_icon_*.png`).
+- **Pixel Art Tiles and Backgrounds - Woods** — deux touffes d'herbe ajoutées au pool de
+  décor de la zone Forêt (`images/decor/forest_grass_*.png`). Le sol de cette zone reste le
+  sol Stringstar recoloré comme ailleurs (cf. `scripts/gen-floor-textures.py`) : elle
+  disperse aussi des arbres Stringstar Fields (`decor_tree_big`/`decor_tree_small`, cf.
+  DECOR_SETS.FOREST), donc son sol doit venir du même pack que ces arbres plutôt que d'un
+  tileset "Woods" sans rapport.
 
 Aucun de ces packs ne fournissait de licence explicite (au mieux une note de
 remerciement informelle) — **à vérifier par l'utilisateur** avant toute

@@ -5,7 +5,7 @@ import { audioManager } from '@/systems/AudioManager';
 import { keyBindings } from '@/systems/KeyBindings';
 
 const MOVE_SPEED = 200;
-const JUMP_SPEED = 560;
+const JUMP_SPEED = 480;
 const DASH_SPEED = 620;
 const DASH_DURATION_MS = 180;
 const SHADOW_FORM_DURATION_MS = 5000;
@@ -17,13 +17,20 @@ const ATTACK_COOLDOWN_MS = 350;
 const ATTACK_DURATION_MS = 140;
 const ATTACK_RANGE = 26;
 const ATTACK_HEIGHT = 26;
+/** Cf. main.ts physics.arcade.gravity.y — dupliqué ici pour calculer la gravité SUPPLÉMENTAIRE
+ * appliquée à la retombée (cf. update()), cette constante de base doit rester synchronisée. */
+const BASE_GRAVITY_Y = 900;
+/** Retombée plus rapide que la montée (saut moins "flottant") sans changer la hauteur atteinte
+ * ni la portée horizontale déjà calibrée dans scripts/gen-zones.mjs/zoneProfiles.ts — seule la
+ * chute reçoit cette gravité en plus, jamais la montée. */
+const FALL_GRAVITY_MULTIPLIER = 1.7;
 
 /**
  * Kiba — mouvement de plateforme, traversée liée aux pouvoirs, et attaque de griffes de base
  * (cf. GameScene pour l'application des dégâts aux ennemis — Player expose juste la fenêtre
- * d'attaque active et son montant de dégâts). Le corps du joueur reste procédural (cf.
- * BootScene), mais l'attaque affiche une brève rafale d'énergie (RPG Effect All Free, cf.
- * ACKNOWLEDGEMENTS.md) dans une teinte violette déjà proche de la palette de Kiba.
+ * d'attaque active et son montant de dégâts). Sprite idle/walk du pack "sample" (cf.
+ * ACKNOWLEDGEMENTS.md), l'attaque affiche en plus une brève rafale d'énergie (RPG Effect All
+ * Free, cf. ACKNOWLEDGEMENTS.md) dans une teinte violette déjà proche de la palette de Kiba.
  * Les touches (gauche/droite/saut/dash/forme ombre/attaque) sont remappables via
  * l'écran Options — cf. systems/KeyBindings.
  */
@@ -45,13 +52,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly attackFx: Phaser.GameObjects.Sprite;
 
   constructor(scene: Phaser.Scene, x: number, y: number, private readonly powers: PowerSystem) {
-    super(scene, x, y, TEX.PLAYER);
+    super(scene, x, y, TEX.PLAYER_IDLE);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setCollideWorldBounds(false);
     this.setBounce(0);
     this.setDragX(900);
+    // Corps de collision plus petit que le cadre du sprite (46x58, cf. BootScene) — les deux
+    // feuilles idle/walk partagent ce même cadre (recadrées bas-alignées à l'import) donc la
+    // taille du corps reste stable en changeant d'animation. Gabarit proche de l'ancien corps
+    // procédural (22x30) pour ne pas dérégler les distances de saut/fosses déjà calibrées.
+    (this.body as Phaser.Physics.Arcade.Body).setSize(22, 40).setOffset(12, 18);
     (this.body as Phaser.Physics.Arcade.Body).setMaxVelocity(DASH_SPEED, 900);
+    this.play(ANIM_KEYS.PLAYER_IDLE);
 
     // Touche fixe (non remappable) réservée au noclip du Mode Admin.
     this.downKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
@@ -115,13 +128,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.attackFx;
   }
 
-  /** Au sol maintenant (pas de coyote time ici) — cf. GameScene.startTutorial, qui attend
-   * l'atterrissage plutôt que d'ouvrir un tutoriel en pleine réception de saut. */
-  isGrounded(): boolean {
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    return body.blocked.down || body.touching.down;
-  }
-
   private playAttackFx(dir: 1 | -1): void {
     this.attackFx.setFlipX(dir < 0);
     this.attackFx.setPosition(this.x + dir * 18, this.y - 2);
@@ -151,7 +157,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     Phaser.Input.Keyboard.JustDown(this.spaceKey);
   }
 
-  update(time: number): void {
+  update(time: number, delta: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const left = keyBindings.isDown('left');
     const right = keyBindings.isDown('right');
@@ -196,6 +202,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (this.isShadowForm && time > this.shadowFormUntil) {
         this.isShadowForm = false;
       }
+
+      // Retombée plus rapide que la montée : gravité de base inchangée à la montée (hauteur/
+      // portée déjà calibrées ailleurs), un supplément s'applique UNIQUEMENT une fois la vélocité
+      // verticale positive (déjà en train de redescendre) pour un saut moins "flottant".
+      if (body.velocity.y > 0) {
+        body.velocity.y += BASE_GRAVITY_Y * (FALL_GRAVITY_MULTIPLIER - 1) * (delta / 1000);
+      }
     }
 
     if (keyBindings.justDown('attack') && time > this.lastAttackAt + ATTACK_COOLDOWN_MS) {
@@ -224,6 +237,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.nextFootstepAt = time + FOOTSTEP_INTERVAL_MS;
       const key = Phaser.Utils.Array.GetRandom(this.footstepVariants as string[]);
       audioManager.play(this.scene, key, { volume: 0.1 });
+    }
+    // Priorité dash > saut/chute > marche > idle — cf. BootScene pour les poses réutilisées du
+    // cycle de marche en l'absence de sprites dédiés dans le pack "sample".
+    if (this.isDashing) {
+      this.anims.play(ANIM_KEYS.PLAYER_DASH, true);
+    } else if (!grounded && !this.noclip) {
+      this.anims.play(ANIM_KEYS.PLAYER_JUMP, true);
+    } else {
+      this.anims.play(left || right ? ANIM_KEYS.PLAYER_WALK : ANIM_KEYS.PLAYER_IDLE, true);
     }
   }
 

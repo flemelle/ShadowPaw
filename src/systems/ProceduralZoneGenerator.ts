@@ -53,7 +53,9 @@ function clearBossArena(
   if (refFloor == null) refFloor = rows - 3;
 
   for (let x = lo; x <= hi; x++) {
-    for (let y = 0; y < rows; y++) grid[y][x] = y >= (refFloor as number) ? '#' : '.';
+    // Une seule rangée solide, cf. generateZone — le sol de l'arène du boss doit rester aussi
+    // fin/flottant que le reste de la zone plutôt qu'un bloc plein.
+    for (let y = 0; y < rows; y++) grid[y][x] = y === (refFloor as number) ? '#' : '.';
     floorTopByCol[x] = refFloor;
   }
 }
@@ -120,9 +122,9 @@ export function generateZone(profile: ZoneProfile): GeneratedGrid {
     solidRunSincePit = inPit ? 0 : solidRunSincePit + width;
     for (let i = 0; i < width && x < cols; i++, x++) {
       floorTopByCol[x] = inPit ? null : floorTop;
-      if (!inPit) {
-        for (let y = floorTop; y < rows; y++) grid[y][x] = '#';
-      }
+      // Une seule rangée solide (pas floorTop..rows-1) : le sol lit comme une plateforme fine
+      // qui flotte au-dessus du vide plutôt qu'un bloc de terre plein jusqu'au bas de l'écran.
+      if (!inPit) grid[floorTop][x] = '#';
     }
   }
 
