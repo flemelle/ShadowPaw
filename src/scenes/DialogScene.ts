@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS, TEX, getNpcSkin } from '@/utils/Constants';
+import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, SFX_KEYS, TEX, ANIM_KEYS, getNpcSkin } from '@/utils/Constants';
 import { dialogSystem } from '@/systems/GameState';
 import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
@@ -34,7 +34,7 @@ export class DialogScene extends Phaser.Scene {
   private choiceTexts: Phaser.GameObjects.Text[] = [];
   private continueHint!: Phaser.GameObjects.Text;
   private scrollHint!: Phaser.GameObjects.Text;
-  private playerPortrait!: Phaser.GameObjects.Image;
+  private playerPortrait!: Phaser.GameObjects.Sprite;
   private npcPortrait!: Phaser.GameObjects.Sprite;
   private treeId!: string;
   private keySpace!: Phaser.Input.Keyboard.Key;
@@ -61,7 +61,14 @@ export class DialogScene extends Phaser.Scene {
     // Silhouettes en grand de part et d'autre de la case — Kiba à gauche, le PNJ à
     // droite — ajoutées avant le fond de la case pour rester visuellement "derrière" elle.
     // Une seule visible à la fois (cf. renderNode/showOwnLine) : celle qui parle réellement.
-    this.playerPortrait = this.add.image(10, BOX_BOTTOM, TEX.PLAYER_PORTRAIT).setOrigin(0, 1).setAlpha(0.92);
+    // Kiba affiche son vrai sprite idle (cf. entities/Player) plutôt que l'ancienne silhouette
+    // procédurale générique — cohérent avec le skin réel désormais affiché côté PNJ ci-dessous.
+    this.playerPortrait = this.add
+      .sprite(10, BOX_TOP + 40, TEX.PLAYER_IDLE)
+      .setOrigin(0, 1)
+      .setAlpha(0.92)
+      .setScale(6)
+      .play(ANIM_KEYS.PLAYER_IDLE);
     // PNJ dont le préfixe d'arbre de dialogue a un skin réel (cf. NPC_SKINS, même identifiant que
     // celui affiché dans le monde, cf. LevelLoader.markerTexFor) : sa skin apparaît ici agrandie,
     // au lieu de la silhouette générique de moine encapuchonné qui servait jusqu'ici pour tous les

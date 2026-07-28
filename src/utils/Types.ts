@@ -14,9 +14,6 @@ export interface EntityNPC {
   dialogTree: string;
   requiresPower?: PowerId;
   optional?: boolean;
-  /** Pouvoir transmis à la fin du dialogue (une seule fois) — remplace l'ancien octroi par
-   * combat de boss dans les zones qui n'ont plus de boss (cf. GameScene.onDialogEnd). */
-  grantsPower?: PowerId;
 }
 
 export interface EntityBossArena {
@@ -45,6 +42,14 @@ export interface EntityCaptive {
   id: string;
 }
 
+export interface EntityLifePickup {
+  type: 'life_pickup';
+  x: number;
+  y: number;
+  /** Identifiant stable (persisté dans collectedLifePickups) — ne réapparaît jamais une fois pris. */
+  id: string;
+}
+
 export interface EntityCatDecor {
   type: 'cat_decor';
   x: number;
@@ -60,9 +65,6 @@ export interface EntityZoneExit {
   targetZone: ZoneId | string;
   requiresBossDefeated?: string;
   requiresAltar?: string;
-  /** Remplace requiresBossDefeated dans les zones sans boss : le pouvoir transmis par le PNJ
-   * de la zone (cf. EntityNPC.grantsPower) fait office de jalon de progression à la place. */
-  requiresPower?: PowerId;
 }
 
 export interface EntityShardPickup {
@@ -107,7 +109,8 @@ export type ZoneEntity =
   | EntityEndingTrigger
   | EntityMob
   | EntityCaptive
-  | EntityCatDecor;
+  | EntityCatDecor
+  | EntityLifePickup;
 
 export interface ZoneMap {
   id: string;
@@ -128,6 +131,9 @@ export interface SaveData {
   unlockedPowers: PowerId[];
   defeatedBosses: string[];
   rescuedCreatures?: string[];
+  /** Vies bonus déjà ramassées (cf. EntityLifePickup) — augmente le maximum de vies, pas
+   * seulement le compte courant (cf. GameScene.maxLives), donc doit survivre à la sauvegarde. */
+  collectedLifePickups?: string[];
   endingsReached?: string[];
   hasCheckpoint?: boolean;
   /** Dispositions de zone déjà générées cette partie (IA ou repli procédural, cf.

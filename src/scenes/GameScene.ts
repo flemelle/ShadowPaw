@@ -68,19 +68,23 @@ export class GameScene extends Phaser.Scene {
   private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private background?: ParallaxBackground;
   private playerGlow?: Phaser.GameObjects.Image;
+  /** Voile noir des zones sombres (cf. DARK_ZONES) + source du masque qui y perce un cercle
+   * autour du joueur — cf. loadZone/update. Ensemble distinct de `playerGlow` (le halo chaud
+   * additif décoratif) : celui-ci masque structurellement le reste de la carte. */
+  private darknessOverlay?: Phaser.GameObjects.Rectangle;
+  private darknessMaskSource?: Phaser.GameObjects.Image;
   private built!: BuiltZone;
   private npcs: NPC[] = [];
   private enemies: Enemy[] = [];
   private captives: { entity: Extract<ZoneEntity, { type: 'captive' }>; sprite: Phaser.GameObjects.Sprite; freed: boolean }[] = [];
   /** Chats sauvages décoratifs — purs éléments de fond (cf. loadZone), traversables, sans corps physique. */
   private catDecorSprites: Phaser.GameObjects.Sprite[] = [];
+  /** Halo rouge pulsant sur chaque vie bonus non ramassée — cf. collectLifePickup pour le retrait à la collecte. */
+  private lifePickupGlows: { id: string; glow: Phaser.GameObjects.Image }[] = [];
   /** Rangée du sol par colonne (index tuile, pas pixel) — cf. entities/Enemy.ts, hasGroundAhead. */
   private groundTopByCol: (number | null)[] = [];
   private activeBoss?: { boss: Enemy; entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
   private pendingBossFight?: { entity: Extract<ZoneEntity, { type: 'boss_arena' }>; sprite: Phaser.GameObjects.Sprite };
-  /** Pouvoir à accorder à la fermeture du dialogue en cours (cf. EntityNPC.grantsPower) — remplace
-   * l'octroi par combat de boss dans les zones qui n'ont plus de boss. */
-  private pendingNpcPowerGrant?: PowerId;
   private hud!: Phaser.GameObjects.Container;
   private hitImpactFx!: Phaser.GameObjects.Sprite;
   private dashImpactFx!: Phaser.GameObjects.Sprite;
@@ -122,7 +126,7 @@ export class GameScene extends Phaser.Scene {
     this.tutorialActive = false;
     this.celebratingPower = false;
     this.defeatedThisZone = new Set();
-    this.lives = LIVES_START;
+    this.lives = this.maxLives;
     this.isDead = false;
     this.isTransitioning = false;
     this.hitImpactFx = this.add.sprite(0, 0, TEX.HIT_IMPACT_FX).setVisible(false).setDepth(10);
@@ -228,6 +232,8 @@ export class GameScene extends Phaser.Scene {
     this.captives = [];
     this.catDecorSprites.forEach((s) => s.destroy());
     this.catDecorSprites = [];
+    this.lifePickupGlows.forEach(({ glow }) => glow.destroy());
+    this.lifePickupGlows = [];
     this.activeBoss = undefined;
     this.pendingBossFight = undefined;
 
@@ -291,6 +297,33 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
+    this.darknessOverlay?.destroy();
+    this.darknessOverlay = undefined;
+    this.darknessMaskSource?.destroy();
+    this.darknessMaskSource = undefined;
+    if (DARK_ZONES.includes(zoneId as ZoneId)) {
+      // Source du masque : même texture douce (dégradé radial) que playerGlow, mais bien plus
+      // large — c'est SON alpha qui découpe le trou de visibilité dans le voile noir ci-dessous.
+      // Ignorée des deux caméras (cf. syncCameraIgnoreLists) : elle ne doit jamais se dessiner
+      // elle-même, seule sa forme sert au masque (pattern standard de Phaser pour un BitmapMask).
+      this.darknessMaskSource = this.add
+        .image(this.player.x, this.player.y, TEX.PLAYER_GLOW)
+        .setScale(3.2);
+      this.darknessOverlay = this.add
+        .rectangle(
+          (zoneMap.cols * TILE_SIZE) / 2,
+          (zoneMap.rows * TILE_SIZE) / 2,
+          zoneMap.cols * TILE_SIZE,
+          zoneMap.rows * TILE_SIZE,
+          0x000000,
+          0.94,
+        )
+        .setDepth(500);
+      const mask = this.darknessMaskSource.createBitmapMask();
+      mask.invertAlpha = true;
+      this.darknessOverlay.setMask(mask);
+    }
+
     this.cameraSystem = new CameraSystem(this);
     this.cameraSystem.setupForZone(zoneMap.cols, zoneMap.rows, this.player);
 
@@ -322,6 +355,33 @@ export class GameScene extends Phaser.Scene {
         sprite.play(ANIM_KEYS.RESCUE_CAT_IDLE);
         this.physics.add.collider(this.player, sprite);
         this.captives.push({ entity, sprite, freed: false });
+      }
+      if (entity.type === 'life_pickup') {
+        // Déjà ramassée lors d'une session précédente (sauvegarde) : ne réapparaît pas.
+        if (gameState.collectedLifePickups.has(entity.id)) {
+          sprite.destroy();
+          return;
+        }
+        // Halo rouge (même texture/additive que playerGlow, teinte vie) pour repérer la vie bonus
+        // de loin — plus petit et pulsant plus vite qu'un halo de zone sombre, purement décoratif.
+        const glow = this.add
+          .image(sprite.x, sprite.y, TEX.PLAYER_GLOW)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xff2d3d)
+          .setDepth(sprite.depth - 1)
+          .setScale(0.5)
+          .setAlpha(0.5);
+        this.tweens.add({
+          targets: glow,
+          scale: { from: 0.4, to: 0.55 },
+          alpha: { from: 0.4, to: 0.65 },
+          duration: 900,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inOut',
+        });
+        this.lifePickupGlows.push({ id: entity.id, glow });
+        this.physics.add.overlap(this.player, sprite, () => this.collectLifePickup(entity, sprite));
       }
     });
 
@@ -419,6 +479,15 @@ export class GameScene extends Phaser.Scene {
       this.promptText,
     ];
     if (this.playerGlow) worldObjects.push(this.playerGlow);
+    this.lifePickupGlows.forEach(({ glow }) => worldObjects.push(glow));
+    if (this.darknessOverlay) worldObjects.push(this.darknessOverlay);
+    // Ignorée aussi de la caméra PRINCIPALE : seule sa forme doit servir de masque, elle ne doit
+    // jamais se dessiner elle-même (sans ça, un rond lumineux du double de la taille du halo
+    // apparaîtrait par-dessus tout, cf. commentaire de sa création dans loadZone).
+    if (this.darknessMaskSource) {
+      worldObjects.push(this.darknessMaskSource);
+      this.cameras.main.ignore(this.darknessMaskSource);
+    }
     this.npcs.forEach((npc) => worldObjects.push(npc.marker, npc.prompt));
     if (this.background) worldObjects.push(...this.background.getGameObjects());
     this.uiCamera.ignore(worldObjects);
@@ -446,6 +515,7 @@ export class GameScene extends Phaser.Scene {
 
     this.player.update(time, delta);
     this.playerGlow?.setPosition(this.player.x, this.player.y);
+    this.darknessMaskSource?.setPosition(this.player.x, this.player.y);
 
     if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyN)) {
       this.player.setNoclip(!this.player.isNoclip());
@@ -466,6 +536,15 @@ export class GameScene extends Phaser.Scene {
 
     this.npcs.forEach((npc) => npc.update(this.player.x, this.player.y));
     this.enemies.forEach((e) => e.updateAI(this.player.x, this.player.y, time, delta));
+    // Filet de sécurité : un mob (patrouille normale, pas de boss actif) qui finit par tomber
+    // hors de la carte malgré hasGroundAhead — traversée d'un sol désormais fin d'une seule
+    // tuile sous l'effet d'un recul, par ex. — reste sinon à jamais en chute libre, invisible
+    // mais toujours vivant (et donc encore capable de toucher le joueur au passage).
+    const fallenMobs = this.enemies.filter((e) => !e.isBoss && e.y > this.built.heightPx + FALL_DEATH_MARGIN);
+    if (fallenMobs.length > 0) {
+      this.enemies = this.enemies.filter((e) => !fallenMobs.includes(e));
+      fallenMobs.forEach((e) => e.destroy());
+    }
     this.maybeShowCombatTutorial();
     this.resolveCombat(time);
 
@@ -514,9 +593,6 @@ export class GameScene extends Phaser.Scene {
   private tryInteract(): void {
     const npc = this.nearestNPC();
     if (npc) {
-      if (npc.data.grantsPower && !powerSystem.has(npc.data.grantsPower)) {
-        this.pendingNpcPowerGrant = npc.data.grantsPower;
-      }
       // Un PNJ du monde (ex. la "vision" de Malakar en zone8) peut partager le même arbre de
       // dialogue que l'intro d'un boss pas encore affronté (cf. handleBossArena) : sans marquer
       // ici son flag d'intro, l'approche du boss la rejouait une seconde fois à l'identique.
@@ -580,12 +656,23 @@ export class GameScene extends Phaser.Scene {
   /** Fait apparaître le boss (vrai combat : PV, pattern, cf. entities/Enemy.ts) et bascule sa musique. */
   private startBossFight(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
     const bossDef = BOSS_DEFS[entity.bossId];
-    const boss = new Enemy(this, sprite.x, sprite.y, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
+    // Le boss final apparaît d'abord sous sa forme démoniaque (même skin que son portrait de
+    // dialogue, cf. getNpcSkin/Constants.NPC_SKINS) avant de se transformer en esprit-chat
+    // spectral pour le combat réel (cf. Enemy.transform) — un choix de skin cohérent avec celui
+    // déjà vu par le joueur juste avant, plutôt qu'un nouvel asset dédié.
+    const preTransformSkin = bossDef?.pattern === 'phases3' && bossDef.dialogTree ? getNpcSkin(bossDef.dialogTree) : null;
+    // -TILE_SIZE : marge de sécurité au-dessus du sol — un boss (agrandi à l'échelle 1.7, cf.
+    // Enemy.ts) qui apparaît pile à la hauteur du marqueur peut s'enfoncer dans un sol désormais
+    // fin d'une seule tuile, au point de retomber (voire traverser) avant même que le combat ne
+    // commence (cf. LevelLoader.spawn, même correctif pour le joueur).
+    const boss = new Enemy(this, sprite.x, sprite.y - TILE_SIZE, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
       isBoss: true,
       bossDef,
       groundTopByCol: this.groundTopByCol,
       texture: bossDef?.texture,
       animKey: bossDef?.animKey,
+      preTransformTexture: preTransformSkin?.texture,
+      preTransformAnimKey: preTransformSkin?.animKey,
     });
     // Le boss final ('phases3', cf. Enemy.updateBossCombatAI) flotte plutôt que de marcher au sol
     // (esprit-chat spectral, cohérent avec sa fiction) — délibérément SANS collider contre le sol :
@@ -615,6 +702,24 @@ export class GameScene extends Phaser.Scene {
     this.safeDelay(400, () => this.startTutorial(buildBossTutorialSteps()));
   }
 
+  /** Un pouvoir vient d'être débloqué EN COURS DE ZONE (boss ou autel dans la même zone qu'une
+   * porte qui en dépend, cf. zone1 : le mur fissuré après le Gardien de Pierre) : les tuiles
+   * correspondantes, déjà construites solides à l'entrée dans la zone (cf. LevelLoader.buildZone,
+   * qui ne revérifie jamais les pouvoirs ensuite), doivent devenir franchissables immédiatement —
+   * sans ça, il faudrait quitter puis rentrer dans la zone pour que le nouveau pouvoir compte. */
+  private openGatesFor(power: PowerId): void {
+    const group = (
+      {
+        griffes_renforcees: this.built.breakableGroup,
+        vision_feline: this.built.hiddenGroup,
+        dash_fantome: this.built.dashGateGroup,
+        forme_ombre: this.built.shadowWallGroup,
+        eclat_lumiere: this.built.lightObstacleGroup,
+      } satisfies Partial<Record<PowerId, Phaser.Physics.Arcade.StaticGroup>>
+    )[power];
+    group?.clear(true, true);
+  }
+
   /** Boss vaincu (PV à 0, cf. onEnemyDefeated) : reprend exactement l'ancien flux de victoire. */
   private resolveBossVictory(entity: Extract<ZoneEntity, { type: 'boss_arena' }>, sprite: Phaser.GameObjects.Sprite): void {
     gameState.defeatedBosses.add(entity.bossId);
@@ -630,6 +735,7 @@ export class GameScene extends Phaser.Scene {
         this.grantPowerCelebration(power);
       });
       powerSystem.unlock(power);
+      this.openGatesFor(power);
       this.toast(`Gardien vaincu — Pouvoir obtenu : ${powerSystem.getDef(power)?.name}`);
     } else {
       this.toast('Gardien vaincu.');
@@ -642,7 +748,10 @@ export class GameScene extends Phaser.Scene {
       this.toast('Il te manque un pouvoir pour approcher cet autel.');
       return;
     }
-    if (entity.grantsPower) powerSystem.unlock(entity.grantsPower);
+    if (entity.grantsPower) {
+      powerSystem.unlock(entity.grantsPower);
+      this.openGatesFor(entity.grantsPower);
+    }
     if (entity.pivotEvent) {
       audioManager.play(this, SFX_KEYS.PIVOT_ABSORB);
       this.safeDelay(700, () => audioManager.play(this, SFX_KEYS.PIVOT_STING));
@@ -673,17 +782,12 @@ export class GameScene extends Phaser.Scene {
         gameState.defeatedBosses.has(entity.requiresBossDefeated) ||
         this.defeatedThisZone.has(entity.requiresBossDefeated);
       const altarOk = !entity.requiresAltar || powerSystem.isTestMode() || powerSystem.has('eclat_lumiere');
-      const powerOk = !entity.requiresPower || powerSystem.isTestMode() || powerSystem.has(entity.requiresPower);
       if (!bossOk) {
         this.toast('Le passage reste bloqué — le gardien de cette zone est toujours debout.');
         return;
       }
       if (!altarOk) {
         this.toast("Il reste quelque chose à faire ici avant de partir.");
-        return;
-      }
-      if (!powerOk) {
-        this.toast('Il reste quelque chose à faire ici avant de partir.');
         return;
       }
       this.transitionToZone(entity.targetZone);
@@ -931,18 +1035,6 @@ export class GameScene extends Phaser.Scene {
       this.pendingBossFight = undefined;
       this.startBossFight(entity, sprite);
       return;
-    }
-    // Pouvoir transmis par un PNJ (cf. EntityNPC.grantsPower) : remplace l'octroi par combat de
-    // boss dans les zones qui n'en ont plus. Accordé à la fermeture du dialogue plutôt qu'au
-    // choix précis qui y mène, pour qu'il survienne quel que soit le chemin de branches emprunté.
-    if (this.pendingNpcPowerGrant) {
-      const power = this.pendingNpcPowerGrant;
-      this.pendingNpcPowerGrant = undefined;
-      powerSystem.unlock(power);
-      audioManager.play(this, SFX_KEYS.POWER_UNLOCK);
-      this.grantPowerCelebration(power);
-      this.toast(`Pouvoir obtenu : ${powerSystem.getDef(power)?.name}`);
-      persistProgress(this.player.x, this.player.y, true);
     }
   }
 
@@ -1251,8 +1343,34 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** LIVES_START + une par vie bonus ramassée (cf. EntityLifePickup) — un maximum permanent,
+   * distinct du compte courant qui repart plein à chaque nouvelle session (cf. create()). */
+  private get maxLives(): number {
+    return LIVES_START + gameState.collectedLifePickups.size;
+  }
+
   private updateLivesDisplay(): void {
-    this.livesText.setText('♥'.repeat(Math.max(0, this.lives)) + '♡'.repeat(Math.max(0, LIVES_START - this.lives)));
+    const max = this.maxLives;
+    this.livesText.setText('♥'.repeat(Math.max(0, this.lives)) + '♡'.repeat(Math.max(0, max - this.lives)));
+  }
+
+  /** Vie bonus (cf. EntityLifePickup) : augmente le maximum ET le compte courant tout de suite,
+   * pas seulement au prochain repos plein — sans ça, ramasser une vie juste avant de mourir
+   * n'aurait aucun effet avant la prochaine session. */
+  private collectLifePickup(entity: Extract<ZoneEntity, { type: 'life_pickup' }>, sprite: Phaser.GameObjects.Sprite): void {
+    if (gameState.collectedLifePickups.has(entity.id)) return;
+    gameState.collectedLifePickups.add(entity.id);
+    sprite.destroy();
+    const glowIdx = this.lifePickupGlows.findIndex((g) => g.id === entity.id);
+    if (glowIdx >= 0) {
+      this.lifePickupGlows[glowIdx].glow.destroy();
+      this.lifePickupGlows.splice(glowIdx, 1);
+    }
+    this.lives += 1;
+    this.updateLivesDisplay();
+    audioManager.play(this, SFX_KEYS.SHARD_COLLECT, { volume: 0.5 });
+    this.toast('Vie supplémentaire trouvée !');
+    persistProgress(this.player.x, this.player.y, true);
   }
 
   private updateZoneLabel(): void {

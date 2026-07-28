@@ -43,6 +43,12 @@
       "puzzleId": "puzzle_shard_zone5"
     },
     {
+      "type": "life_pickup",
+      "x": 119,
+      "y": 12,
+      "id": "life_zone5"
+    },
+    {
       "type": "zone_exit",
       "x": 155,
       "y": 11,

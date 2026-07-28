@@ -9,6 +9,7 @@ function defaultSave(): SaveData {
     unlockedPowers: [],
     defeatedBosses: [],
     rescuedCreatures: [],
+    collectedLifePickups: [],
     endingsReached: [],
     hasCheckpoint: false,
     generatedZones: {},

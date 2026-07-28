@@ -94,7 +94,6 @@ export const TEX = {
   PLAYER_IDLE: 'tex_player_idle',
   PLAYER_WALK: 'tex_player_walk',
   PLAYER_GLOW: 'tex_player_glow',
-  PLAYER_PORTRAIT: 'tex_player_portrait',
   NPC: 'tex_npc',
   NPC_PORTRAIT: 'tex_npc_portrait',
   BOSS_ARENA: 'tex_boss_arena',
@@ -102,6 +101,7 @@ export const TEX = {
   PUZZLE_TRIGGER: 'tex_puzzle_trigger',
   POWER_ALTAR: 'tex_power_altar',
   SHARD: 'tex_shard',
+  LIFE_PICKUP: 'tex_life_pickup',
   PARTICLE: 'tex_particle',
   ENEMY: 'tex_enemy',
   MOB_CAT: 'tex_mob_cat',
@@ -110,6 +110,7 @@ export const TEX = {
   RESCUE_CAT: 'tex_rescue_cat',
   RESCUE_CAT_RUN: 'tex_rescue_cat_run',
   CATGIRL_BOSS: 'tex_catgirl_boss',
+  BOSS_STONE_GUARDIAN: 'tex_boss_stone_guardian',
   UI_PANEL: 'tex_ui_panel',
   UI_ICON_PLAY: 'tex_ui_icon_play',
   UI_ICON_PAUSE: 'tex_ui_icon_pause',
@@ -252,6 +253,7 @@ export const ANIM_KEYS = {
   PLAYER_WALK: 'anim_player_walk',
   PLAYER_JUMP: 'anim_player_jump',
   PLAYER_DASH: 'anim_player_dash',
+  PLAYER_ATTACK_POSE: 'anim_player_attack_pose',
   BOAR_IDLE: 'anim_boar_idle',
   RESCUE_CAT_IDLE: 'anim_rescue_cat_idle',
   RESCUE_CAT_RUN: 'anim_rescue_cat_run',
@@ -507,11 +509,17 @@ export interface BossDef {
   animKey?: string;
 }
 
-// Un seul vrai combat de boss désormais : le boss final de zone8 (cf. message utilisateur — les
-// zones intermédiaires transmettent leur pouvoir via un PNJ, cf. EntityNPC.grantsPower, plutôt
-// que par un combat de boss dédié).
 export const BOSS_DEFS: Record<string, BossDef> = {
-  // Boss final : esprit-chat spectral rouge (BLUE/RED Aseprite pack, cf. ACKNOWLEDGEMENTS.md),
-  // cohérent avec Malakar comme source de la corruption.
+  boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight', texture: TEX.BOSS_STONE_GUARDIAN },
+  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight' },
+  // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
+  boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
+  boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
+  boss_jardinier_corrompu: { name: 'Le Jardinier Corrompu', hp: 11, speed: 35, pattern: 'slow_slam', musicRate: 1.02, dialogTree: 'boss_jardinier_corrompu_pre_fight' },
+  // Esprit-chat spectral bleu (BLUE/RED Aseprite pack, cf. ACKNOWLEDGEMENTS.md) plutôt que le
+  // losange générique : la teinte froide/éthérée se lit bien comme un double "de lumière".
+  boss_double_de_lumiere: { name: 'Le Double de Lumière', hp: 12, speed: 75, pattern: 'mirror', musicRate: 1.18, dialogTree: 'boss_double_de_lumiere_pre_fight', texture: TEX.GHOST_CAT_BLUE, animKey: ANIM_KEYS.GHOST_CAT_BLUE_IDLE },
+  // Boss final : variante rouge du même esprit-chat, la plus menaçante — cohérente avec Malakar
+  // comme source de la corruption dont les doubles/esprits des autres boss ne sont que des échos.
   boss_malakar_final: { name: 'Malakar, Sensei de l\'Ombre', hp: 18, speed: 60, pattern: 'phases3', musicRate: 0.85, dialogTree: 'malakar_zone8_pre_boss', texture: TEX.GHOST_CAT_RED, animKey: ANIM_KEYS.GHOST_CAT_RED_IDLE },
 };

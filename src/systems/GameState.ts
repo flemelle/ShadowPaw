@@ -20,6 +20,9 @@ export const gameState = {
   defeatedBosses: new Set<string>(),
   /** Créatures piégées libérées (cf. entities/Captive.ts) — id de l'entité, persistant. */
   rescuedCreatures: new Set<string>(),
+  /** Vies bonus déjà ramassées (cf. EntityLifePickup) — leur nombre augmente le maximum de vies
+   * (cf. GameScene.maxLives), pas seulement le compte courant qui repart plein à chaque session. */
+  collectedLifePickups: new Set<string>(),
   /** Fins déjà découvertes (cf. dialogues.json endingConditions) — pour le panneau succès du menu. */
   reachedEndings: new Set<string>(),
   /**
@@ -60,6 +63,7 @@ export function isTestModeRequestedFromURL(): boolean {
 function resetProgressState(overrides?: {
   defeatedBosses?: string[];
   rescuedCreatures?: string[];
+  collectedLifePickups?: string[];
   reachedEndings?: string[];
   resumePosition?: { x: number; y: number } | null;
   hasCheckpoint?: boolean;
@@ -67,6 +71,7 @@ function resetProgressState(overrides?: {
 }): void {
   gameState.defeatedBosses = new Set(overrides?.defeatedBosses);
   gameState.rescuedCreatures = new Set(overrides?.rescuedCreatures);
+  gameState.collectedLifePickups = new Set(overrides?.collectedLifePickups);
   gameState.reachedEndings = new Set(overrides?.reachedEndings);
   gameState.resumePosition = overrides?.resumePosition ?? null;
   gameState.hasCheckpoint = overrides?.hasCheckpoint ?? false;
@@ -98,6 +103,7 @@ export function continueGame(): void {
   resetProgressState({
     defeatedBosses: save.defeatedBosses,
     rescuedCreatures: save.rescuedCreatures,
+    collectedLifePickups: save.collectedLifePickups,
     reachedEndings: save.endingsReached,
     resumePosition: { x: save.playerX, y: save.playerY },
     hasCheckpoint: save.hasCheckpoint,
@@ -144,6 +150,7 @@ export function persistProgress(playerX: number, playerY: number, isCheckpoint =
     collectedShards: puzzleSystem.getCollectedShards(),
     defeatedBosses: [...gameState.defeatedBosses],
     rescuedCreatures: [...gameState.rescuedCreatures],
+    collectedLifePickups: [...gameState.collectedLifePickups],
     endingsReached: [...gameState.reachedEndings],
     hasCheckpoint: gameState.hasCheckpoint,
     generatedZones: Object.fromEntries(gameState.generatedZones),

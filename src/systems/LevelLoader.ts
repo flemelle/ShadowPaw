@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin, POWER_ICON_TEX } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin, POWER_ICON_TEX, BOSS_DEFS } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -100,7 +100,11 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       case 'npc':
         return getNpcSkin(e.dialogTree)?.texture ?? TEX.NPC;
       case 'boss_arena':
-        return TEX.BOSS_ARENA;
+        // Sprite réel du gardien plutôt que le losange générique — on voit directement, sur la
+        // carte, QUI garde cette arène avant même de déclencher le combat (cf. power_altar,
+        // même idée). La texture est une feuille de sprites (idle) ; sans frame précisée,
+        // Phaser affiche la frame 0 par défaut, une pose statique suffisante pour ce marqueur.
+        return (e.bossId && BOSS_DEFS[e.bossId]?.texture) || TEX.BOSS_ARENA;
       case 'zone_exit':
       case 'ending_trigger':
         return TEX.ZONE_EXIT;
@@ -113,6 +117,8 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
         return (e.grantsPower && POWER_ICON_TEX[e.grantsPower]) || TEX.POWER_ALTAR;
       case 'shard_pickup':
         return TEX.SHARD;
+      case 'life_pickup':
+        return TEX.LIFE_PICKUP;
       case 'captive':
         return TEX.RESCUE_CAT;
       default:

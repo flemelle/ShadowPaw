@@ -155,12 +155,14 @@ export class BootScene extends Phaser.Scene {
 
     this.generateGlowTexture();
     this.generatePortraitTextures();
+    this.generateStoneGuardianTexture();
     this.generateMarkerTexture(TEX.NPC, 0x4ac9e0, 'circle');
     this.generateMarkerTexture(TEX.BOSS_ARENA, 0xd63b3b, 'diamond');
     this.generateMarkerTexture(TEX.ZONE_EXIT, 0x4ae08a, 'arrow');
     this.generateMarkerTexture(TEX.PUZZLE_TRIGGER, 0xd8b34a, 'square');
     this.generateMarkerTexture(TEX.POWER_ALTAR, 0xffffff, 'star');
     this.generateMarkerTexture(TEX.SHARD, 0xffe27a, 'shard');
+    this.generateMarkerTexture(TEX.LIFE_PICKUP, 0xff4d6d, 'heart');
     this.generateMarkerTexture(TEX.ENEMY, 0x8a1f3a, 'spike');
 
     const particle = this.make.graphics({ x: 0, y: 0 });
@@ -194,6 +196,14 @@ export class BootScene extends Phaser.Scene {
     this.anims.create({
       key: ANIM_KEYS.PLAYER_DASH,
       frames: this.anims.generateFrameNumbers(TEX.PLAYER_WALK, { start: 4, end: 4 }),
+      frameRate: 1,
+      repeat: -1,
+    });
+    // Bras/lame tendus vers l'avant (frame 3 du cycle de marche) — accompagne le swipe d'énergie
+    // (cf. Player.playAttackFx) pendant la fenêtre d'attaque active.
+    this.anims.create({
+      key: ANIM_KEYS.PLAYER_ATTACK_POSE,
+      frames: this.anims.generateFrameNumbers(TEX.PLAYER_WALK, { start: 3, end: 3 }),
       frameRate: 1,
       repeat: -1,
     });
@@ -377,25 +387,6 @@ export class BootScene extends Phaser.Scene {
     const w = 220;
     const h = 360;
 
-    const player = this.make.graphics({ x: 0, y: 0 });
-    const bodyTop = 60;
-    const bodyW = 150;
-    const bodyH = h - bodyTop;
-    const bodyX = (w - bodyW) / 2;
-    // Deux oreilles avant le corps, pour lire "chat" même en grande silhouette plate.
-    player.fillStyle(0x9a9aa5, 1);
-    player.fillTriangle(bodyX + 15, bodyTop + 10, bodyX + 40, bodyTop - 35, bodyX + 55, bodyTop + 10);
-    player.fillStyle(0x5a2e8a, 1);
-    player.fillTriangle(bodyX + bodyW - 55, bodyTop + 10, bodyX + bodyW - 40, bodyTop - 35, bodyX + bodyW - 15, bodyTop + 10);
-    player.fillStyle(0x9a9aa5, 1);
-    player.fillRoundedRect(bodyX, bodyTop, bodyW / 2, bodyH, 18);
-    player.fillStyle(0x5a2e8a, 1);
-    player.fillRoundedRect(bodyX + bodyW / 2, bodyTop, bodyW / 2, bodyH, 18);
-    player.fillStyle(0xdedede, 1);
-    player.fillCircle(bodyX + bodyW / 2, bodyTop + 55, 20);
-    player.generateTexture(TEX.PLAYER_PORTRAIT, w, h);
-    player.destroy();
-
     // Moine encapuchonné : silhouette de robe + yeux luminescents, cf. Tozen dans les dialogues.
     const npc = this.make.graphics({ x: 0, y: 0 });
     const robeTop = 70;
@@ -415,7 +406,40 @@ export class BootScene extends Phaser.Scene {
     npc.destroy();
   }
 
-  private generateMarkerTexture(key: string, color: number, shape: 'circle' | 'diamond' | 'arrow' | 'square' | 'star' | 'shard' | 'spike'): void {
+  /** Le Gardien de Pierre (boss zone1) — aucun pack local ne fournit de golem/statue animée
+   * (cf. ACKNOWLEDGEMENTS.md), donc silhouette procédurale plutôt qu'un skin déjà utilisé
+   * ailleurs pour un autre boss : bloc rocheux massif, fissures, yeux incandescents. */
+  private generateStoneGuardianTexture(): void {
+    const w = 36;
+    const h = 42;
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    g.fillStyle(0x5c5852, 1);
+    g.fillRoundedRect(2, 10, w - 4, h - 12, 6);
+    g.fillRoundedRect(8, 0, w - 16, 16, 5);
+
+    g.fillStyle(0x716c64, 1);
+    g.fillRect(4, 14, 9, 9);
+    g.fillRect(w - 14, 20, 9, 8);
+    g.fillRect(10, h - 16, 8, 8);
+
+    g.lineStyle(2, 0x2e2b28, 0.8);
+    g.lineBetween(w / 2 - 6, 6, w / 2 - 10, 20);
+    g.lineBetween(w / 2 + 4, 22, w / 2 + 9, h - 10);
+    g.lineBetween(6, h - 14, 14, h - 6);
+
+    g.fillStyle(0xff8a3d, 0.35);
+    g.fillCircle(w / 2 - 7, 8, 4);
+    g.fillCircle(w / 2 + 7, 8, 4);
+    g.fillStyle(0xffb877, 1);
+    g.fillCircle(w / 2 - 7, 8, 2);
+    g.fillCircle(w / 2 + 7, 8, 2);
+
+    g.generateTexture(TEX.BOSS_STONE_GUARDIAN, w, h);
+    g.destroy();
+  }
+
+  private generateMarkerTexture(key: string, color: number, shape: 'circle' | 'diamond' | 'arrow' | 'square' | 'star' | 'shard' | 'spike' | 'heart'): void {
     const size = 28;
     const g = this.make.graphics({ x: 0, y: 0 });
     g.fillStyle(color, 0.9);
@@ -479,6 +503,18 @@ export class BootScene extends Phaser.Scene {
         g.closePath();
         g.fillPath();
         g.strokePath();
+        break;
+      // Vie bonus à ramasser (cf. EntityLifePickup) — deux lobes + une pointe, lisible
+      // immédiatement comme un cœur même à cette taille, cohérent avec les ♥ du HUD.
+      case 'heart':
+        g.fillCircle(c - c / 2.6, c - c / 6, c / 2.4);
+        g.fillCircle(c + c / 2.6, c - c / 6, c / 2.4);
+        g.beginPath();
+        g.moveTo(2, c - c / 5);
+        g.lineTo(c, size - 3);
+        g.lineTo(size - 2, c - c / 5);
+        g.closePath();
+        g.fillPath();
         break;
     }
     g.generateTexture(key, size, size);

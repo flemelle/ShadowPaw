@@ -30,16 +30,26 @@ const MAX_SAFE_PIT_WIDTH = 4;
 
 // Largeur (de part et d'autre du centre) de la plaine dégagée autour de chaque arène de boss.
 const ARENA_HALF_WIDTH = 14;
+// Deux plateformes flottantes symétriques dans l'arène (cf. clearBossArena) pour pouvoir combattre
+// en hauteur plutôt que sur une seule ligne au sol. Décalage assez grand pour ne jamais chevaucher
+// la colonne d'apparition du boss ; hauteur (3 tuiles) bien dans la portée d'un saut en course
+// (apex ≈ JUMP_SPEED²/(2·GRAVITY_Y)/32 ≈ 4 tuiles, cf. src/systems/zoneProfiles.ts).
+const ARENA_PLATFORM_OFFSET = 9;
+const ARENA_PLATFORM_WIDTH = 4;
+const ARENA_PLATFORM_RISE = 3;
 
 /**
  * Dégage une "grande plaine" plate et sans plateforme flottante autour de la position prévue du
  * boss (cf. entityFracs.boss_arena0) : un combat de boss ne doit pas se dérouler au milieu d'un
  * parcours de plateformes ni au bord d'une fosse. Mute `grid` (tableau 2D de caractères) et
  * `floorTopByCol` en place. Prend la hauteur de la colonne valide la plus proche du centre comme
- * référence plutôt qu'une hauteur fixe, pour rester raccord avec le reste de la zone.
+ * référence plutôt qu'une hauteur fixe, pour rester raccord avec le reste de la zone. Ajoute
+ * ensuite deux plateformes symétriques pour combattre en hauteur ; retourne leurs colonnes en
+ * SafeCol pour que l'appelant (sans plateforme random, cf. generateZone) les inscrive dans
+ * safeCols — la variante en miroir les détecte déjà via son balayage générique post-fusion.
  */
 function clearBossArena(grid, floorTopByCol, cols, rows, bossFrac) {
-  if (bossFrac == null) return;
+  if (bossFrac == null) return [];
   const bossCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * bossFrac)));
   const lo = Math.max(1, bossCol - ARENA_HALF_WIDTH);
   const hi = Math.min(cols - 2, bossCol + ARENA_HALF_WIDTH);
@@ -57,6 +67,20 @@ function clearBossArena(grid, floorTopByCol, cols, rows, bossFrac) {
     for (let y = 0; y < rows; y++) grid[y][x] = y === refFloor ? '#' : '.';
     floorTopByCol[x] = refFloor;
   }
+
+  const extraSafeCols = [];
+  const platformRow = refFloor - ARENA_PLATFORM_RISE;
+  if (platformRow >= 1) {
+    for (const centerX of [bossCol - ARENA_PLATFORM_OFFSET, bossCol + ARENA_PLATFORM_OFFSET]) {
+      const pLo = Math.max(lo, centerX - Math.floor(ARENA_PLATFORM_WIDTH / 2));
+      const pHi = Math.min(hi, pLo + ARENA_PLATFORM_WIDTH - 1);
+      for (let x = pLo; x <= pHi; x++) {
+        grid[platformRow][x] = '#';
+        extraSafeCols.push({ x, y: platformRow - 1 });
+      }
+    }
+  }
+  return extraSafeCols;
 }
 
 /**
@@ -245,7 +269,7 @@ function generateZone(profile) {
   // Dégage une grande plaine plate autour de l'arène de boss, sans plateforme ni fosse (cf.
   // clearBossArena) — DOIT s'exécuter après les plateformes (pour les retirer) mais avant le
   // calcul de groundCols/safeCols ci-dessous (pour qu'ils reflètent le sol corrigé).
-  clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs?.boss_arena0);
+  safeCols.push(...clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs?.boss_arena0));
 
   // --- Gates (obstruent un passage en hauteur, jamais dans la rangée de sol elle-même) ---
   // Avec des cratères plus larges/fréquents, la colonne visée tombe parfois dans une
@@ -318,18 +342,16 @@ const ZONE_PROFILES = {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
     pitChance: 0.06, pitWidth: [3, 4],
     plat: { count: 18, width: [4, 6], heightAbove: [2, 2] },
-    // Zone 1 : le joueur n'a encore AUCUN pouvoir. Ses propres gates ('C', griffes)
-    // ne peuvent donc pas y apparaître — griffes_renforcees n'est justement accordé
-    // qu'en battant le boss de cette même zone. Sans ça, la zone était infranchissable
-    // hors Mode Admin (cf. "les pouvoirs doivent s'acquérir au fur et à mesure").
-    gateChar: 'C', gateSpots: [],
+    // Zone 1 : le joueur n'a AUCUN pouvoir avant le boss (0.85) — une paroi fissurée ne peut
+    // donc apparaître qu'APRÈS lui, entre le combat et la sortie (0.97), jamais avant.
+    gateChar: 'C', gateSpots: [0.9],
     // Un léger relief plutôt qu'un sol parfaitement plat sur 130 colonnes : reste calme
     // (amplitude ±1 tuile, 12% des colonnes), juste moins monotone à traverser.
     undulate: true,
     // Premier niveau du jeu : pas de tour de plateformes en hauteur, la verticalité marquée
     // arrive plus tard une fois les bases acquises.
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.15, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.15, life_pickup0: 0.45, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   // Dojo souterrain, chaînes — plafond bas et dense : plateformes étroites et rapprochées,
   // moins de dégagement vertical, pour une sensation d'enfermement distincte du plein air.
@@ -343,7 +365,7 @@ const ZONE_PROFILES = {
     undulate: true,
     // Encore un des tout premiers niveaux : même restriction que la zone 1.
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.2, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.2, life_pickup0: 0.5, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   // Cœur du sanctuaire, énergie sombre pulsante — verticalité marquée, sol qui monte et
   // descend sans cesse (undulate) : une traversée en dents de scie plutôt qu'un sol plat.
@@ -353,7 +375,7 @@ const ZONE_PROFILES = {
     plat: { count: 30, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: true,
-    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, life_pickup0: 0.6, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   // Temple au sommet, silence absolu — sobre et ordonné : fosses rares, plateformes larges
   // et régulièrement espacées, aucune ondulation. L'antithèse du chaos qui suivra en Acte 2.
@@ -365,7 +387,7 @@ const ZONE_PROFILES = {
     undulate: false,
     // Le boss reste toujours juste avant la sortie (comme les 7 autres zones), pas au milieu du
     // parcours : seul l'autel de pouvoir vient s'intercaler entre le combat et la sortie elle-même.
-    entityFracs: { spawn: 0.03, npc0: 0.1, power_altar0: 0.92, zone_exit0: 0.98 },
+    entityFracs: { spawn: 0.03, npc0: 0.1, life_pickup0: 0.45, boss_arena0: 0.85, power_altar0: 0.92, zone_exit0: 0.98 },
   },
   // Le même temple, corrompu — l'ordre de la zone 4 se fissure : plus de fosses, sol
   // irrégulier (undulate), plateformes de tailles très inégales.
@@ -375,7 +397,7 @@ const ZONE_PROFILES = {
     plat: { count: 34, width: [2, 6], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: true,
-    entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, life_pickup0: 0.75, zone_exit0: 0.97 },
   },
   // Jardins extérieurs, végétation corrompue — terrain organique et sinueux : ondulation
   // plus fréquente que partout ailleurs, plateformes larges façon frondaisons.
@@ -385,7 +407,7 @@ const ZONE_PROFILES = {
     plat: { count: 30, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
-    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, life_pickup0: 0.75, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   // Salle des Miroirs — vraie symétrie structurelle (cf. generateMirroredZone) plutôt qu'un
   // simple réglage de paramètres : la moitié gauche est reflétée à l'identique à droite.
@@ -396,7 +418,7 @@ const ZONE_PROFILES = {
     gateChar: 'S', gateSpots: [0.35, 0.7],
     undulate: false,
     mirror: true,
-    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, life_pickup0: 0.75, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   // Le vide entre lumière et ombre, décor abstrait — le moins de sol possible : de rares
   // îlots flottants largement espacés au-dessus d'un vide quasi continu, jamais un long
@@ -407,7 +429,7 @@ const ZONE_PROFILES = {
     plat: { count: 20, width: [2, 4], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
-    entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, boss_arena0: 0.85, ending_trigger0: 0.97 },
+    entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, life_pickup0: 0.7, boss_arena0: 0.85, ending_trigger0: 0.97 },
   },
 };
 

@@ -238,9 +238,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const key = Phaser.Utils.Array.GetRandom(this.footstepVariants as string[]);
       audioManager.play(this.scene, key, { volume: 0.1 });
     }
-    // Priorité dash > saut/chute > marche > idle — cf. BootScene pour les poses réutilisées du
-    // cycle de marche en l'absence de sprites dédiés dans le pack "sample".
-    if (this.isDashing) {
+    // Priorité attaque > dash > saut/chute > marche > idle — cf. BootScene pour les poses
+    // réutilisées du cycle de marche en l'absence de sprites dédiés dans le pack "sample".
+    if (time <= this.attackActiveUntil) {
+      this.anims.play(ANIM_KEYS.PLAYER_ATTACK_POSE, true);
+    } else if (this.isDashing) {
       this.anims.play(ANIM_KEYS.PLAYER_DASH, true);
     } else if (!grounded && !this.noclip) {
       this.anims.play(ANIM_KEYS.PLAYER_JUMP, true);

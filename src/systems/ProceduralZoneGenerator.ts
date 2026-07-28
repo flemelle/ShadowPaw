@@ -32,6 +32,13 @@ function mulberry32(seed: number): () => number {
 }
 
 const ARENA_HALF_WIDTH = 14;
+/** Deux plateformes flottantes symétriques dans l'arène (cf. clearBossArena) pour pouvoir
+ * combattre en hauteur plutôt que sur une seule ligne au sol. Décalage assez grand pour ne
+ * jamais chevaucher la colonne d'apparition du boss ; hauteur (3 tuiles) bien dans la portée
+ * d'un saut en course (apex ≈ JUMP_SPEED²/(2·GRAVITY_Y)/32 ≈ 4 tuiles, cf. zoneProfiles.ts). */
+const ARENA_PLATFORM_OFFSET = 9;
+const ARENA_PLATFORM_WIDTH = 4;
+const ARENA_PLATFORM_RISE = 3;
 
 function clearBossArena(
   grid: string[][],
@@ -39,8 +46,8 @@ function clearBossArena(
   cols: number,
   rows: number,
   bossFrac: number | undefined,
-): void {
-  if (bossFrac == null) return;
+): SafeCol[] {
+  if (bossFrac == null) return [];
   const bossCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * bossFrac)));
   const lo = Math.max(1, bossCol - ARENA_HALF_WIDTH);
   const hi = Math.min(cols - 2, bossCol + ARENA_HALF_WIDTH);
@@ -58,6 +65,20 @@ function clearBossArena(
     for (let y = 0; y < rows; y++) grid[y][x] = y === (refFloor as number) ? '#' : '.';
     floorTopByCol[x] = refFloor;
   }
+
+  const extraSafeCols: SafeCol[] = [];
+  const platformRow = (refFloor as number) - ARENA_PLATFORM_RISE;
+  if (platformRow >= 1) {
+    for (const centerX of [bossCol - ARENA_PLATFORM_OFFSET, bossCol + ARENA_PLATFORM_OFFSET]) {
+      const pLo = Math.max(lo, centerX - Math.floor(ARENA_PLATFORM_WIDTH / 2));
+      const pHi = Math.min(hi, pLo + ARENA_PLATFORM_WIDTH - 1);
+      for (let x = pLo; x <= pHi; x++) {
+        grid[platformRow][x] = '#';
+        extraSafeCols.push({ x, y: platformRow - 1 });
+      }
+    }
+  }
+  return extraSafeCols;
 }
 
 function generateMirroredZone(profile: ZoneProfile): GeneratedGrid {
@@ -193,7 +214,7 @@ export function generateZone(profile: ZoneProfile): GeneratedGrid {
     }
   }
 
-  clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs?.boss_arena0);
+  safeCols.push(...clearBossArena(grid, floorTopByCol, cols, rows, profile.entityFracs?.boss_arena0));
 
   gateSpots.forEach((frac) => {
     let gx = Math.max(10, Math.min(cols - 10, Math.floor(cols * frac)));

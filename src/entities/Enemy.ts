@@ -22,6 +22,10 @@ type BossState = 'approach' | 'telegraph' | 'attack' | 'recover';
 type BossAttack = 'dash' | 'orb' | 'shockwave';
 
 const BOSS_INITIAL_DELAY_MS = 1200; // grâce avant le tout premier avant-coup, le temps que le joueur s'oriente
+// Malakar apparaît d'abord sous sa forme démoniaque (même skin que son portrait de dialogue,
+// cf. Constants.NPC_SKINS) avant de se transformer en esprit-chat spectral pour le combat réel —
+// immobile pendant ce délai, le temps que la transformation se lise clairement.
+const BOSS_TRANSFORM_MS = 1800;
 const BOSS_TELEGRAPH_MS = 550; // cf. recherche "telegraphing" : lisible, pas juste un flash d'un quart de seconde
 const BOSS_DASH_MS = 450;
 const BOSS_DASH_SPEED_MULT = 3.2;
@@ -81,6 +85,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private orbActive = false;
   private orbTraveled = 0;
   private pendingShockwave?: { x: number; y: number; activeUntil: number; consumed: boolean };
+  // ---- Transformation pré-combat de Malakar (cf. BOSS_TRANSFORM_MS) ----
+  private isTransformed = true;
+  private transformAt = -Infinity;
+  private finalTexture?: string;
+  private finalAnimKey?: string;
 
   constructor(
     scene: Phaser.Scene,
@@ -88,9 +97,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     y: number,
     hp: number,
     speed: number,
-    opts?: { isBoss?: boolean; bossDef?: BossDef; groundTopByCol?: (number | null)[]; texture?: string; animKey?: string },
+    opts?: {
+      isBoss?: boolean;
+      bossDef?: BossDef;
+      groundTopByCol?: (number | null)[];
+      texture?: string;
+      animKey?: string;
+      preTransformTexture?: string;
+      preTransformAnimKey?: string;
+    },
   ) {
-    super(scene, x, y, opts?.texture ?? TEX.ENEMY);
+    super(scene, x, y, opts?.preTransformTexture ?? opts?.texture ?? TEX.ENEMY);
     scene.add.existing(this);
     this.spawnX = x;
     this.hp = hp;
@@ -99,6 +116,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.isBoss = opts?.isBoss ?? false;
     this.bossDef = opts?.bossDef;
     this.groundTopByCol = opts?.groundTopByCol ?? [];
+    if (opts?.preTransformTexture) {
+      this.isTransformed = false;
+      this.finalTexture = opts.texture;
+      this.finalAnimKey = opts.animKey;
+    }
     // setScale AVANT physics.add.existing : le corps Arcade est dimensionné d'après la taille
     // affichée AU MOMENT de sa création et ne suit plus les changements de scale ensuite — un
     // boss agrandi après coup aurait gardé une hitbox (et donc un point de vérification de sol,
@@ -112,7 +134,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.setTint(this.restingTint);
       }
     }
-    if (opts?.animKey) this.play(opts.animKey);
+    const initialAnimKey = opts?.preTransformAnimKey ?? opts?.animKey;
+    if (initialAnimKey) this.play(initialAnimKey);
     scene.physics.add.existing(this);
     // Le boss final ('phases3') flotte sans gravité ni collider contre le sol (cf.
     // GameScene.startBossFight) — esprit-chat spectral, cohérent avec sa fiction, et ça évite un
@@ -233,6 +256,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
    * baissent (cf. pickAttack) : le combat ne devient réellement complet qu'en phase 3.
    */
   private updateBossCombatAI(playerX: number, playerY: number, time: number, body: Phaser.Physics.Arcade.Body): void {
+    if (!this.isTransformed) {
+      if (this.transformAt === -Infinity) this.transformAt = time + BOSS_TRANSFORM_MS;
+      body.setVelocityX(0);
+      if (time >= this.transformAt) this.transform();
+      return;
+    }
+
     if (!this.bossFightStarted) {
       this.bossFightStarted = true;
       this.nextDecisionAt = time + BOSS_INITIAL_DELAY_MS;
@@ -283,6 +313,19 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const pool: BossAttack[] = phase === 0 ? ['dash'] : phase === 1 ? ['dash', 'orb'] : ['dash', 'orb', 'shockwave'];
     const usable = pool.filter((a) => a !== 'shockwave' || dist <= BOSS_SHOCKWAVE_MELEE_RANGE);
     return usable[Math.floor(Math.random() * usable.length)];
+  }
+
+  /** Bascule de la forme démoniaque (immobile, cf. BOSS_TRANSFORM_MS) vers l'esprit-chat spectral
+   * qui mène le combat réel — un éclat d'onde de choc (déjà créé/positionné, cf. constructor)
+   * accompagne le changement de texture plutôt qu'un flash instantané peu lisible. */
+  private transform(): void {
+    this.isTransformed = true;
+    if (this.finalTexture) this.setTexture(this.finalTexture);
+    if (this.finalAnimKey) this.play(this.finalAnimKey);
+    audioManager.play(this.scene, SFX_KEYS.PIVOT_ABSORB, { volume: 0.6 });
+    if (this.shockwaveFx) {
+      this.shockwaveFx.setPosition(this.x, this.y).setVisible(true).setScale(1.6).play(ANIM_KEYS.BOSS_SHOCKWAVE);
+    }
   }
 
   private startTelegraph(playerX: number, time: number): void {

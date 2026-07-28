@@ -72,10 +72,13 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     cols: 130, rows: 14, ceilingGap: 3, seed: 101,
     pitChance: 0.06, pitWidth: [3, 4],
     plat: { count: 18, width: [4, 6], heightAbove: [2, 2] },
-    gateChar: 'C', gateSpots: [],
+    // Un seul mur entre le boss (0.85) et la sortie (0.97) : le joueur vient d'obtenir
+    // griffes_renforcees de justesse, la première paroi fissurée du jeu doit rester atteignable
+    // avec ce pouvoir tout juste acquis, pas avant.
+    gateChar: 'C', gateSpots: [0.9],
     undulate: true,
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.15, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.15, life_pickup0: 0.45, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   zone2_antre_velours_noir: {
     cols: 145, rows: 15, ceilingGap: 5, seed: 202,
@@ -84,7 +87,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     gateChar: 'C', gateSpots: [0.25, 0.5, 0.78],
     undulate: true,
     allowTowers: false,
-    entityFracs: { spawn: 0.03, npc0: 0.2, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.2, life_pickup0: 0.5, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   zone3_velkhar_foyer_ombres: {
     cols: 145, rows: 19, ceilingGap: 3, seed: 303,
@@ -92,7 +95,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     plat: { count: 30, width: [3, 5], heightAbove: [2, 2] },
     gateChar: 'V', gateSpots: [0.3, 0.65],
     undulate: true,
-    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.22, npc1: 0.4, life_pickup0: 0.6, boss_arena0: 0.87, zone_exit0: 0.97 },
   },
   zone4_seikuji_quietude: {
     cols: 160, rows: 16, ceilingGap: 3, seed: 404,
@@ -100,7 +103,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     plat: { count: 26, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'D', gateSpots: [0.2, 0.4, 0.6, 0.8],
     undulate: false,
-    entityFracs: { spawn: 0.03, npc0: 0.1, power_altar0: 0.92, zone_exit0: 0.98 },
+    entityFracs: { spawn: 0.03, npc0: 0.1, life_pickup0: 0.45, boss_arena0: 0.85, power_altar0: 0.92, zone_exit0: 0.98 },
   },
   zone5_seikuji_corrompu: {
     cols: 160, rows: 15, ceilingGap: 3, seed: 505,
@@ -108,7 +111,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     plat: { count: 34, width: [2, 6], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.3, 0.6],
     undulate: true,
-    entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.03, npc0: 0.15, puzzle_trigger0: 0.5, life_pickup0: 0.75, zone_exit0: 0.97 },
   },
   zone6_jardins_oublies: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 606,
@@ -116,7 +119,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     plat: { count: 30, width: [4, 7], heightAbove: [2, 2] },
     gateChar: 'L', gateSpots: [0.25, 0.55],
     undulate: true,
-    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.08, puzzle_trigger0: 0.2, puzzle_trigger1: 0.4, puzzle_trigger2: 0.6, life_pickup0: 0.75, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   zone7_salle_miroirs: {
     cols: 190, rows: 16, ceilingGap: 3, seed: 707,
@@ -125,7 +128,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     gateChar: 'S', gateSpots: [0.35, 0.7],
     undulate: false,
     mirror: true,
-    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, zone_exit0: 0.97 },
+    entityFracs: { spawn: 0.02, npc0: 0.1, puzzle_trigger0: 0.22, puzzle_trigger1: 0.42, puzzle_trigger2: 0.62, life_pickup0: 0.75, boss_arena0: 0.85, zone_exit0: 0.97 },
   },
   zone8_vide_entre_deux: {
     cols: 130, rows: 14, ceilingGap: 3, seed: 808,
@@ -133,7 +136,7 @@ export const ZONE_PROFILES: Record<string, ZoneProfile> = {
     plat: { count: 20, width: [2, 4], heightAbove: [2, 2] },
     gateChar: 'S', gateSpots: [],
     undulate: false,
-    entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, boss_arena0: 0.85, ending_trigger0: 0.97 },
+    entityFracs: { spawn: 0.03, puzzle_trigger0: 0.25, npc0: 0.55, life_pickup0: 0.7, boss_arena0: 0.85, ending_trigger0: 0.97 },
   },
 };
 

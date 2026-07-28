@@ -18,6 +18,7 @@
     "shard_pickup",
     "puzzle_trigger",
     "power_altar",
-    "combo_gate"
+    "combo_gate",
+    "life_pickup"
   ]
 }
