@@ -706,7 +706,9 @@ export class GameScene extends Phaser.Scene {
     // laissant traverser le sol en chute libre plutôt que de le repousser dessus.
     const bossTexKey = bossDef?.texture ?? TEX.ENEMY;
     const bossFrameHeight = this.textures.get(bossTexKey).get(0).height;
-    const spawnClearance = (bossFrameHeight * (bossDef?.scale ?? 1.7)) / 2 + TILE_SIZE / 2;
+    // + extraSpawnTiles (cf. BossDef) : marge ADDITIONNELLE demandée pour un boss qui doit
+    // visiblement tomber de plus haut à l'ouverture du combat, plutôt qu'apparaître à ras du sol.
+    const spawnClearance = (bossFrameHeight * (bossDef?.scale ?? 1.7)) / 2 + TILE_SIZE / 2 + (bossDef?.extraSpawnTiles ?? 0) * TILE_SIZE;
     const boss = new Enemy(this, sprite.x, sprite.y - spawnClearance, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
       isBoss: true,
       bossDef,

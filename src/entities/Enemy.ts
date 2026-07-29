@@ -246,7 +246,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (hitWall || pastRange || aboutToFall) this.dir = this.dir === 1 ? -1 : 1;
 
     body.setVelocityX(this.currentSpeed() * this.dir);
-    this.setFlipX(this.dir < 0);
+    // cf. BossDef.invertFacing : certains sprites (ex. le samouraï) lisent visuellement à l'envers
+    // une fois passés par ce flip générique, malgré un sprite source vérifié droite-par-défaut —
+    // ce correctif ne touche que l'orientation affichée, jamais `this.dir`/la vélocité elle-même.
+    const faceLeft = this.bossDef?.invertFacing ? this.dir > 0 : this.dir < 0;
+    this.setFlipX(faceLeft);
   }
 
   /** Palier de PV courant (0 = >66%, 1 = 33-66%, 2 = <33%) — determine la vitesse ET le pool d'attaques. */
@@ -523,6 +527,23 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   markContact(time: number): void {
     this.lastContactAt = time;
+    this.playAttackAnimation();
+  }
+
+  /** Joue l'animation de coup le temps d'un contact réussi sur le joueur (cf. BossDef.attackAnimKey),
+   * puis reprend le cycle de marche normal — sans quoi le boss reste figé sur son anim de marche
+   * même en train de frapper. Pas de retour si déjà vaincu (défaite en même temps qu'un dernier
+   * coup) ni pour un boss sans anim d'attaque dédiée (silencieusement ignoré). */
+  private playAttackAnimation(): void {
+    const key = this.bossDef?.attackAnimKey;
+    const restingKey = this.bossDef?.animKey;
+    if (!key || this.defeated) return;
+    this.play(key);
+    if (restingKey) {
+      this.once(`animationcomplete-${key}`, () => {
+        if (!this.defeated) this.play(restingKey);
+      });
+    }
   }
 
   /** Petite animation de disparition avant destruction réelle (cf. GameScene). */

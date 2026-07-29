@@ -120,6 +120,7 @@ export const TEX = {
   RESCUE_CAT_RUN: 'tex_rescue_cat_run',
   CATGIRL_BOSS: 'tex_catgirl_boss',
   BOSS_SAMURAI: 'tex_boss_samurai',
+  BOSS_SAMURAI_ATTACK: 'tex_boss_samurai_attack',
   BOSS_STONE_GUARDIAN: 'tex_boss_stone_guardian',
   UI_PANEL: 'tex_ui_panel',
   UI_ICON_PLAY: 'tex_ui_icon_play',
@@ -171,6 +172,7 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.RESCUE_CAT_RUN]: `${ASSET_BASE}/images/creatures/rescue_cat_run.png`,
   [TEX.CATGIRL_BOSS]: `${ASSET_BASE}/images/bosses/catgirl_idle.png`,
   [TEX.BOSS_SAMURAI]: `${ASSET_BASE}/images/bosses/samurai_idle.png`,
+  [TEX.BOSS_SAMURAI_ATTACK]: `${ASSET_BASE}/images/bosses/samurai_attack.png`,
   [TEX.UI_PANEL]: `${ASSET_BASE}/images/ui/panel_wood.png`,
   [TEX.UI_ICON_PLAY]: `${ASSET_BASE}/images/ui/btn_play_light.png`,
   [TEX.UI_ICON_PAUSE]: `${ASSET_BASE}/images/ui/btn_pause_light.png`,
@@ -287,6 +289,7 @@ export const ANIM_KEYS = {
   RESCUE_CAT_RUN: 'anim_rescue_cat_run',
   CATGIRL_IDLE: 'anim_catgirl_idle',
   SAMURAI_IDLE: 'anim_samurai_idle',
+  SAMURAI_ATTACK: 'anim_samurai_attack',
   GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
   GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
   PLAYER_ATTACK_SWIPE: 'anim_player_attack_swipe',
@@ -560,6 +563,16 @@ export interface BossDef {
    * visiblement les pieds du bas RÉEL du corps une fois posé au sol (même idée que le corps
    * resserré du pattern 'phases3' ci-dessous, généralisée à n'importe quel boss). */
   bodyFit?: { width: number; height: number; offsetX: number; offsetY: number };
+  /** Animation jouée le temps d'un coup de contact réussi sur le joueur (cf. Enemy.markContact),
+   * avant de reprendre `animKey` — sinon le boss reste sur son cycle de marche même en frappant. */
+  attackAnimKey?: string;
+  /** Inverse le sens gauche/droite du sprite en mouvement (cf. Enemy.updateAI) sans toucher au
+   * reste de la logique de patrouille, partagée par tous les patterns hors 'phases3'/'mirror'. */
+  invertFacing?: boolean;
+  /** Hauteur supplémentaire (en tuiles) au-dessus de la marge de sécurité déjà calculée depuis la
+   * taille réelle du sprite (cf. GameScene.startBossFight) — pour un boss qui doit visiblement
+   * "tomber" d'un peu plus haut à l'ouverture du combat plutôt qu'apparaître à ras du sol. */
+  extraSpawnTiles?: number;
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
@@ -577,6 +590,9 @@ export const BOSS_DEFS: Record<string, BossDef> = {
     animKey: ANIM_KEYS.SAMURAI_IDLE,
     scale: 6.8 / 3,
     bodyFit: { width: 24, height: 34, offsetX: 8, offsetY: 4 },
+    attackAnimKey: ANIM_KEYS.SAMURAI_ATTACK,
+    invertFacing: true,
+    extraSpawnTiles: 1,
   },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
   boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },

@@ -4,6 +4,7 @@ import { dialogSystem } from '@/systems/GameState';
 import { audioManager } from '@/systems/AudioManager';
 import { EventBus, GameEvents } from '@/utils/EventBus';
 import { keyBindings } from '@/systems/KeyBindings';
+import { GAMEPLAY_ZOOM } from '@/systems/CameraSystem';
 import type { DialogChoice, DialogNode } from '@/systems/DialogSystem';
 
 interface DialogSceneData {
@@ -83,12 +84,16 @@ export class DialogScene extends Phaser.Scene {
       // bord haut de la case) pour que le skin reste presque entièrement visible au-dessus d'elle.
       // Taille affichée cohérente (~192px) quelle que soit la frame source : 6x pour les PNJ en
       // 32x32, moins pour une frame plus grande — sauf `scale` explicite (cf. NPC_SKINS), pour un
-      // boss dont le portrait doit plutôt matcher sa propre taille de combat que ce standard.
+      // boss dont le portrait doit plutôt matcher sa propre taille de combat que ce standard. Dans
+      // ce cas-là, le multiplicateur de GameScene (GAMEPLAY_ZOOM) doit aussi s'appliquer : `scale`
+      // seul ne reproduit que la taille du sprite lui-même, pas son agrandissement à l'écran par la
+      // caméra de jeu (zoomée), que cette scène (caméra à 1x) n'a pas — sans lui, un skin "matché"
+      // sur sa taille de combat restait quand même visiblement plus petit ici qu'en jeu.
       this.npcPortrait = this.add
         .sprite(GAME_WIDTH - 10, BOX_TOP + 40, skin.texture)
         .setOrigin(1, 1)
         .setAlpha(0.92)
-        .setScale(skin.scale ?? 192 / (skin.frameSize ?? 32))
+        .setScale(skin.scale ? skin.scale * GAMEPLAY_ZOOM : 192 / (skin.frameSize ?? 32))
         .play(skin.animKey);
     } else {
       this.npcPortrait = this.add.sprite(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);

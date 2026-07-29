@@ -131,6 +131,10 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet(TEX.RESCUE_CAT, REAL_TEX_PATHS[TEX.RESCUE_CAT], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.RESCUE_CAT_RUN, REAL_TEX_PATHS[TEX.RESCUE_CAT_RUN], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
+    // TEX.BOSS_SAMURAI (l'idle) est chargée via la boucle NPC_SKINS plus bas (cf. son frameSize:40,
+    // réutilisée aussi pour le portrait de dialogue) — seule l'anim d'attaque, jamais utilisée en
+    // dialogue, a besoin d'un chargement dédié ici.
+    this.load.spritesheet(TEX.BOSS_SAMURAI_ATTACK, REAL_TEX_PATHS[TEX.BOSS_SAMURAI_ATTACK], { frameWidth: 64, frameHeight: 40 });
     this.load.spritesheet(TEX.GHOST_CAT_BLUE, REAL_TEX_PATHS[TEX.GHOST_CAT_BLUE], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.GHOST_CAT_RED, REAL_TEX_PATHS[TEX.GHOST_CAT_RED], { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet(TEX.PLAYER_ATTACK_FX, REAL_TEX_PATHS[TEX.PLAYER_ATTACK_FX], { frameWidth: 64, frameHeight: 64 });
@@ -249,6 +253,14 @@ export class BootScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers(TEX.BOSS_SAMURAI, { start: 0, end: 9 }),
       frameRate: 8,
       repeat: -1,
+    });
+    // repeat: 0 (une seule fois) — cf. Enemy.playAttackAnimation, qui reprend SAMURAI_IDLE dès la
+    // fin via l'évènement 'animationcomplete', pas une boucle continue comme le cycle de marche.
+    this.anims.create({
+      key: ANIM_KEYS.SAMURAI_ATTACK,
+      frames: this.anims.generateFrameNumbers(TEX.BOSS_SAMURAI_ATTACK, { start: 0, end: 6 }),
+      frameRate: 12,
+      repeat: 0,
     });
     this.anims.create({
       key: ANIM_KEYS.GHOST_CAT_BLUE_IDLE,

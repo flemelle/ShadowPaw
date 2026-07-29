@@ -141,7 +141,8 @@ intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
 - **FREE_Samurai 2D Pixel Art v1.2** — vieux samouraï aux yeux clos, boss "Maître Aveugle"
   (`IDLE.png`, 10 frames 96x96, miroir horizontal pour respecter la convention du projet — sprites
   orientés vers la droite) (`images/bosses/samurai_idle.png`), réutilisé aussi comme portrait de
-  dialogue (cf. `Constants.NPC_SKINS`).
+  dialogue (cf. `Constants.NPC_SKINS`). `ATTACK 1.png` (7 frames) recadrée en 64x40, jouée le temps
+  d'un coup de contact réussi (`images/bosses/samurai_attack.png`, cf. `Enemy.markContact`).
 - **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
   de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`).
 - **RPG Effect All Free** — rafale d'énergie (une des 9 teintes x 8 frames de fondu de
