@@ -149,6 +149,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       b.setAllowGravity(false);
       b.setSize(49, 59).setOffset(10, 1);
     }
+    // Généralisation du même principe (cf. BossDef.bodyFit) pour tout boss dont la frame source
+    // contient une marge transparente notable — sans ça, le corps (frame entière par défaut) laisse
+    // les pieds réels du personnage flotter au-dessus (ou sous, selon la marge) du bas du corps une
+    // fois posé au sol, au lieu de coïncider avec lui.
+    if (this.isBoss && opts?.bossDef?.bodyFit) {
+      const { width, height, offsetX, offsetY } = opts.bossDef.bodyFit;
+      (this.body as Phaser.Physics.Arcade.Body).setSize(width, height).setOffset(offsetX, offsetY);
+    }
     // Pas de vélocité initiale ici : au chargement d'une zone, le premier pas de physique peut
     // s'exécuter plusieurs fois d'affilée (rattrapage du pas fixe de Phaser après le hoquet de
     // chargement des assets) avant même le premier appel à updateAI() — une vélocité posée à

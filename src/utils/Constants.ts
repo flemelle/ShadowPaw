@@ -551,13 +551,30 @@ export interface BossDef {
    * (ex. le samouraï, 40x40) peut vouloir un multiplicateur propre plutôt que se fondre à la même
    * taille que les autres malgré une source différente. */
   scale?: number;
+  /** Corps physique resserré sur le contenu opaque réel de la frame (avant échelle), plutôt que la
+   * frame entière — sans ça, la marge transparente autour du personnage (ex. le samouraï, dont la
+   * frame 40x40 ne contient qu'un contenu de 24x34) se fait passer pour du corps, décalant
+   * visiblement les pieds du bas RÉEL du corps une fois posé au sol (même idée que le corps
+   * resserré du pattern 'phases3' ci-dessous, généralisée à n'importe quel boss). */
+  bodyFit?: { width: number; height: number; offsetX: number; offsetY: number };
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
   boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight', texture: TEX.BOSS_STONE_GUARDIAN },
   // Vieux samouraï aux yeux clos (FREE_Samurai 2D Pixel Art, cf. ACKNOWLEDGEMENTS.md) — se lit
   // "aveugle" sans le moindre artifice de teinte, contrairement au recyclage précédent du crâne.
-  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.BOSS_SAMURAI, animKey: ANIM_KEYS.SAMURAI_IDLE, scale: 3.4 },
+  boss_maitre_aveugle: {
+    name: 'Maître Aveugle',
+    hp: 7,
+    speed: 95,
+    pattern: 'erratic_fast',
+    musicRate: 1.15,
+    dialogTree: 'boss_maitre_aveugle_pre_fight',
+    texture: TEX.BOSS_SAMURAI,
+    animKey: ANIM_KEYS.SAMURAI_IDLE,
+    scale: 6.8,
+    bodyFit: { width: 24, height: 34, offsetX: 8, offsetY: 4 },
+  },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
   boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
   boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
