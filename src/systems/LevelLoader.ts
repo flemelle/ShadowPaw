@@ -138,6 +138,15 @@ export function buildZone(scene: Phaser.Scene, zoneMap: ZoneMap, powers: PowerSy
       const px = entity.x * TILE_SIZE + TILE_SIZE / 2;
       const py = entity.y * TILE_SIZE + TILE_SIZE / 2;
       const sprite = scene.add.sprite(px, py, markerTexFor(entity));
+      // Le marqueur hors combat matche la taille du vrai combat (cf. entities/Enemy.ts) plutôt que
+      // la taille native de la frame — sinon un boss dont le sprite est redimensionné pour le
+      // combat (ex. BossDef.scale du "Maître Aveugle") semble changer de taille au moment du
+      // déclenchement du combat. AVANT physics.add.existing : le corps statique se dimensionne
+      // d'après la taille affichée au moment de sa création (même contrainte que pour le boss réel).
+      if (entity.type === 'boss_arena' && entity.bossId) {
+        const scale = BOSS_DEFS[entity.bossId]?.scale;
+        if (scale) sprite.setScale(scale);
+      }
       scene.physics.add.existing(sprite, true);
       return { entity, sprite };
     });

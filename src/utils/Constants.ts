@@ -221,7 +221,7 @@ export function getCatDecorVariant(variant: number): (typeof CAT_DECOR_VARIANTS)
  * "tozen_zone1_intro"/"tozen_zone2_hint"/"tozen_zone3_hint" sont tous Tozen). Un PNJ dont aucun
  * préfixe ne correspond garde le marqueur générique (cercle cyan).
  */
-export const NPC_SKINS: { prefix: string; texture: string; animKey: string; frameSize?: number }[] = [
+export const NPC_SKINS: { prefix: string; texture: string; animKey: string; frameSize?: number; scale?: number }[] = [
   { prefix: 'tozen', texture: TEX.NPC_TOZEN, animKey: 'anim_npc_tozen_idle' },
   { prefix: 'ryo_spirit', texture: TEX.NPC_RYO_SPIRIT, animKey: 'anim_npc_ryo_spirit_idle' },
   { prefix: 'veilleur', texture: TEX.NPC_VEILLEUR, animKey: 'anim_npc_veilleur_idle' },
@@ -236,10 +236,13 @@ export const NPC_SKINS: { prefix: string; texture: string; animKey: string; fram
   // mais en frame 40x40 (pas 32x32 comme les PNJ ci-dessus), d'où le frameSize explicite ; son
   // animation (10 frames, pas les 7 génériques ci-dessous) est créée à part dans le bloc boss de
   // BootScene, que la boucle générique plus bas laisse intacte (cf. son garde-fou anims.exists).
-  { prefix: 'boss_maitre_aveugle', texture: TEX.BOSS_SAMURAI, animKey: 'anim_samurai_idle', frameSize: 40 },
+  // `scale` fait exception à la mise à l'échelle "192px standard" des autres PNJ ci-dessus (cf.
+  // DialogScene) : demandé identique à sa taille de combat (BOSS_DEFS.boss_maitre_aveugle.scale,
+  // dupliqué ici — BOSS_DEFS est déclaré plus bas dans ce fichier, inutilisable ici directement).
+  { prefix: 'boss_maitre_aveugle', texture: TEX.BOSS_SAMURAI, animKey: 'anim_samurai_idle', frameSize: 40, scale: 6.8 / 3 },
 ];
 
-export function getNpcSkin(dialogTree: string): { texture: string; animKey: string; frameSize?: number } | null {
+export function getNpcSkin(dialogTree: string): { texture: string; animKey: string; frameSize?: number; scale?: number } | null {
   return NPC_SKINS.find((s) => dialogTree.startsWith(s.prefix)) ?? null;
 }
 
@@ -572,7 +575,7 @@ export const BOSS_DEFS: Record<string, BossDef> = {
     dialogTree: 'boss_maitre_aveugle_pre_fight',
     texture: TEX.BOSS_SAMURAI,
     animKey: ANIM_KEYS.SAMURAI_IDLE,
-    scale: 6.8,
+    scale: 6.8 / 3,
     bodyFit: { width: 24, height: 34, offsetX: 8, offsetY: 4 },
   },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
