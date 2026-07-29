@@ -233,10 +233,10 @@ export const NPC_SKINS: { prefix: string; texture: string; animKey: string; fram
   // dialogue de chacune (référençant sa zone d'origine) qui les distingue, pas l'apparence.
   { prefix: 'rescue_cat_epilogue', texture: TEX.RESCUE_CAT, animKey: 'anim_rescue_cat_idle' },
   // Portrait de dialogue du boss "Maître Aveugle" (cf. BOSS_DEFS) — même texture que le combat,
-  // mais en frame 96x96 (pas 32x32 comme les PNJ ci-dessus), d'où le frameSize explicite ; son
+  // mais en frame 40x40 (pas 32x32 comme les PNJ ci-dessus), d'où le frameSize explicite ; son
   // animation (10 frames, pas les 7 génériques ci-dessous) est créée à part dans le bloc boss de
   // BootScene, que la boucle générique plus bas laisse intacte (cf. son garde-fou anims.exists).
-  { prefix: 'boss_maitre_aveugle', texture: TEX.BOSS_SAMURAI, animKey: 'anim_samurai_idle', frameSize: 96 },
+  { prefix: 'boss_maitre_aveugle', texture: TEX.BOSS_SAMURAI, animKey: 'anim_samurai_idle', frameSize: 40 },
 ];
 
 export function getNpcSkin(dialogTree: string): { texture: string; animKey: string; frameSize?: number } | null {
@@ -546,13 +546,18 @@ export interface BossDef {
   /** Sprite réel (+ animation d'idle) pour ce boss précis — sinon TEX.ENEMY générique teinté rouge. */
   texture?: string;
   animKey?: string;
+  /** Échelle du sprite en combat — sinon 1.7 par défaut (cf. Enemy.ts), calibrée sur les sprites
+   * de boss existants (48-64px). Un boss dont le sprite source est petit/discret une fois recadré
+   * (ex. le samouraï, 40x40) peut vouloir un multiplicateur propre plutôt que se fondre à la même
+   * taille que les autres malgré une source différente. */
+  scale?: number;
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
   boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight', texture: TEX.BOSS_STONE_GUARDIAN },
   // Vieux samouraï aux yeux clos (FREE_Samurai 2D Pixel Art, cf. ACKNOWLEDGEMENTS.md) — se lit
   // "aveugle" sans le moindre artifice de teinte, contrairement au recyclage précédent du crâne.
-  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.BOSS_SAMURAI, animKey: ANIM_KEYS.SAMURAI_IDLE },
+  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.BOSS_SAMURAI, animKey: ANIM_KEYS.SAMURAI_IDLE, scale: 3.4 },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
   boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
   boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },

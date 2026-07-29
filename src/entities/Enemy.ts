@@ -126,7 +126,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // boss agrandi après coup aurait gardé une hitbox (et donc un point de vérification de sol,
     // cf. hasGroundAhead) de la taille du sprite non agrandi.
     if (this.isBoss) {
-      this.setScale(1.7);
+      this.setScale(opts?.bossDef?.scale ?? 1.7);
       // Le losange générique (TEX.ENEMY) a besoin d'un accent rouge pour se lire comme "boss" ;
       // un vrai sprite (catgirl...) a déjà sa propre identité visuelle, pas touché.
       if (!opts?.texture) {

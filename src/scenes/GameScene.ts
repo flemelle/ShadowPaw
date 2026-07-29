@@ -695,11 +695,19 @@ export class GameScene extends Phaser.Scene {
     // spectral pour le combat réel (cf. Enemy.transform) — un choix de skin cohérent avec celui
     // déjà vu par le joueur juste avant, plutôt qu'un nouvel asset dédié.
     const preTransformSkin = bossDef?.pattern === 'phases3' && bossDef.dialogTree ? getNpcSkin(bossDef.dialogTree) : null;
-    // -TILE_SIZE : marge de sécurité au-dessus du sol — un boss (agrandi à l'échelle 1.7, cf.
-    // Enemy.ts) qui apparaît pile à la hauteur du marqueur peut s'enfoncer dans un sol désormais
-    // fin d'une seule tuile, au point de retomber (voire traverser) avant même que le combat ne
-    // commence (cf. LevelLoader.spawn, même correctif pour le joueur).
-    const boss = new Enemy(this, sprite.x, sprite.y - TILE_SIZE, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
+    // Marge de sécurité au-dessus du sol, proportionnelle à la taille RÉELLE affichée du boss
+    // (frame source x échelle, cf. BossDef.scale) plutôt qu'une constante fixe — un boss qui
+    // apparaît pile à la hauteur du marqueur peut s'enfoncer dans un sol désormais fin d'une seule
+    // tuile, au point de retomber (voire traverser) avant même que le combat ne commence (cf.
+    // LevelLoader.spawn, même correctif pour le joueur). Une constante fixe (l'ancien TILE_SIZE)
+    // suffisait pour des sprites d'~50-110px affichés, mais laissait un boss bien plus grand (ex.
+    // le samouraï, 136px) apparaître déjà enfoncé de moitié dans le sol — au point que la
+    // séparation Arcade d'un chevauchement aussi profond échouait purement et simplement, le
+    // laissant traverser le sol en chute libre plutôt que de le repousser dessus.
+    const bossTexKey = bossDef?.texture ?? TEX.ENEMY;
+    const bossFrameHeight = this.textures.get(bossTexKey).get(0).height;
+    const spawnClearance = (bossFrameHeight * (bossDef?.scale ?? 1.7)) / 2 + TILE_SIZE / 2;
+    const boss = new Enemy(this, sprite.x, sprite.y - spawnClearance, bossDef?.hp ?? 8, bossDef?.speed ?? 40, {
       isBoss: true,
       bossDef,
       groundTopByCol: this.groundTopByCol,
