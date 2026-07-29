@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin, POWER_ICON_TEX, BOSS_DEFS } from '@/utils/Constants';
+import { TILE_SIZE, TEX, PALETTES, ZONE_FLOOR_TEX, ZONE_BACKGROUND, DECOR_SETS, getNpcSkin, POWER_ICON_TEX, BOSS_DEFS, EPILOGUE_ZONE_ID } from '@/utils/Constants';
 import type { ZoneId } from '@/utils/Constants';
 import type { ZoneMap, ZoneEntity } from '@/utils/Types';
 import type { PowerSystem } from './PowerSystem';
@@ -20,8 +20,10 @@ export function getZoneMap(zoneId: string): ZoneMap {
   return map;
 }
 
+/** Les 8 chapitres de la trame — jamais l'épilogue (cf. EPILOGUE_ZONE_ID), qui n'est pas une
+ * étape normale de progression et ne doit pas apparaître dans les sélecteurs de zone admin. */
 export function listZoneIds(): string[] {
-  return Object.keys(MAP_REGISTRY);
+  return Object.keys(MAP_REGISTRY).filter((id) => id !== EPILOGUE_ZONE_ID);
 }
 
 export interface BuiltZone {

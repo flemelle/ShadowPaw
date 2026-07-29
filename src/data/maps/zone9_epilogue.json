@@ -1,0 +1,133 @@
+{
+  "id": "zone9_epilogue",
+  "name": "Le Havre",
+  "act": 2,
+  "ambiance": "Crépuscule chaleureux, retrouvailles — havre de paix hors de la trame, sans combat",
+  "palette": "ACT_2",
+  "notes": "Zone bonus manuelle (pas de génération procédurale) — accessible depuis l'écran de fin via GameState.enterEpilogue. Tous les PNJ nommés + les créatures sauvées (si secourues cette partie, cf. requiresRescued) s'y retrouvent.",
+  "cols": 70,
+  "rows": 12,
+  "tiles": [
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "......................................................................",
+    "######################################################################",
+    "......................................................................"
+  ],
+  "entities": [
+    {
+      "type": "spawn",
+      "x": 3,
+      "y": 9
+    },
+    {
+      "type": "npc",
+      "x": 8,
+      "y": 9,
+      "dialogTree": "tozen_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 14,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone2",
+      "requiresRescued": "cat_zone2"
+    },
+    {
+      "type": "npc",
+      "x": 20,
+      "y": 9,
+      "dialogTree": "veilleur_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 26,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone3",
+      "requiresRescued": "cat_zone3"
+    },
+    {
+      "type": "npc",
+      "x": 32,
+      "y": 9,
+      "dialogTree": "echo_hikari_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 38,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone4",
+      "requiresRescued": "cat_zone4"
+    },
+    {
+      "type": "npc",
+      "x": 44,
+      "y": 9,
+      "dialogTree": "reflet_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 50,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone6",
+      "requiresRescued": "cat_zone6"
+    },
+    {
+      "type": "npc",
+      "x": 56,
+      "y": 9,
+      "dialogTree": "ryo_spirit_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 60,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone7",
+      "requiresRescued": "cat_zone7"
+    },
+    {
+      "type": "npc",
+      "x": 64,
+      "y": 9,
+      "dialogTree": "malakar_epilogue"
+    },
+    {
+      "type": "npc",
+      "x": 67,
+      "y": 9,
+      "dialogTree": "rescue_cat_epilogue_zone8",
+      "requiresRescued": "cat_zone8"
+    },
+    {
+      "type": "cat_decor",
+      "x": 11,
+      "y": 9,
+      "variant": 0
+    },
+    {
+      "type": "cat_decor",
+      "x": 29,
+      "y": 9,
+      "variant": 1
+    },
+    {
+      "type": "cat_decor",
+      "x": 47,
+      "y": 9,
+      "variant": 2
+    },
+    {
+      "type": "cat_decor",
+      "x": 62,
+      "y": 9,
+      "variant": 0
+    }
+  ]
+}

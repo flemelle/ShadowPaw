@@ -109,12 +109,6 @@ export class MenuScene extends Phaser.Scene {
     });
     y += 60;
 
-    this.makeButton(y, 'Mode Admin — explorer librement', () => {
-      audioManager.play(this, SFX_KEYS.UI_SELECT);
-      this.openZoneSelect();
-    });
-    y += 60;
-
     this.makeButton(y, 'Options', () => {
       audioManager.play(this, SFX_KEYS.UI_SELECT);
       this.openOptions();
@@ -127,6 +121,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.buildMuteToggle();
+    this.buildAdminIconButton();
 
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Astuce : ajoutez ?admin=1 à l’URL pour lancer le Mode Admin directement.', {
@@ -185,6 +180,43 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
+  /** Mode Admin déplacé sur une petite icône (chat curieux, cf. ACKNOWLEDGEMENTS.md) en bas à
+   * droite plutôt que mêlé aux boutons principaux — une fonction de dev/exploration n'a pas sa
+   * place à côté de "Nouvelle partie"/"Continuer". L'infobulle ne s'affiche qu'au survol pour
+   * ne pas encombrer l'écran-titre en permanence. */
+  private buildAdminIconButton(): void {
+    const icon = this.add
+      .image(GAME_WIDTH - 30, GAME_HEIGHT - 34, TEX.ADMIN_ICON)
+      .setDisplaySize(30, 28)
+      .setInteractive({ useHandCursor: true });
+    const baseScale = icon.scaleX;
+
+    const tooltip = this.add
+      .text(GAME_WIDTH - 46, GAME_HEIGHT - 34, 'Mode Admin — explorer librement', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#8a7fa0',
+        backgroundColor: '#00000080',
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(1, 0.5)
+      .setAlpha(0);
+
+    icon.on('pointerover', () => {
+      audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 });
+      icon.setScale(baseScale * 1.15);
+      tooltip.setAlpha(1);
+    });
+    icon.on('pointerout', () => {
+      icon.setScale(baseScale);
+      tooltip.setAlpha(0);
+    });
+    icon.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_SELECT);
+      this.openZoneSelect();
+    });
+  }
+
   private makeButton(y: number, label: string, onClick: () => void): Button {
     return new Button(this, GAME_WIDTH / 2, y, label, {
       fontSize: '18px',
@@ -216,11 +248,17 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
     container.add(title);
 
-    const listWidth = 620;
-    const listHeight = 480;
-    const itemHeight = 58;
+    // Sur 2 colonnes (cf. columns: 2 ci-dessous), chaque colonne doit rester assez large pour
+    // qu'un titre de chapitre tienne sur une seule ligne (comme en simple colonne) — sans quoi
+    // le wordWrap ajoutait des lignes supplémentaires que itemHeight ne prévoyait pas, faisant
+    // chevaucher les entrées entre elles. itemHeight agrandi (58→76) pour aérer les boutons entre
+    // eux, et la grille centrée verticalement dans l'espace sous le titre plutôt que collée en haut.
+    const listWidth = 1080;
+    const itemHeight = 76;
+    const rows = Math.ceil(levelsData.zones.length / 2);
+    const listHeight = rows * itemHeight;
     const listX = GAME_WIDTH / 2 - listWidth / 2;
-    const listY = 120;
+    const listY = (GAME_HEIGHT - listHeight) / 2;
 
     const items = levelsData.zones.map((zone) => ({
       label: `${zone.chapterTitle}\n${zone.name}`,
@@ -241,6 +279,7 @@ export class MenuScene extends Phaser.Scene {
       items,
       textColor: TEXT_COLOR,
       hoverColor: ACCENT,
+      columns: 2,
     });
     container.add(this.zoneList.root);
 

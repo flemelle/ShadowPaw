@@ -74,8 +74,9 @@ export function buildBossTutorialSteps(): TutorialStep[] {
   ];
 }
 
-/** Les pouvoirs "actifs" se déclenchent avec une touche ; les autres agissent au simple contact. */
-const POWER_KEY_ACTION: Partial<Record<PowerId, ControlAction>> = {
+/** Les pouvoirs "actifs" se déclenchent avec une touche ; les autres agissent au simple contact.
+ * Exporté pour GameScene.toggleControlsOverlay, qui liste aussi les combos (cf. PowerSystem). */
+export const POWER_KEY_ACTION: Partial<Record<PowerId, ControlAction>> = {
   dash_fantome: 'dash',
   forme_ombre: 'shadowForm',
 };

@@ -2,9 +2,11 @@ import { PowerSystem } from './PowerSystem';
 import { DialogSystem } from './DialogSystem';
 import { PuzzleSystem } from './PuzzleSystem';
 import { SaveSystem } from './SaveSystem';
-import { ZONE_IDS, TEST_MODE_QUERY_FLAG } from '@/utils/Constants';
+import { ZONE_IDS, TEST_MODE_QUERY_FLAG, BOSS_DEFS, EPILOGUE_ZONE_ID } from '@/utils/Constants';
 import type { PowerId } from '@/utils/Constants';
 import type { ZoneMap } from '@/utils/Types';
+import { listZoneIds, getZoneMap } from './LevelLoader';
+import puzzlesData from '@/data/puzzles.json';
 
 /**
  * Instances partagées entre toutes les scènes (Phaser instancie les scènes
@@ -132,6 +134,47 @@ export function startTestMode(zoneId?: string): void {
 /** En Mode Admin, tous les gates de progression (boss, autels, combos) sont ignorés. */
 export function isGateOpen(): boolean {
   return gameState.testMode;
+}
+
+/**
+ * Entrée dans l'épilogue (cf. EPILOGUE_ZONE_ID), depuis l'écran de fin — DÉLIBÉRÉMENT distincte
+ * de startTestMode() : celle-ci appelle resetProgressState(), qui viderait rescuedCreatures et
+ * ferait apparaître l'épilogue sans aucun chat retrouvé, quelle que soit la vraie partie qui vient
+ * de se terminer. On ne pose que le flag testMode (pour que persistProgress reste un no-op tant
+ * qu'on s'y promène — cf. son propre garde-fou — sans jamais écraser le vrai point de sauvegarde
+ * du joueur avec la position dans cette zone bonus), sans toucher au reste de l'état.
+ */
+export function enterEpilogue(): void {
+  powerSystem.setTestMode(true);
+  gameState.testMode = true;
+  gameState.currentZone = EPILOGUE_ZONE_ID;
+}
+
+export interface AchievementCategory {
+  key: 'bosses' | 'captives' | 'shards' | 'endings';
+  label: string;
+  done: number;
+  total: number;
+}
+
+/** Totaux fixes des 4 catégories de succès (cf. MenuScene.showAchievements) — calculés à la
+ * demande à partir des données statiques plutôt que mis en cache, negligeable en coût et jamais
+ * périmé si une zone/un puzzle est ajouté. Compte courant lu depuis les instances live (gameState/
+ * puzzleSystem), pas depuis une sauvegarde, pour rester exact au milieu d'une partie en cours (cf.
+ * GameScene, qui affiche une notification à chaque progression plutôt qu'seulement au menu). */
+export function getAchievementProgress(): AchievementCategory[] {
+  const allEntities = listZoneIds().flatMap((id) => getZoneMap(id).entities);
+  const totalCaptives = allEntities.filter((e) => e.type === 'captive').length;
+  const totalShards = puzzlesData.puzzles.filter((p) => p.reward.type === 'reveal_shard').length;
+  const totalBosses = Object.keys(BOSS_DEFS).length;
+  const totalEndings = Object.keys(dialogSystem.endingConditions).length;
+
+  return [
+    { key: 'bosses', label: 'Gardiens vaincus', done: gameState.defeatedBosses.size, total: totalBosses },
+    { key: 'captives', label: 'Créatures sauvées', done: gameState.rescuedCreatures.size, total: totalCaptives },
+    { key: 'shards', label: 'Éclats de lumière recueillis', done: puzzleSystem.getCollectedShards().length, total: totalShards },
+    { key: 'endings', label: 'Fins découvertes', done: gameState.reachedEndings.size, total: totalEndings },
+  ];
 }
 
 /**

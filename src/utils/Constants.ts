@@ -11,6 +11,7 @@ export const SCENE_KEYS = {
   DIALOG: 'DialogScene',
   TUTORIAL: 'TutorialScene',
   PUZZLE: 'PuzzleScene',
+  ENDING_CUTSCENE: 'EndingCutsceneScene',
   END: 'EndScene',
 } as const;
 
@@ -33,9 +34,16 @@ export const ZONE_IDS = [
   'zone6_jardins_oublies',
   'zone7_salle_miroirs',
   'zone8_vide_entre_deux',
+  'zone9_epilogue',
 ] as const;
 
 export type ZoneId = (typeof ZONE_IDS)[number];
+
+/** Zone bonus hors progression (cf. GameState.enterEpilogue) — un havre paisible, sans combat,
+ * réunissant les PNJ et les créatures sauvées, accessible depuis l'écran de fin plutôt que par
+ * un zone_exit normal. Exclue de listZoneIds() (cf. LevelLoader) : jamais listée comme un
+ * "chapitre" au même titre que les 8 zones de la trame, dans les sélecteurs de zone admin. */
+export const EPILOGUE_ZONE_ID: ZoneId = 'zone9_epilogue';
 
 export const POWER_IDS = [
   'griffes_renforcees',
@@ -104,6 +112,7 @@ export const TEX = {
   LIFE_PICKUP: 'tex_life_pickup',
   PARTICLE: 'tex_particle',
   ENEMY: 'tex_enemy',
+  FLOOR_EPILOGUE: 'tex_floor_epilogue',
   MOB_CAT: 'tex_mob_cat',
   MOB_SKULL: 'tex_mob_skull',
   MOB_BOAR: 'tex_mob_boar',
@@ -114,6 +123,7 @@ export const TEX = {
   UI_PANEL: 'tex_ui_panel',
   UI_ICON_PLAY: 'tex_ui_icon_play',
   UI_ICON_PAUSE: 'tex_ui_icon_pause',
+  ADMIN_ICON: 'tex_admin_icon',
   POWER_ICON_CLAWS: 'tex_power_icon_claws',
   POWER_ICON_VISION: 'tex_power_icon_vision',
   POWER_ICON_DASH: 'tex_power_icon_dash',
@@ -162,6 +172,7 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.UI_PANEL]: `${ASSET_BASE}/images/ui/panel_wood.png`,
   [TEX.UI_ICON_PLAY]: `${ASSET_BASE}/images/ui/btn_play_light.png`,
   [TEX.UI_ICON_PAUSE]: `${ASSET_BASE}/images/ui/btn_pause_light.png`,
+  [TEX.ADMIN_ICON]: `${ASSET_BASE}/images/ui/icon_admin_cat.png`,
   [TEX.POWER_ICON_CLAWS]: `${ASSET_BASE}/images/ui/power_icon_claws.png`,
   [TEX.POWER_ICON_VISION]: `${ASSET_BASE}/images/ui/power_icon_vision.png`,
   [TEX.POWER_ICON_DASH]: `${ASSET_BASE}/images/ui/power_icon_dash.png`,
@@ -215,6 +226,10 @@ export const NPC_SKINS: { prefix: string; texture: string; animKey: string }[] =
   { prefix: 'echo_hikari', texture: TEX.NPC_ECHO_HIKARI, animKey: 'anim_npc_echo_hikari_idle' },
   { prefix: 'reflet', texture: TEX.NPC_REFLET, animKey: 'anim_npc_reflet_idle' },
   { prefix: 'malakar', texture: TEX.NPC_MALAKAR, animKey: 'anim_npc_malakar_idle' },
+  // Créatures sauvées retrouvées dans l'épilogue (cf. EntityNPC.requiresRescued) — même skin que
+  // sur la carte (ThreeColorFree, cf. ACKNOWLEDGEMENTS.md), pas de variante par chat : c'est le
+  // dialogue de chacune (référençant sa zone d'origine) qui les distingue, pas l'apparence.
+  { prefix: 'rescue_cat_epilogue', texture: TEX.RESCUE_CAT, animKey: 'anim_rescue_cat_idle' },
 ];
 
 export function getNpcSkin(dialogTree: string): { texture: string; animKey: string } | null {
@@ -240,11 +255,14 @@ export const POWER_ICON_TEX: Record<string, string> = {
 // une erreur de thème (mort/charogne dans un décor apaisé), alors qu'un crâne au milieu des
 // pierres tombales des zones GRAVEYARD est un pairing évident. Le chat d'ombre, silhouette sombre
 // bien plus neutre, se lit à l'inverse comme "esprit corrompu" dans un ciel clair sans détonner.
-export const MOB_TEX_BY_BG: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'NONE', string> = {
+export const MOB_TEX_BY_BG: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'NONE' | 'PINE_HILLS', string> = {
   GRAVEYARD: TEX.MOB_SKULL,
   FOREST: TEX.MOB_BOAR,
   STRINGSTAR: TEX.MOB_CAT,
   NONE: TEX.MOB_SKULL,
+  // Jamais utilisée en pratique (l'épilogue ne place aucun `mob`, cf. zone9_epilogue.json) —
+  // juste pour satisfaire l'exhaustivité du Record maintenant que PINE_HILLS existe.
+  PINE_HILLS: TEX.MOB_BOAR,
 };
 
 /** Clés des animations d'idle enregistrées au Boot (cf. BootScene.ts) pour les textures ci-dessus. */
@@ -311,6 +329,7 @@ export const ZONE_MUSIC: Record<ZoneId, string> = {
   zone6_jardins_oublies: MUSIC_KEYS.ZONE6,
   zone7_salle_miroirs: MUSIC_KEYS.ZONE7,
   zone8_vide_entre_deux: MUSIC_KEYS.ZONE8,
+  zone9_epilogue: MUSIC_KEYS.ENDING_A,
 };
 
 export const SFX_KEYS = {
@@ -353,6 +372,7 @@ export const BG_KEYS = {
   FOREST: 'forest',
   STRINGSTAR: 'stringstar',
   GRAVEYARD: 'graveyard',
+  PINE_HILLS: 'pinehills',
 } as const;
 
 export const ZONE_BACKGROUND: Record<ZoneId, keyof typeof BG_KEYS | null> = {
@@ -367,6 +387,7 @@ export const ZONE_BACKGROUND: Record<ZoneId, keyof typeof BG_KEYS | null> = {
   zone7_salle_miroirs: 'STRINGSTAR',
   // Décor abstrait : aucun fond peint, seul le voile de couleur (ZONE_AMBIANCE) habille le vide.
   zone8_vide_entre_deux: null,
+  zone9_epilogue: 'PINE_HILLS',
 };
 
 /** Zones où la super­position de corruption (ombre grandissante) réagit aux éclats collectés. */
@@ -406,6 +427,8 @@ export const ZONE_AMBIANCE: Record<ZoneId, ZoneAmbiance> = {
   zone7_salle_miroirs: { wallTint: 0x4a81ba, washColor: 0x3a5f8a, washAlpha: 0.2 },
   // Décor abstrait, vide
   zone8_vide_entre_deux: { wallTint: 0x0a0612, washColor: 0x0a0612, washAlpha: 0.4 },
+  // Havre de l'épilogue : crépuscule chaleureux (Pine Hills), pas de pénombre à combattre.
+  zone9_epilogue: { wallTint: 0x8a6a3a, washColor: 0xffb84a, washAlpha: 0.12 },
 };
 
 /**
@@ -422,6 +445,7 @@ export const ZONE_FLOOR_TEX: Record<ZoneId, string> = {
   zone6_jardins_oublies: 'tex_floor_zone6',
   zone7_salle_miroirs: 'tex_floor_zone7',
   zone8_vide_entre_deux: 'tex_floor_zone8',
+  zone9_epilogue: TEX.FLOOR_EPILOGUE,
 };
 
 /** Zones assez sombres ("Ombre") pour que Kiba émette une aura de lumière autour de lui. */
@@ -461,7 +485,7 @@ export const DECOR_PATHS: Record<string, string> = {
  * collision. `small: true` marque les décors assez compacts pour tenir sur une plateforme
  * flottante (cf. `placePlatformDecor` dans LevelLoader.ts) ; les autres ne sont posés qu'au sol.
  */
-export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', { key: string; scale: number; small?: boolean }[]> = {
+export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'PINE_HILLS', { key: string; scale: number; small?: boolean }[]> = {
   FOREST: [
     { key: DECOR_KEYS.TREE_SMALL, scale: 1 },
     { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1, small: true },
@@ -483,6 +507,13 @@ export const DECOR_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', { key: st
     { key: DECOR_KEYS.GRAVEYARD_STATUE, scale: 0.95 },
     { key: DECOR_KEYS.GRAVEYARD_BRUSH, scale: 1.1, small: true },
     { key: DECOR_KEYS.ROCK, scale: 0.9, small: true },
+  ],
+  // Pine Hills n'a pas ses propres props au sol (juste des calques de fond peints) — réutilise
+  // les décors génériques bois/forêt, thématiquement cohérents avec ses pins et ses collines.
+  PINE_HILLS: [
+    { key: DECOR_KEYS.TREE_SMALL, scale: 1 },
+    { key: DECOR_KEYS.BUSH_ROUND, scale: 1.1, small: true },
+    { key: DECOR_KEYS.FOREST_GRASS_LEAFY, scale: 1.6, small: true },
   ],
 };
 

@@ -3,7 +3,7 @@ import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, MUSIC_KEYS, SFX_KEYS, ZONE_MUSIC, 
 import type { EndingCondition } from '@/systems/DialogSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
-import { gameState } from '@/systems/GameState';
+import { gameState, getAchievementProgress, enterEpilogue } from '@/systems/GameState';
 
 interface EndSceneData {
   ending: EndingCondition & { id: string };
@@ -47,6 +47,20 @@ export class EndScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Notification de succès (même teinte "trophée" que GameScene.showAchievementToast) — ici
+    // plutôt qu'en jeu juste avant la transition vers cette scène, où elle n'aurait jamais eu le
+    // temps de s'afficher (cf. handleAutoTrigger, qui bascule de scène tout de suite après).
+    const endings = getAchievementProgress().find((c) => c.key === 'endings');
+    if (endings) {
+      this.add
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 90, `★ ${endings.label} : ${endings.done}/${endings.total}`, {
+          fontFamily: 'monospace',
+          fontSize: '15px',
+          color: '#8ad8ff',
+        })
+        .setOrigin(0.5);
+    }
+
     // Retrouvailles : seule la Fin A (positive) célèbre les créatures sauvées en cours de route —
     // la Fin B (Kiba cède à l'ombre) n'a pas le ton pour ça, et rien ne s'affiche si aucune n'a
     // été secourue plutôt que de célébrer un chiffre à zéro.
@@ -66,6 +80,26 @@ export class EndScene extends Phaser.Scene {
         this.add.sprite(startX + i * spacing, GAME_HEIGHT - 170, TEX.RESCUE_CAT).play(ANIM_KEYS.RESCUE_CAT_IDLE);
       }
     }
+
+    // Havre de l'épilogue (cf. GameState.enterEpilogue) : une promenade sans combat pour
+    // retrouver PNJ et créatures sauvées, hors de la sauvegarde — proposée aux deux fins,
+    // le ton (redemption ou non) reste assez ouvert dans les dialogues pour convenir aux deux.
+    const epilogueBtn = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 145, 'Se promener au Havre', {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#ffe27a',
+        backgroundColor: '#1a1428',
+        padding: { x: 16, y: 10 },
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    epilogueBtn.on('pointerover', () => audioManager.play(this, SFX_KEYS.UI_HOVER, { volume: 0.25 }));
+    epilogueBtn.on('pointerdown', () => {
+      audioManager.play(this, SFX_KEYS.UI_CONFIRM);
+      enterEpilogue();
+      this.scene.start(SCENE_KEYS.GAME);
+    });
 
     const btn = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 100, 'Retour au menu', {

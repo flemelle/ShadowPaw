@@ -50,10 +50,30 @@ const GRAVEYARD_LAYERS: LayerSpec[] = [
   { key: 'bg_graveyard_03', scrollFactor: 0.4 },
 ];
 
-export const BACKGROUND_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD', LayerSpec[]> = {
+/** Havre de l'épilogue (cf. GameState.EPILOGUE_ZONE_ID) — pack "Pine Hills" (cf.
+ * ACKNOWLEDGEMENTS.md), ciel crépusculaire chaleureux plutôt que la nuit/l'ombre du reste du jeu. */
+const PINE_HILLS_LAYERS: LayerSpec[] = [
+  { key: 'bg_pinehills_00', scrollFactor: 0.02 },
+  { key: 'bg_pinehills_01', scrollFactor: 0.04 },
+  { key: 'bg_pinehills_02', scrollFactor: 0.06 },
+  { key: 'bg_pinehills_03', scrollFactor: 0.08 },
+  { key: 'bg_pinehills_04', scrollFactor: 0.1 },
+  { key: 'bg_pinehills_05', scrollFactor: 0.12 },
+  { key: 'bg_pinehills_06', scrollFactor: 0.16 },
+  { key: 'bg_pinehills_07', scrollFactor: 0.24 },
+  { key: 'bg_pinehills_08', scrollFactor: 0.32 },
+  { key: 'bg_pinehills_09', scrollFactor: 0.42 },
+  { key: 'bg_pinehills_10', scrollFactor: 0.48 },
+  { key: 'bg_pinehills_11', scrollFactor: 0.52 },
+  { key: 'bg_pinehills_12', scrollFactor: 0.56 },
+  { key: 'bg_pinehills_13', scrollFactor: 0.62 },
+];
+
+export const BACKGROUND_SETS: Record<'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'PINE_HILLS', LayerSpec[]> = {
   FOREST: FOREST_LAYERS,
   STRINGSTAR: STRINGSTAR_LAYERS,
   GRAVEYARD: GRAVEYARD_LAYERS,
+  PINE_HILLS: PINE_HILLS_LAYERS,
 };
 
 export class ParallaxBackground {
@@ -63,7 +83,7 @@ export class ParallaxBackground {
 
   constructor(
     scene: Phaser.Scene,
-    set: 'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | null,
+    set: 'FOREST' | 'STRINGSTAR' | 'GRAVEYARD' | 'PINE_HILLS' | null,
     zoneWidthPx: number,
     withCorruptionOverlay: boolean,
     ambiance?: ZoneAmbiance,

@@ -509,6 +509,181 @@
         },
         "end": { "lines": [], "end": true }
       }
+    },
+    "tozen_epilogue": {
+      "npc": "tozen",
+      "displayName": "Tozen",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Te revoilà, Kiba. Le Domaine se souvient encore de tes pas dans la neige de Velkhar.",
+            "Peu savent que j'ai gardé ces portes plus longtemps qu'aucun chat avant moi. Toi, tu les as enfin dépassées."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "veilleur_epilogue": {
+      "npc": "veilleur",
+      "displayName": "Le Veilleur de Seikūji",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Le silence du Temple t'a bien formé, on dirait.",
+            "La Quiétude n'a jamais quitté ceux qui l'ont vraiment entendue — même loin de Seikūji."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "echo_hikari_epilogue": {
+      "npc": "echo_hikari",
+      "displayName": "L'Écho de Hikari",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Je ne suis qu'un écho... mais même un écho se souvient de sa gratitude.",
+            "Merci d'avoir cherché les éclats, jusqu'au dernier."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "reflet_epilogue": {
+      "npc": "reflet",
+      "displayName": "Le Reflet",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Un reflet n'est jamais tout à fait un mensonge.",
+            "Le tien, au moins, a choisi de te ressembler jusqu'au bout."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "ryo_spirit_epilogue": {
+      "npc": "ryo_spirit",
+      "displayName": "L'Esprit de Ryo",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "Mon disciple... je n'ai plus besoin de te guider. Tu as trouvé le chemin bien au-delà de ce que je t'ai enseigné.",
+            "Peu de chats savent que j'ai jadis refusé de devenir Gardien, pour ne jamais avoir à combattre celui que j'enseignais.",
+            "Toi, tu n'as pas eu ce choix. Tu l'as fait quand même."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "malakar_epilogue": {
+      "npc": "malakar",
+      "displayName": "Malakar, Sensei de l'Ombre",
+      "startNode": "start",
+      "description": "Épilogue — retrouvailles dans le Havre.",
+      "nodes": {
+        "start": {
+          "lines": [
+            "L'Ombre ne me pèse plus, petit chat. Pour la première fois depuis longtemps... je me repose.",
+            "Ce que j'appelais \"perfection\" n'était qu'une fuite loin de ce que je craignais de redevenir : simplement moi-même."
+          ],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone2": {
+      "npc": "cat_zone2",
+      "displayName": "Le chat de l'Antre",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 2, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Miaou... tu m'as sortie des chaînes de l'Antre. Je n'oublierai jamais cette obscurité — ni la lumière qui l'a suivie."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone3": {
+      "npc": "cat_zone3",
+      "displayName": "Le chat du Foyer",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 3, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Le Foyer des Ombres ne me hantera plus. Merci, Kiba."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone4": {
+      "npc": "cat_zone4",
+      "displayName": "Le chat du Temple",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 4, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Le Temple était si calme... trop calme, sans personne pour entendre mes miaulements. Merci d'avoir écouté."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone6": {
+      "npc": "cat_zone6",
+      "displayName": "Le chat des Jardins",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 6, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Les Jardins Oubliés se souviendront de toi, même corrompus comme ils l'étaient."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone7": {
+      "npc": "cat_zone7",
+      "displayName": "Le chat des Miroirs",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 7, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Tant de reflets, et aucun n'était vraiment toi... jusqu'à ce que le vrai arrive enfin."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
+    },
+    "rescue_cat_epilogue_zone8": {
+      "npc": "cat_zone8",
+      "displayName": "Le chat du Vide",
+      "startNode": "start",
+      "description": "Épilogue — le chat sauvé en zone 8, si secouru cette partie.",
+      "nodes": {
+        "start": {
+          "lines": ["Si près du Vide, j'avais perdu espoir. Tu es venu quand même."],
+          "choices": [{ "text": "(Partir)", "next": "end" }]
+        },
+        "end": { "lines": [], "end": true }
+      }
     }
   },
   "endingConditions": {

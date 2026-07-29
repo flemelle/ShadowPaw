@@ -256,6 +256,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
    * baissent (cf. pickAttack) : le combat ne devient réellement complet qu'en phase 3.
    */
   private updateBossCombatAI(playerX: number, playerY: number, time: number, body: Phaser.Physics.Arcade.Body): void {
+    // Ce boss flotte sans gravité ni collider de sol (cf. constructor) : rien d'autre ici ne
+    // pilote jamais l'axe Y. Sans ce reset, l'impulsion verticale du recul de takeDamage
+    // (setVelocity(dir*KNOCKBACK_SPEED, -80)) restait figée à -80 pour toujours une fois la
+    // fenêtre de knockback passée (aucune gravité pour la ramener à 0, aucun sol pour l'arrêter),
+    // envoyant le boss dériver vers le haut à vitesse constante jusqu'à sortir du monde.
+    body.setVelocityY(0);
     if (!this.isTransformed) {
       if (this.transformAt === -Infinity) this.transformAt = time + BOSS_TRANSFORM_MS;
       body.setVelocityX(0);

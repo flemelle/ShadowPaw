@@ -7,6 +7,7 @@ import { GameScene } from '@/scenes/GameScene';
 import { DialogScene } from '@/scenes/DialogScene';
 import { TutorialScene } from '@/scenes/TutorialScene';
 import { PuzzleScene } from '@/scenes/PuzzleScene';
+import { EndingCutsceneScene } from '@/scenes/EndingCutsceneScene';
 import { EndScene } from '@/scenes/EndScene';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -27,7 +28,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, PrologueScene, MenuScene, GameScene, DialogScene, TutorialScene, PuzzleScene, EndScene],
+  scene: [BootScene, PrologueScene, MenuScene, GameScene, DialogScene, TutorialScene, PuzzleScene, EndingCutsceneScene, EndScene],
 };
 
 const game = new Phaser.Game(config);

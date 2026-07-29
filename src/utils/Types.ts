@@ -14,6 +14,10 @@ export interface EntityNPC {
   dialogTree: string;
   requiresPower?: PowerId;
   optional?: boolean;
+  /** Id d'une créature piégée (cf. EntityCaptive.id) — n'apparaît que si elle a été secourue
+   * cette partie (gameState.rescuedCreatures). Sert à l'épilogue (cf. GameState.EPILOGUE_ZONE_ID)
+   * pour n'y montrer que les chats effectivement retrouvés par le joueur. */
+  requiresRescued?: string;
 }
 
 export interface EntityBossArena {

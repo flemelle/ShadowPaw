@@ -15,6 +15,9 @@ interface ScrollableListOptions {
   items: ScrollableListItem[];
   textColor?: string;
   hoverColor?: string;
+  /** Nombre de colonnes (défaut 1) — répartit les items en grille plutôt qu'en simple pile
+   * verticale, pour une liste courte plus aérée (ex. sélection de chapitre en Mode Admin). */
+  columns?: number;
 }
 
 /**
@@ -30,22 +33,25 @@ export class ScrollableList {
   private wheelHandler: (pointer: unknown, objs: unknown, dx: number, dy: number) => void;
 
   constructor(private readonly scene: Phaser.Scene, opts: ScrollableListOptions) {
-    const { x, y, width, height, itemHeight, items, textColor = '#e8e2f0', hoverColor = '#d8b34a' } = opts;
+    const { x, y, width, height, itemHeight, items, textColor = '#e8e2f0', hoverColor = '#d8b34a', columns = 1 } = opts;
+    const colWidth = width / columns;
 
     this.root = scene.add.container(x, y);
     this.inner = scene.add.container(0, 0);
     this.root.add(this.inner);
 
     items.forEach((item, i) => {
+      const col = i % columns;
+      const row = Math.floor(i / columns);
       const label = scene.add
-        .text(width / 2, i * itemHeight, item.label, {
+        .text(col * colWidth + colWidth / 2, row * itemHeight, item.label, {
           fontFamily: 'monospace',
           fontSize: '17px',
           color: textColor,
           backgroundColor: '#1a1428',
           padding: { x: 12, y: 8 },
           align: 'center',
-          wordWrap: { width: width - 40, useAdvancedWrap: true },
+          wordWrap: { width: colWidth - 40, useAdvancedWrap: true },
         })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true });
@@ -58,7 +64,7 @@ export class ScrollableList {
       this.inner.add(label);
     });
 
-    const contentHeight = items.length * itemHeight;
+    const contentHeight = Math.ceil(items.length / columns) * itemHeight;
     this.maxScroll = Math.max(0, contentHeight - height);
 
     const maskShape = scene.make.graphics({});

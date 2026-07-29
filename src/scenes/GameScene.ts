@@ -22,11 +22,12 @@ import {
   getCatDecorVariant,
   getNpcSkin,
   POWER_ICON_TEX,
+  EPILOGUE_ZONE_ID,
 } from '@/utils/Constants';
 import type { ZoneId, PowerId } from '@/utils/Constants';
 import { buildZone, getZoneMap, listZoneIds, type BuiltZone } from '@/systems/LevelLoader';
 import { generateZoneLive } from '@/systems/ZoneGenerator';
-import { CameraSystem } from '@/systems/CameraSystem';
+import { CameraSystem, GAMEPLAY_ZOOM } from '@/systems/CameraSystem';
 import { ParallaxBackground } from '@/systems/ParallaxBackground';
 import { audioManager } from '@/systems/AudioManager';
 import { Player } from '@/entities/Player';
@@ -40,8 +41,8 @@ import { toggleFullscreen, isFullscreen } from '@/utils/Fullscreen';
 import { ScrollableList } from '@/utils/ScrollableList';
 import { Button } from '@/utils/Button';
 import { buildOptionsOverlay } from '@/scenes/OptionsOverlay';
-import { keyBindings } from '@/systems/KeyBindings';
-import { buildIntroTutorialSteps, buildPowerTutorialSteps, buildCombatTutorialSteps, buildBossTutorialSteps } from '@/systems/TutorialContent';
+import { keyBindings, CONTROL_ACTIONS, ACTION_LABELS } from '@/systems/KeyBindings';
+import { buildIntroTutorialSteps, buildPowerTutorialSteps, buildCombatTutorialSteps, buildBossTutorialSteps, POWER_KEY_ACTION } from '@/systems/TutorialContent';
 import type { TutorialStep } from '@/systems/TutorialContent';
 import {
   powerSystem,
@@ -50,7 +51,9 @@ import {
   gameState,
   persistProgress,
   startTestMode,
+  getAchievementProgress,
 } from '@/systems/GameState';
+import type { AchievementCategory } from '@/systems/GameState';
 
 const INTERACT_RANGE = 52;
 // Assez large pour prévenir avant tout contact (dégâts) réel avec l'ennemi, cf. maybeShowCombatTutorial.
@@ -92,15 +95,18 @@ export class GameScene extends Phaser.Scene {
   private zoneLabel!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
+  private achievementToastText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
   private powerTooltip!: Phaser.GameObjects.Text;
   private testBanner?: Phaser.GameObjects.Text;
   private debugZoneMenu?: Phaser.GameObjects.Container;
   private keyN!: Phaser.Input.Keyboard.Key;
   private keyF1!: Phaser.Input.Keyboard.Key;
+  private keyTab!: Phaser.Input.Keyboard.Key;
   private keyUp!: Phaser.Input.Keyboard.Key;
   private keyDown!: Phaser.Input.Keyboard.Key;
   private pauseMenu?: Phaser.GameObjects.Container;
+  private controlsOverlay?: Phaser.GameObjects.Container;
   private optionsBox?: Phaser.GameObjects.Container;
   private zoneList?: ScrollableList;
   private dialogActive = false;
@@ -168,6 +174,7 @@ export class GameScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keyN = kb.addKey(Phaser.Input.Keyboard.KeyCodes.N);
     this.keyF1 = kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
+    this.keyTab = kb.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
     this.keyUp = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     this.keyDown = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
 
@@ -309,12 +316,18 @@ export class GameScene extends Phaser.Scene {
       this.darknessMaskSource = this.add
         .image(this.player.x, this.player.y, TEX.PLAYER_GLOW)
         .setScale(3.2);
+      // Hauteur du voile élargie d'une pleine fenêtre de chaque côté (même marge verticale que
+      // CameraSystem.setupForZone) : le suivi vertical asymétrique de la caméra la laisse
+      // dépasser des bornes exactes de la zone (ex. joueur en haut d'une tour dans une petite
+      // zone) — un voile pile aux dimensions de la zone laissait alors le haut de l'écran
+      // découvert (fond normalement éclairé visible) plutôt que dans le noir.
+      const viewportWorldHeight = GAME_HEIGHT / GAMEPLAY_ZOOM;
       this.darknessOverlay = this.add
         .rectangle(
           (zoneMap.cols * TILE_SIZE) / 2,
           (zoneMap.rows * TILE_SIZE) / 2,
           zoneMap.cols * TILE_SIZE,
-          zoneMap.rows * TILE_SIZE,
+          zoneMap.rows * TILE_SIZE + 2 * viewportWorldHeight,
           0x000000,
           0.94,
         )
@@ -338,6 +351,14 @@ export class GameScene extends Phaser.Scene {
 
     this.built.entityMarkers.forEach(({ entity, sprite }) => {
       if (entity.type === 'npc') {
+        // Chat retrouvé dans l'épilogue (cf. EPILOGUE_ZONE_ID) : n'apparaît que s'il a
+        // effectivement été secouru cette partie — jamais un simple gate d'affichage comme
+        // requiresPower (ne peut pas changer une fois dans la zone, donc pas besoin de la
+        // logique par-frame de NPC.update, un simple filtre à la construction suffit).
+        if (entity.requiresRescued && !gameState.rescuedCreatures.has(entity.requiresRescued)) {
+          sprite.destroy();
+          return;
+        }
         const skin = getNpcSkin(entity.dialogTree);
         if (skin) sprite.play(skin.animKey);
         this.npcs.push(new NPC(this, sprite, entity, powerSystem));
@@ -441,7 +462,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     if (this.zoneLabel) this.updateZoneLabel();
-    if (this.testBanner) this.testBanner.setVisible(powerSystem.isTestMode());
+    if (this.testBanner) this.testBanner.setVisible(powerSystem.isTestMode() && gameState.currentZone !== EPILOGUE_ZONE_ID);
 
     this.syncCameraIgnoreLists();
     this.zoneReady = true;
@@ -517,16 +538,24 @@ export class GameScene extends Phaser.Scene {
     this.playerGlow?.setPosition(this.player.x, this.player.y);
     this.darknessMaskSource?.setPosition(this.player.x, this.player.y);
 
-    if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyN)) {
+    // MODE ADMIN uniquement — jamais dans l'épilogue (cf. GameState.enterEpilogue) : ce dernier
+    // pose testMode pour éviter d'écraser la sauvegarde (cf. persistProgress), pas pour ouvrir
+    // les outils de dev en pleine promenade narrative.
+    const isRealAdminMode = powerSystem.isTestMode() && gameState.currentZone !== EPILOGUE_ZONE_ID;
+    if (isRealAdminMode && Phaser.Input.Keyboard.JustDown(this.keyN)) {
       this.player.setNoclip(!this.player.isNoclip());
       this.toast(this.player.isNoclip() ? 'Noclip activé' : 'Noclip désactivé');
     }
-    if (powerSystem.isTestMode() && Phaser.Input.Keyboard.JustDown(this.keyF1)) {
+    if (isRealAdminMode && Phaser.Input.Keyboard.JustDown(this.keyF1)) {
       this.toggleDebugZoneMenu();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keyTab) && !this.pauseMenu && !this.optionsBox && !this.debugZoneMenu) {
+      this.toggleControlsOverlay();
     }
     if (keyBindings.justDown('pause')) {
       if (this.optionsBox) this.closeOptions();
       else if (this.debugZoneMenu) this.toggleDebugZoneMenu();
+      else if (this.controlsOverlay) this.toggleControlsOverlay();
       else this.togglePauseMenu();
     }
     if (this.debugZoneMenu && this.zoneList) {
@@ -558,15 +587,20 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- Interactions ----------
 
-  // Types dont l'interaction (E) ne fait absolument rien : 'zone_exit'/'ending_trigger' se
-  // déclenchent par simple contact (overlap), pas par E — le prompt "E : Interagir" ne doit pas
-  // non plus apparaître pour eux, une invite trompeuse vers une action qui se produit déjà seule.
-  private static readonly NON_INTERACTIVE_TYPES: ZoneEntity['type'][] = ['npc', 'zone_exit', 'ending_trigger'];
+  // Types dont l'interaction (E) ne fait absolument rien : 'zone_exit'/'ending_trigger'/'life_pickup'
+  // se déclenchent par simple contact (overlap), pas par E — le prompt "E : Interagir" ne doit pas
+  // non plus apparaître pour eux, une invite trompeuse vers une action qui se produit déjà seule
+  // (cf. le bug rapporté : le prompt s'affichait sur une vie bonus, mais E n'avait aucun effet).
+  private static readonly NON_INTERACTIVE_TYPES: ZoneEntity['type'][] = ['npc', 'zone_exit', 'ending_trigger', 'life_pickup'];
 
   private nearestInteractable(): { entity: ZoneEntity; sprite: Phaser.GameObjects.Sprite } | null {
     let best: { entity: ZoneEntity; sprite: Phaser.GameObjects.Sprite; dist: number } | null = null;
     for (const marker of this.built.entityMarkers) {
       if (GameScene.NON_INTERACTIVE_TYPES.includes(marker.entity.type)) continue;
+      // Un marqueur "résolu" (boss vaincu, otage libéré...) détruit son sprite (cf.
+      // resolveBossVictory/rescueCaptive) sans jamais quitter entityMarkers — sans ce filtre, le
+      // prompt "Appuyer sur E" restait affiché indéfiniment sur un emplacement déjà vide.
+      if (!marker.sprite.active) continue;
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, marker.sprite.x, marker.sprite.y);
       if (dist <= INTERACT_RANGE && (!best || dist < best.dist)) {
         best = { ...marker, dist };
@@ -727,6 +761,7 @@ export class GameScene extends Phaser.Scene {
     sprite.destroy();
     audioManager.setMusicRate(1);
     audioManager.play(this, SFX_KEYS.BOSS_DEFEATED);
+    this.showAchievementToast('bosses');
     this.activeBoss = undefined;
     if (entity.grantsPower) {
       const power = entity.grantsPower;
@@ -803,7 +838,7 @@ export class GameScene extends Phaser.Scene {
         gameState.reachedEndings.add(ending.id);
         persistProgress(this.player.x, this.player.y, true);
       }
-      this.scene.start(SCENE_KEYS.END, { ending });
+      this.scene.start(SCENE_KEYS.ENDING_CUTSCENE, { ending });
     }
   }
 
@@ -913,6 +948,7 @@ export class GameScene extends Phaser.Scene {
     gameState.rescuedCreatures.add(captive.entity.id);
     persistProgress(this.player.x, this.player.y, true);
     this.toast('Une créature piégée a été libérée !');
+    this.showAchievementToast('captives');
     this.safeDelay(400, () => this.startDialog(`captive_${captive.entity.id}_thanks`));
   }
 
@@ -1249,6 +1285,7 @@ export class GameScene extends Phaser.Scene {
     if (this.background && CORRUPTED_ZONES.includes(gameState.currentZone as ZoneId)) {
       this.background.setPurificationLevel(puzzleSystem.getCollectedShards().length / 5);
     }
+    this.showAchievementToast('shards');
   }
 
   // ---------- HUD ----------
@@ -1276,6 +1313,21 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setAlpha(0);
     this.hud.add(this.toastText);
+
+    // Notification de succès, distincte du toast narratif ci-dessus (coin, pas centré ; teinte
+    // "trophée" propre) — cf. showAchievementToast, affichée à chaque progression d'une des 4
+    // catégories (gardiens/créatures/éclats/fins), pas seulement consultable depuis le menu.
+    this.achievementToastText = this.add
+      .text(GAME_WIDTH - 16, 90, '', {
+        fontFamily: 'monospace',
+        fontSize: '15px',
+        color: '#8ad8ff',
+        align: 'right',
+        ...HUD_STROKE,
+      })
+      .setOrigin(1, 0)
+      .setAlpha(0);
+    this.hud.add(this.achievementToastText);
 
     this.promptText = this.add
       .text(0, 0, 'Appuyer sur E', {
@@ -1332,7 +1384,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.hud.add(controlHint);
 
-    if (powerSystem.isTestMode()) {
+    if (powerSystem.isTestMode() && gameState.currentZone !== EPILOGUE_ZONE_ID) {
       this.testBanner = this.add.text(
         16,
         44,
@@ -1350,8 +1402,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateLivesDisplay(): void {
-    const max = this.maxLives;
-    this.livesText.setText('♥'.repeat(Math.max(0, this.lives)) + '♡'.repeat(Math.max(0, max - this.lives)));
+    // À 3 vies ou moins, on n'affiche que les 3 cœurs de départ (pleins/vides) plutôt que la
+    // rangée complète jusqu'au maximum (qui peut grossir avec les vies bonus, cf. maxLives) —
+    // sans ça, être presque mort avec plusieurs vies bonus en réserve affichait une longue rangée
+    // de cœurs vides à côté d'un ou deux pleins, illisible comme "en danger".
+    const total = this.lives <= LIVES_START ? LIVES_START : this.maxLives;
+    this.livesText.setText('♥'.repeat(Math.max(0, this.lives)) + '♡'.repeat(Math.max(0, total - this.lives)));
   }
 
   /** Vie bonus (cf. EntityLifePickup) : augmente le maximum ET le compte courant tout de suite,
@@ -1374,6 +1430,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateZoneLabel(): void {
+    // L'épilogue n'a délibérément pas d'entrée dans levels.json (cf. EPILOGUE_ZONE_ID) — sans
+    // quoi il réapparaîtrait comme un 9e "chapitre" dans les sélecteurs de zone admin, qui
+    // parcourent directement levels.json (cf. MenuScene.openZoneSelect) plutôt que listZoneIds().
+    if (gameState.currentZone === EPILOGUE_ZONE_ID) {
+      this.zoneLabel.setText('Le Havre');
+      return;
+    }
     const zoneMeta = levelsData.zones.find((z) => z.id === gameState.currentZone);
     this.zoneLabel.setText(zoneMeta ? `${zoneMeta.chapterTitle} — ${zoneMeta.name}` : gameState.currentZone);
   }
@@ -1403,6 +1466,17 @@ export class GameScene extends Phaser.Scene {
     this.toastText.setText(message);
     this.toastText.setAlpha(1);
     this.tweens.add({ targets: this.toastText, alpha: 0, delay: 2200, duration: 500 });
+  }
+
+  /** Notification "★ Catégorie : x/y" à chaque progression d'un succès (gardien vaincu, créature
+   * sauvée, éclat recueilli, fin découverte) — cf. getAchievementProgress pour les 4 catégories,
+   * cohérentes avec le panneau Succès du menu (mais lues en direct, pas depuis la sauvegarde). */
+  private showAchievementToast(key: AchievementCategory['key']): void {
+    const category = getAchievementProgress().find((c) => c.key === key);
+    if (!category) return;
+    this.achievementToastText.setText(`★ ${category.label} : ${category.done}/${category.total}`);
+    this.achievementToastText.setAlpha(1);
+    this.tweens.add({ targets: this.achievementToastText, alpha: 0, delay: 2400, duration: 500 });
   }
 
   // ---------- Pause / debug menus ----------
@@ -1493,6 +1567,105 @@ export class GameScene extends Phaser.Scene {
     this.pauseMenu = container;
   }
 
+  /** Rappel des commandes (Tab) — toutes les actions remappables (cf. KeyBindings), pas juste
+   * le résumé abrégé du HUD (déplacement/saut/interagir/pause, cf. controlHint) qui omettait
+   * dash/forme ombre/attaque. Purement informatif, fermé par Tab ou Échap. */
+  private toggleControlsOverlay(): void {
+    if (this.controlsOverlay) {
+      audioManager.play(this, SFX_KEYS.UI_CANCEL);
+      this.controlsOverlay.destroy();
+      this.controlsOverlay = undefined;
+      return;
+    }
+    audioManager.play(this, SFX_KEYS.UI_SELECT);
+    const container = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0d0a16, 0.9);
+    container.add(overlay);
+
+    const title = this.add
+      .text(GAME_WIDTH / 2, 90, 'Commandes', { fontFamily: 'monospace', fontSize: '28px', color: '#d8b34a' })
+      .setOrigin(0.5);
+    container.add(title);
+
+    // Deux colonnes (commandes de base à gauche, combos à droite) : les 4 combos, chacun sur 2
+    // lignes (nom + composition), ne tenaient plus sous les 8 commandes en une seule colonne.
+    const leftX = GAME_WIDTH / 2 - 280;
+    const rightX = GAME_WIDTH / 2 + 220;
+    const rowHeight = 44;
+    const startY = 170;
+    CONTROL_ACTIONS.forEach((action, i) => {
+      const row = this.add
+        .text(leftX - 20, startY + i * rowHeight, `${ACTION_LABELS[action]}`, {
+          fontFamily: 'monospace',
+          fontSize: '18px',
+          color: '#e8e2f0',
+        })
+        .setOrigin(1, 0.5);
+      const key = this.add
+        .text(leftX + 20, startY + i * rowHeight, keyBindings.getKeyName(action), {
+          fontFamily: 'monospace',
+          fontSize: '18px',
+          color: '#d8b34a',
+          backgroundColor: '#1a1428',
+          padding: { x: 10, y: 4 },
+        })
+        .setOrigin(0, 0.5);
+      container.add([row, key]);
+    });
+    // Alias fixe (jamais remappable, cf. Player.spaceKey) toujours actif en plus de la touche Sauter.
+    const spaceHint = this.add
+      .text(leftX, startY + CONTROL_ACTIONS.length * rowHeight + 10, "Espace : saute aussi,\nquelle que soit la touche Sauter remappée", {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#8a7fa0',
+        align: 'center',
+      })
+      .setOrigin(0.5, 0);
+    container.add(spaceHint);
+
+    // Combos (cf. PowerSystem.combos) : deux pouvoirs maintenus/actifs en même temps. Les
+    // pouvoirs "passifs" (sans touche, cf. POWER_KEY_ACTION) agissent en continu une fois
+    // débloqués — seule la touche du pouvoir "actif" de la paire doit vraiment être tenue.
+    const combosTitle = this.add
+      .text(rightX, startY - 36, 'Combos', { fontFamily: 'monospace', fontSize: '20px', color: '#d8b34a' })
+      .setOrigin(0.5);
+    container.add(combosTitle);
+    const comboRowHeight = 62;
+    powerSystem.combos.forEach((combo, i) => {
+      const y = startY + i * comboRowHeight;
+      // Chaque pouvoir affiche SA touche entre crochets — [auto] pour les pouvoirs passifs (cf.
+      // POWER_KEY_ACTION), qui agissent en continu une fois débloqués, sans touche à tenir.
+      const composition = combo.requires
+        .map((p) => {
+          const name = powerSystem.getDef(p)?.name ?? p;
+          const action = POWER_KEY_ACTION[p];
+          return `${name} [${action ? keyBindings.getKeyName(action) : 'auto'}]`;
+        })
+        .join(' + ');
+      const name = this.add
+        .text(rightX, y, combo.name, { fontFamily: 'monospace', fontSize: '17px', color: '#ffe27a' })
+        .setOrigin(0.5);
+      const comp = this.add
+        .text(rightX, y + 20, composition, {
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: '#c9c2d9',
+          align: 'center',
+          wordWrap: { width: 340 },
+        })
+        .setOrigin(0.5, 0);
+      container.add([name, comp]);
+    });
+
+    const hint = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 40, 'Tab ou Échap : fermer', { fontFamily: 'monospace', fontSize: '14px', color: '#8a7fa0' })
+      .setOrigin(0.5);
+    container.add(hint);
+
+    this.cameras.main.ignore(container);
+    this.controlsOverlay = container;
+  }
+
   private openOptions(): void {
     if (this.optionsBox) {
       this.closeOptions();
@@ -1526,11 +1699,17 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     container.add(title);
 
-    const listWidth = 620;
-    const listHeight = 500;
-    const itemHeight = 58;
+    // Sur 2 colonnes (cf. columns: 2 ci-dessous), chaque colonne doit rester assez large pour
+    // qu'un titre de chapitre tienne sur une seule ligne (comme en simple colonne) — sans quoi
+    // le wordWrap ajoutait des lignes supplémentaires que itemHeight ne prévoyait pas, faisant
+    // chevaucher les entrées entre elles. itemHeight agrandi (58→76) pour aérer les boutons entre
+    // eux, et la grille centrée verticalement dans l'espace sous le titre plutôt que collée en haut.
+    const listWidth = 1080;
+    const itemHeight = 76;
+    const rows = Math.ceil(listZoneIds().length / 2);
+    const listHeight = rows * itemHeight;
     const listX = GAME_WIDTH / 2 - listWidth / 2;
-    const listY = 110;
+    const listY = (GAME_HEIGHT - listHeight) / 2;
 
     const items = listZoneIds().map((zoneId) => {
       const meta = levelsData.zones.find((z) => z.id === zoneId);
@@ -1553,6 +1732,7 @@ export class GameScene extends Phaser.Scene {
       height: listHeight,
       itemHeight,
       items,
+      columns: 2,
     });
     container.add(this.zoneList.root);
 

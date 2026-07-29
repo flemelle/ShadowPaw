@@ -90,9 +90,15 @@ export class BootScene extends Phaser.Scene {
     ['00', '01', '02', '03'].forEach((n) => {
       this.load.image(`bg_graveyard_${n}`, `${ASSET_BASE}/images/backgrounds/graveyard/layer_${n}.png`);
     });
+    ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13'].forEach((n) => {
+      this.load.image(`bg_pinehills_${n}`, `${ASSET_BASE}/images/backgrounds/pinehills/layer_${n}.png`);
+    });
 
     // --- Textures de sol par zone (pré-teintées, cf. Constants.ZONE_FLOOR_TEX) ---
+    // L'épilogue (zone9) n'a pas de floor_zoneN.png pré-généré — sa texture de sol est procédurale
+    // (cf. generateTileTexture(TEX.FLOOR_EPILOGUE, ...) plus bas), pas un fichier à charger ici.
     Object.entries(ZONE_FLOOR_TEX).forEach(([zoneId, texKey]) => {
+      if (texKey === TEX.FLOOR_EPILOGUE) return;
       const n = zoneId.match(/^zone(\d)/)?.[1];
       this.load.image(texKey, `${ASSET_BASE}/images/tiles/floor_zone${n}.png`);
     });
@@ -110,6 +116,7 @@ export class BootScene extends Phaser.Scene {
       TEX.UI_PANEL,
       TEX.UI_ICON_PLAY,
       TEX.UI_ICON_PAUSE,
+      TEX.ADMIN_ICON,
       TEX.POWER_ICON_CLAWS,
       TEX.POWER_ICON_VISION,
       TEX.POWER_ICON_DASH,
@@ -120,7 +127,7 @@ export class BootScene extends Phaser.Scene {
     });
     this.load.spritesheet(TEX.PLAYER_IDLE, REAL_TEX_PATHS[TEX.PLAYER_IDLE], { frameWidth: 46, frameHeight: 58 });
     this.load.spritesheet(TEX.PLAYER_WALK, REAL_TEX_PATHS[TEX.PLAYER_WALK], { frameWidth: 46, frameHeight: 58 });
-    this.load.spritesheet(TEX.MOB_BOAR, REAL_TEX_PATHS[TEX.MOB_BOAR], { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet(TEX.MOB_BOAR, REAL_TEX_PATHS[TEX.MOB_BOAR], { frameWidth: 40, frameHeight: 32 });
     this.load.spritesheet(TEX.RESCUE_CAT, REAL_TEX_PATHS[TEX.RESCUE_CAT], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.RESCUE_CAT_RUN, REAL_TEX_PATHS[TEX.RESCUE_CAT_RUN], { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet(TEX.CATGIRL_BOSS, REAL_TEX_PATHS[TEX.CATGIRL_BOSS], { frameWidth: 48, frameHeight: 48 });
@@ -152,6 +159,9 @@ export class BootScene extends Phaser.Scene {
     this.generateTileTexture(TEX.DASH_GATE, 0x3fb5b0, true);
     this.generateTileTexture(TEX.SHADOW_WALL, 0x5a2e8a, false, 0.55);
     this.generateTileTexture(TEX.LIGHT_OBSTACLE, 0xd8b34a, true);
+    // Sol de l'épilogue : brun chaleureux (pas de floor_zoneN.png pré-généré pour cette zone bonus,
+    // cf. Constants.ZONE_FLOOR_TEX/ACKNOWLEDGEMENTS.md — Pine Hills n'est qu'un décor peint).
+    this.generateTileTexture(TEX.FLOOR_EPILOGUE, 0x7a5230, true);
 
     this.generateGlowTexture();
     this.generatePortraitTextures();
@@ -209,7 +219,7 @@ export class BootScene extends Phaser.Scene {
     });
     this.anims.create({
       key: ANIM_KEYS.BOAR_IDLE,
-      frames: this.anims.generateFrameNumbers(TEX.MOB_BOAR, { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers(TEX.MOB_BOAR, { start: 0, end: 3 }),
       frameRate: 6,
       repeat: -1,
     });
@@ -301,6 +311,10 @@ export class BootScene extends Phaser.Scene {
       });
     }
     for (const { texture, animKey } of NPC_SKINS) {
+      // rescue_cat_epilogue (cf. Constants.NPC_SKINS) réutilise TEX.RESCUE_CAT/son anim déjà
+      // enregistrée juste au-dessus (ANIM_KEYS.RESCUE_CAT_IDLE) — recréer la même clé ici
+      // déclenchait un avertissement Phaser sans effet (la première définition l'emporte).
+      if (this.anims.exists(animKey)) continue;
       this.anims.create({
         key: animKey,
         frames: this.anims.generateFrameNumbers(texture, { start: 0, end: 6 }),

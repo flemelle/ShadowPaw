@@ -83,6 +83,14 @@ commercial libre, crédit apprécié mais non obligatoire — sauf recolorisatio
 modification de forme, où même le crédit optionnel saute. Nos calques ont été
 recadrés mais pas recolorés.
 
+## Décor parallax — *Pine Hills*
+
+14 calques (`public/assets/images/backgrounds/pinehills/`), utilisés uniquement
+dans l'épilogue (`zone9_epilogue` — "Le Havre", cf. `GameState.enterEpilogue`),
+un havre de paix chaleureux hors de la trame où PNJ et créatures sauvées se
+retrouvent. Le sol de cette zone bonus reste procédural (pas de tileset dans ce
+pack) — cf. `BootScene.generateTileTexture(TEX.FLOOR_EPILOGUE, ...)`.
+
 ## Notes
 
 - Les sprites de **personnage** (joueur) et tout ce qui relève du **combat**
@@ -111,7 +119,9 @@ intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
   en pixel art, cf. GameScene.rescueCaptive) (`images/creatures/rescue_cat_run.png`) ;
   `BlackCat`, `Brown`, `White` pour les chats sauvages décoratifs dispersés sur
   la carte (`images/decor/cat_wild_*.png`, purement visuels : traversables, en
-  arrière-plan derrière le gameplay) ; `Classical`, `Siamese`, `EgyptCatFree`,
+  arrière-plan derrière le gameplay) — la première frame de `White` (patte levée) est aussi
+  recadrée en icône du bouton Mode Admin de l'écran-titre (`images/ui/icon_admin_cat.png`) ;
+  `Classical`, `Siamese`, `EgyptCatFree`,
   `TigerCatFree`, `BatmanCatFree`, `DemonicFree` pour les 6 PNJ nommés (Tozen,
   l'Esprit de Ryo, le Veilleur de Seikūji, l'Écho de Hikari, le Reflet, Malakar —
   cf. `Constants.NPC_SKINS`, résolu par préfixe d'arbre de dialogue) (`images/creatures/npc_*.png`).
@@ -121,7 +131,11 @@ intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
 - **Free - Raven Fantasy Icons** — crâne, mob des zones GRAVEYARD et de la zone 8
   (décor abstrait) (`images/creatures/skull_enemy.png`).
 - **Legacy Fantasy - High Forest 2.0** — sanglier, mob de la zone Forêt
-  (`images/creatures/boar_idle.png`).
+  (`images/creatures/boar_idle.png`). Les 4 frames réelles de `Idle-Sheet.png` ne sont pas
+  alignées sur une grille de 32px (largeur réelle ~38-40px, séparées par des trous transparents
+  irréguliers) — un découpage naïf à 32px coupait le sanglier en deux moitiés disjointes une
+  frame sur deux ; retaillé sur les vrais trous transparents puis recentré sur un cadre 40x32
+  uniforme.
 - **MediavelFree.png / Idle.png** — chatte-ninja, boss "L'Ombre Jumelle"
   (`images/bosses/catgirl_idle.png`).
 - **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
