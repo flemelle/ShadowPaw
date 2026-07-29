@@ -731,7 +731,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Affiche le mini tutoriel des nouvelles attaques de Malakar la première fois que son combat démarre. */
   private maybeShowBossTutorial(): void {
-    if (dialogSystem.hasFlag('tuto_boss_seen')) return;
+    if (powerSystem.isTestMode() || dialogSystem.hasFlag('tuto_boss_seen')) return;
     dialogSystem.setFlag('tuto_boss_seen');
     this.safeDelay(400, () => this.startTutorial(buildBossTutorialSteps()));
   }
@@ -1241,7 +1241,7 @@ export class GameScene extends Phaser.Scene {
   /** Affiche le mini tutoriel d'un pouvoir la première fois qu'il est accordé (boss ou autel). */
   private maybeShowPowerTutorial(power: PowerId): void {
     const flag = `tuto_power_${power}`;
-    if (dialogSystem.hasFlag(flag)) return;
+    if (powerSystem.isTestMode() || dialogSystem.hasFlag(flag)) return;
     dialogSystem.setFlag(flag);
     this.startTutorial(buildPowerTutorialSteps(power));
   }

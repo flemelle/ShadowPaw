@@ -481,7 +481,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   /**
    * Retourne `true` si ce coup achève l'ennemi. `time` gère une brève invulnérabilité après
    * chaque coup reçu — sans elle, la fenêtre d'attaque du joueur (plusieurs frames) toucherait
-   * le même ennemi une fois par frame plutôt qu'une fois par coup de griffe.
+   * le même ennemi une fois par frame plutôt qu'une fois par coup de griffe. `time` DOIT être
+   * l'horloge de scène Phaser (`scene.time.now`, cf. tous les appels réels dans GameScene),
+   * pas une epoch Unix (`Date.now()`) : `knockbackUntil`/`invulnerableUntil` sont comparés à ce
+   * même référentiel dans updateAI, et une horloge murale la rendrait à jamais dans le futur.
    */
   takeDamage(amount: number, time: number, sourceX?: number): boolean {
     if (this.defeated || time < this.invulnerableUntil) return false;
