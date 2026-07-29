@@ -538,11 +538,16 @@ export interface BossDef {
   /** Sprite réel (+ animation d'idle) pour ce boss précis — sinon TEX.ENEMY générique teinté rouge. */
   texture?: string;
   animKey?: string;
+  /** Teinte optionnelle appliquée même avec un vrai `texture` (sinon réservée au générique
+   * TEX.ENEMY, cf. Enemy.ts) — pour distinguer un boss qui réutilise un sprite de mob normal. */
+  tint?: number;
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
   boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight', texture: TEX.BOSS_STONE_GUARDIAN },
-  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight' },
+  // Crâne des mobs GRAVEYARD (déjà sans yeux, cf. TEX.MOB_SKULL) réutilisé pour le thème "aveugle" —
+  // teinte lavande pâle (cataracte) pour rester distinct des mobs normaux de la même zone.
+  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.MOB_SKULL, tint: 0xd8cfff },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
   boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
   boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },

@@ -128,10 +128,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (this.isBoss) {
       this.setScale(1.7);
       // Le losange générique (TEX.ENEMY) a besoin d'un accent rouge pour se lire comme "boss" ;
-      // un vrai sprite (catgirl...) a déjà sa propre identité visuelle, pas touché.
-      if (!opts?.texture) {
-        this.restingTint = 0xff8a8a;
-        this.setTint(this.restingTint);
+      // un vrai sprite dédié (catgirl...) a déjà sa propre identité visuelle, pas touché — sauf
+      // s'il précise sa propre teinte (cf. BossDef.tint), pour un boss qui réutilise un sprite de
+      // mob normal (ex. Maître Aveugle/TEX.MOB_SKULL) sans se confondre avec les mobs de la zone.
+      const tint = opts?.bossDef?.tint ?? (!opts?.texture ? 0xff8a8a : undefined);
+      if (tint != null) {
+        this.restingTint = tint;
+        this.setTint(tint);
       }
     }
     const initialAnimKey = opts?.preTransformAnimKey ?? opts?.animKey;
