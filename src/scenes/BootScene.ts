@@ -142,8 +142,8 @@ export class BootScene extends Phaser.Scene {
     for (const { texture } of CAT_DECOR_VARIANTS) {
       this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
     }
-    for (const { texture } of NPC_SKINS) {
-      this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: 32, frameHeight: 32 });
+    for (const { texture, frameSize } of NPC_SKINS) {
+      this.load.spritesheet(texture, REAL_TEX_PATHS[texture], { frameWidth: frameSize ?? 32, frameHeight: frameSize ?? 32 });
     }
   }
 
@@ -241,6 +241,12 @@ export class BootScene extends Phaser.Scene {
     this.anims.create({
       key: ANIM_KEYS.CATGIRL_IDLE,
       frames: this.anims.generateFrameNumbers(TEX.CATGIRL_BOSS, { start: 0, end: 7 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: ANIM_KEYS.SAMURAI_IDLE,
+      frames: this.anims.generateFrameNumbers(TEX.BOSS_SAMURAI, { start: 0, end: 9 }),
       frameRate: 8,
       repeat: -1,
     });

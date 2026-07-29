@@ -81,11 +81,13 @@ export class DialogScene extends Phaser.Scene {
       // sommet) : ancrée pareil, elle resterait presque entièrement cachée derrière la case et ne
       // laisserait dépasser que le sommet des oreilles. Ancrée plus haut à la place (juste sous le
       // bord haut de la case) pour que le skin reste presque entièrement visible au-dessus d'elle.
+      // Taille affichée cohérente (~192px) quelle que soit la frame source : 6x pour les PNJ en
+      // 32x32, moins pour une frame plus grande (ex. le samouraï du boss "Maître Aveugle" en 96x96).
       this.npcPortrait = this.add
         .sprite(GAME_WIDTH - 10, BOX_TOP + 40, skin.texture)
         .setOrigin(1, 1)
         .setAlpha(0.92)
-        .setScale(6)
+        .setScale(192 / (skin.frameSize ?? 32))
         .play(skin.animKey);
     } else {
       this.npcPortrait = this.add.sprite(GAME_WIDTH - 10, BOX_BOTTOM, TEX.NPC_PORTRAIT).setOrigin(1, 1).setAlpha(0.92);

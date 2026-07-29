@@ -138,6 +138,10 @@ intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
   uniforme.
 - **MediavelFree.png / Idle.png** — chatte-ninja, boss "L'Ombre Jumelle"
   (`images/bosses/catgirl_idle.png`).
+- **FREE_Samurai 2D Pixel Art v1.2** — vieux samouraï aux yeux clos, boss "Maître Aveugle"
+  (`IDLE.png`, 10 frames 96x96, miroir horizontal pour respecter la convention du projet — sprites
+  orientés vers la droite) (`images/bosses/samurai_idle.png`), réutilisé aussi comme portrait de
+  dialogue (cf. `Constants.NPC_SKINS`).
 - **BLUE/RED Aseprite Spritesheets** — esprit-chat spectral (bleu pour "Le Double
   de Lumière", rouge pour Malakar, boss final) (`images/bosses/ghost_cat_*.png`).
 - **RPG Effect All Free** — rafale d'énergie (une des 9 teintes x 8 frames de fondu de
@@ -166,3 +170,8 @@ intégrés pour les mobs, boss, créatures à sauver, et le joueur lui-même :
 Aucun de ces packs ne fournissait de licence explicite (au mieux une note de
 remerciement informelle) — **à vérifier par l'utilisateur** avant toute
 distribution publique/commerciale du jeu, comme pour Stringstar Fields ci-dessus.
+Exception : FREE_Samurai 2D Pixel Art v1.2 fournit un `License.txt` explicite
+(usage personnel/commercial libre, modification autorisée, crédit apprécié
+mais non requis, seule restriction : pas de revente/redistribution en tant
+qu'asset autonome, ni de NFT) — notre usage (asset intégré au jeu) est
+explicitement couvert.

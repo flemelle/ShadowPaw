@@ -119,6 +119,7 @@ export const TEX = {
   RESCUE_CAT: 'tex_rescue_cat',
   RESCUE_CAT_RUN: 'tex_rescue_cat_run',
   CATGIRL_BOSS: 'tex_catgirl_boss',
+  BOSS_SAMURAI: 'tex_boss_samurai',
   BOSS_STONE_GUARDIAN: 'tex_boss_stone_guardian',
   UI_PANEL: 'tex_ui_panel',
   UI_ICON_PLAY: 'tex_ui_icon_play',
@@ -169,6 +170,7 @@ export const REAL_TEX_PATHS: Record<string, string> = {
   [TEX.RESCUE_CAT]: `${ASSET_BASE}/images/creatures/rescue_cat_idle.png`,
   [TEX.RESCUE_CAT_RUN]: `${ASSET_BASE}/images/creatures/rescue_cat_run.png`,
   [TEX.CATGIRL_BOSS]: `${ASSET_BASE}/images/bosses/catgirl_idle.png`,
+  [TEX.BOSS_SAMURAI]: `${ASSET_BASE}/images/bosses/samurai_idle.png`,
   [TEX.UI_PANEL]: `${ASSET_BASE}/images/ui/panel_wood.png`,
   [TEX.UI_ICON_PLAY]: `${ASSET_BASE}/images/ui/btn_play_light.png`,
   [TEX.UI_ICON_PAUSE]: `${ASSET_BASE}/images/ui/btn_pause_light.png`,
@@ -219,7 +221,7 @@ export function getCatDecorVariant(variant: number): (typeof CAT_DECOR_VARIANTS)
  * "tozen_zone1_intro"/"tozen_zone2_hint"/"tozen_zone3_hint" sont tous Tozen). Un PNJ dont aucun
  * préfixe ne correspond garde le marqueur générique (cercle cyan).
  */
-export const NPC_SKINS: { prefix: string; texture: string; animKey: string }[] = [
+export const NPC_SKINS: { prefix: string; texture: string; animKey: string; frameSize?: number }[] = [
   { prefix: 'tozen', texture: TEX.NPC_TOZEN, animKey: 'anim_npc_tozen_idle' },
   { prefix: 'ryo_spirit', texture: TEX.NPC_RYO_SPIRIT, animKey: 'anim_npc_ryo_spirit_idle' },
   { prefix: 'veilleur', texture: TEX.NPC_VEILLEUR, animKey: 'anim_npc_veilleur_idle' },
@@ -230,9 +232,14 @@ export const NPC_SKINS: { prefix: string; texture: string; animKey: string }[] =
   // sur la carte (ThreeColorFree, cf. ACKNOWLEDGEMENTS.md), pas de variante par chat : c'est le
   // dialogue de chacune (référençant sa zone d'origine) qui les distingue, pas l'apparence.
   { prefix: 'rescue_cat_epilogue', texture: TEX.RESCUE_CAT, animKey: 'anim_rescue_cat_idle' },
+  // Portrait de dialogue du boss "Maître Aveugle" (cf. BOSS_DEFS) — même texture que le combat,
+  // mais en frame 96x96 (pas 32x32 comme les PNJ ci-dessus), d'où le frameSize explicite ; son
+  // animation (10 frames, pas les 7 génériques ci-dessous) est créée à part dans le bloc boss de
+  // BootScene, que la boucle générique plus bas laisse intacte (cf. son garde-fou anims.exists).
+  { prefix: 'boss_maitre_aveugle', texture: TEX.BOSS_SAMURAI, animKey: 'anim_samurai_idle', frameSize: 96 },
 ];
 
-export function getNpcSkin(dialogTree: string): { texture: string; animKey: string } | null {
+export function getNpcSkin(dialogTree: string): { texture: string; animKey: string; frameSize?: number } | null {
   return NPC_SKINS.find((s) => dialogTree.startsWith(s.prefix)) ?? null;
 }
 
@@ -276,6 +283,7 @@ export const ANIM_KEYS = {
   RESCUE_CAT_IDLE: 'anim_rescue_cat_idle',
   RESCUE_CAT_RUN: 'anim_rescue_cat_run',
   CATGIRL_IDLE: 'anim_catgirl_idle',
+  SAMURAI_IDLE: 'anim_samurai_idle',
   GHOST_CAT_BLUE_IDLE: 'anim_ghost_cat_blue_idle',
   GHOST_CAT_RED_IDLE: 'anim_ghost_cat_red_idle',
   PLAYER_ATTACK_SWIPE: 'anim_player_attack_swipe',
@@ -538,16 +546,13 @@ export interface BossDef {
   /** Sprite réel (+ animation d'idle) pour ce boss précis — sinon TEX.ENEMY générique teinté rouge. */
   texture?: string;
   animKey?: string;
-  /** Teinte optionnelle appliquée même avec un vrai `texture` (sinon réservée au générique
-   * TEX.ENEMY, cf. Enemy.ts) — pour distinguer un boss qui réutilise un sprite de mob normal. */
-  tint?: number;
 }
 
 export const BOSS_DEFS: Record<string, BossDef> = {
   boss_gardien_de_pierre: { name: 'Le Gardien de Pierre', hp: 6, speed: 30, pattern: 'slow_slam', musicRate: 0.9, dialogTree: 'boss_gardien_de_pierre_pre_fight', texture: TEX.BOSS_STONE_GUARDIAN },
-  // Crâne des mobs GRAVEYARD (déjà sans yeux, cf. TEX.MOB_SKULL) réutilisé pour le thème "aveugle" —
-  // teinte lavande pâle (cataracte) pour rester distinct des mobs normaux de la même zone.
-  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.MOB_SKULL, tint: 0xd8cfff },
+  // Vieux samouraï aux yeux clos (FREE_Samurai 2D Pixel Art, cf. ACKNOWLEDGEMENTS.md) — se lit
+  // "aveugle" sans le moindre artifice de teinte, contrairement au recyclage précédent du crâne.
+  boss_maitre_aveugle: { name: 'Maître Aveugle', hp: 7, speed: 95, pattern: 'erratic_fast', musicRate: 1.15, dialogTree: 'boss_maitre_aveugle_pre_fight', texture: TEX.BOSS_SAMURAI, animKey: ANIM_KEYS.SAMURAI_IDLE },
   // Le "double" de Kiba prend le visage d'une chatte-ninja miroir plutôt que le losange générique.
   boss_ombre_jumelle: { name: "L'Ombre Jumelle", hp: 8, speed: 70, pattern: 'mirror', musicRate: 0.95, dialogTree: 'boss_ombre_jumelle_pre_fight', texture: TEX.CATGIRL_BOSS, animKey: ANIM_KEYS.CATGIRL_IDLE },
   boss_velkhar_ancien: { name: "Velkhar l'Ancien", hp: 10, speed: 50, pattern: 'phases', musicRate: 1.08, dialogTree: 'boss_velkhar_ancien_pre_fight' },
